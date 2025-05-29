@@ -343,17 +343,26 @@ export default function Home() {
         <div className="flex justify-center space-x-4 mb-6">
           <button
             onClick={toggleTimer}
-            className={`px-6 py-2 rounded-lg font-medium ${
+            className={`px-6 py-2 rounded-lg font-medium shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95 ${
               isRunning
-                ? 'bg-red-500 hover:bg-red-600 text-white'
-                : 'bg-blue-500 hover:bg-blue-600 text-white'
-            }`}>
+                ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/30'
+                : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/30'
+            }`}
+            style={{
+              boxShadow: isRunning
+                ? '0 4px 15px rgba(239, 68, 68, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1)'
+                : '0 4px 15px rgba(59, 130, 246, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1)',
+            }}>
             {isRunning ? '暂停' : '开始'}
           </button>
 
           <button
             onClick={resetTimer}
-            className="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg font-medium">
+            className="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg font-medium shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95"
+            style={{
+              boxShadow:
+                '0 4px 15px rgba(156, 163, 175, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1)',
+            }}>
             重置
           </button>
         </div>
