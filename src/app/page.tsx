@@ -96,29 +96,34 @@ export default function Home() {
               nextAlertTimeRef.current = null // 休息模式清空提示时间
               return 20 * 60 // 切换到休息模式，20分钟
             } else {
-              setMode('focus')
+              // 休息结束后停止计时器，不自动开始下一个循环
+              setIsRunning(false)
               setCompletedCycles((c) => c + 1)
-              // 新的专注模式开始时设置随机提示时间
-              const randomTime = generateRandomTime()
-              nextAlertTimeRef.current = randomTime
-              return 90 * 60 // 切换到专注模式，90分钟
+              nextAlertTimeRef.current = null
+              return 0 // 停止计时
             }
           }
 
-          // 检查是否需要触发提示音
+          // 检查是否需要触发提示音（仅在专注模式）
           if (
             mode === 'focus' &&
             nextAlertTimeRef.current !== null &&
             nextAlertTimeRef.current <= 1
           ) {
             playAlert()
+            // 10秒后播放break_end.mp3
+            setTimeout(() => {
+              new Audio('/break_end.mp3').play().catch(() => {
+                console.log('break_end.mp3播放失败')
+              })
+            }, 10000)
             // 设置下一次提示时间
             const randomTime = generateRandomTime()
             nextAlertTimeRef.current = randomTime
           }
 
-          // 递减下一次提示的剩余时间
-          if (nextAlertTimeRef.current !== null) {
+          // 递减下一次提示的剩余时间（仅在专注模式）
+          if (mode === 'focus' && nextAlertTimeRef.current !== null) {
             nextAlertTimeRef.current = nextAlertTimeRef.current - 1
           }
 
@@ -268,8 +273,8 @@ export default function Home() {
               <feDropShadow
                 dx="3"
                 dy="3"
-                stdDeviation="2"
-                floodColor="rgba(0,0,0,0.2)"
+                stdDeviation="5"
+                floodColor="rgba(0,0,0,0.8)"
               />
             </filter>
           </defs>
@@ -282,7 +287,7 @@ export default function Home() {
             fill="none"
             stroke="currentColor"
             strokeWidth="3"
-            className="text-gray-400 dark:text-gray-500"
+            className="text-gray-500 dark:text-gray-500"
             filter="url(#circleShadow)"
           />
           {/* 内边界 - 带阴影 */}
@@ -293,7 +298,7 @@ export default function Home() {
             fill="none"
             stroke="currentColor"
             strokeWidth="3"
-            className="text-white dark:text-gray-500"
+            className="text-gray-500 dark:text-gray-500"
             filter="url(#circleShadow)"
           />
         </svg>
