@@ -1,6 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import {
+  ArcWatchFace,
+  SimpleWatchFace,
+  DigitalWatchFace,
+  WatchFaceType,
+} from '@/components/watchfaces'
 
 export default function Home() {
   // 状态管理
@@ -8,10 +14,13 @@ export default function Home() {
   const [timeLeft, setTimeLeft] = useState<number>(90 * 60) // 剩余时间（秒）
   const [isRunning, setIsRunning] = useState<boolean>(false) // 计时器是否运行中
   const [completedCycles, setCompletedCycles] = useState<number>(0) // 完成的循环次数
+  const [watchFaceType, setWatchFaceType] = useState<WatchFaceType>('arc')
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false) // 菜单开关状态
 
   // 引用
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const nextAlertTimeRef = useRef<number | null>(null) // 使用ref替代state
+  const menuRef = useRef<HTMLDivElement | null>(null) // 菜单引用
 
   // 请求通知权限
   useEffect(() => {
@@ -20,6 +29,40 @@ export default function Home() {
       Notification.requestPermission()
     }
   }, [])
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // 表盘选择处理函数
+  const handleWatchFaceSelect = (type: WatchFaceType) => {
+    setWatchFaceType(type)
+    setIsMenuOpen(false)
+  }
+
+  // 获取表盘显示名称
+  const getWatchFaceName = (type: WatchFaceType) => {
+    switch (type) {
+      case 'arc':
+        return '弧形段'
+      case 'simple':
+        return '简约圆环'
+      case 'digital':
+        return '数字方块'
+      default:
+        return '弧形段'
+    }
+  }
 
   // 生成3-5分钟的随机时间（秒）
   const generateRandomTime = (): number => {
@@ -156,169 +199,25 @@ export default function Home() {
     return (timeLeft / totalTime) * 100
   }
 
-  // 环形进度条组件 - 离散弧形段版本
-  const CircularProgress = ({ progress }: { progress: number }) => {
-    const radius = 180
-    const centerX = radius
-    const centerY = radius
-    const segmentCount = 60 // 60个独立段
-    const innerRadius = radius - 80 // 内半径
-    const outerRadius = radius // 外半径
-    const gapAngle = 1 // 段之间的间隙角度（度）
-    const segmentAngle = 360 / segmentCount - gapAngle // 每段占用的角度
-
-    // 计算需要填充的段数
-    const filledSegments = Math.floor((segmentCount * progress) / 100)
-
-    // 创建弧形路径的函数
-    const createArcPath = (
-      startAngle: number,
-      endAngle: number,
-      innerR: number,
-      outerR: number
-    ) => {
-      const startAngleRad = (startAngle * Math.PI) / 180
-      const endAngleRad = (endAngle * Math.PI) / 180
-
-      const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1'
-
-      // 固定精度避免水合错误
-      const x1 = Number((centerX + innerR * Math.cos(startAngleRad)).toFixed(6))
-      const y1 = Number((centerY + innerR * Math.sin(startAngleRad)).toFixed(6))
-      const x2 = Number((centerX + outerR * Math.cos(startAngleRad)).toFixed(6))
-      const y2 = Number((centerY + outerR * Math.sin(startAngleRad)).toFixed(6))
-
-      const x3 = Number((centerX + outerR * Math.cos(endAngleRad)).toFixed(6))
-      const y3 = Number((centerY + outerR * Math.sin(endAngleRad)).toFixed(6))
-      const x4 = Number((centerX + innerR * Math.cos(endAngleRad)).toFixed(6))
-      const y4 = Number((centerY + innerR * Math.sin(endAngleRad)).toFixed(6))
-
-      return [
-        'M',
-        x1,
-        y1, // 移动到内弧起点
-        'L',
-        x2,
-        y2, // 直线到外弧起点
-        'A',
-        outerR,
-        outerR,
-        0,
-        largeArcFlag,
-        1,
-        x3,
-        y3, // 外弧
-        'L',
-        x4,
-        y4, // 直线到内弧终点
-        'A',
-        innerR,
-        innerR,
-        0,
-        largeArcFlag,
-        0,
-        x1,
-        y1, // 内弧（逆向）
-        'Z', // 闭合路径
-      ].join(' ')
+  // 渲染当前选择的表盘
+  const renderWatchFace = (progress: number) => {
+    const watchFaceProps = {
+      progress,
+      timeLeft,
+      mode,
+      formatTime,
     }
 
-    // 生成所有段
-    const segments = []
-    for (let i = 0; i < segmentCount; i++) {
-      // 计算角度（从顶部开始，顺时针）
-      const startAngle = (i * 360) / segmentCount - 90 // -90度让起始点在顶部
-      const endAngle = startAngle + segmentAngle
-
-      // 判断这个段是否应该被填充
-      const isFilled = i < filledSegments
-
-      const pathData = createArcPath(
-        startAngle,
-        endAngle,
-        innerRadius,
-        outerRadius
-      )
-
-      segments.push(
-        <path
-          key={i}
-          d={pathData}
-          fill="currentColor"
-          className={`transition-colors duration-300 ${
-            isFilled
-              ? mode === 'focus'
-                ? 'text-red-500 dark:text-gray-600'
-                : 'text-green-500 dark:text-green-400'
-              : 'text-gray-200 dark:text-gray-700'
-          }`}
-        />
-      )
+    switch (watchFaceType) {
+      case 'arc':
+        return <ArcWatchFace {...watchFaceProps} />
+      case 'simple':
+        return <SimpleWatchFace {...watchFaceProps} />
+      case 'digital':
+        return <DigitalWatchFace {...watchFaceProps} />
+      default:
+        return <ArcWatchFace {...watchFaceProps} />
     }
-
-    return (
-      <div className="relative">
-        <svg
-          height={radius * 2}
-          width={radius * 2}
-          className="overflow-visible">
-          <defs>
-            {/* 阴影效果定义 */}
-            <filter
-              id="circleShadow"
-              x="-50%"
-              y="-50%"
-              width="200%"
-              height="200%">
-              <feDropShadow
-                dx="3"
-                dy="3"
-                stdDeviation="5"
-                floodColor="rgba(0,0,0,0.8)"
-              />
-            </filter>
-          </defs>
-          {segments}
-          {/* 外边界 - 带阴影 */}
-          <circle
-            cx={centerX}
-            cy={centerY}
-            r={outerRadius}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            className="text-gray-500 dark:text-gray-500"
-            filter="url(#circleShadow)"
-          />
-          {/* 内边界 - 带阴影 */}
-          <circle
-            cx={centerX}
-            cy={centerY}
-            r={innerRadius}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            className="text-gray-500 dark:text-gray-500"
-            filter="url(#circleShadow)"
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-4xl font-mono font-bold text-gray-800 dark:text-white">
-              {formatTime(timeLeft)}
-            </div>
-            <div
-              className={`text-sm font-medium ${
-                mode === 'focus'
-                  ? 'text-gray-600 dark:text-gray-400'
-                  : 'text-green-600 dark:text-green-400'
-              }`}>
-              {mode === 'focus' ? '专注时间' : '休息时间'}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -328,9 +227,75 @@ export default function Home() {
           专注闹钟
         </h1>
 
+        {/* 表盘选择菜单 - 改为图标按钮 */}
+        <div className="mb-6 relative" ref={menuRef}>
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="absolute top-2 right-2 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors duration-200 z-20"
+            title={`当前表盘: ${getWatchFaceName(watchFaceType)}`}>
+            {/* 设置图标 */}
+            <svg
+              className="w-5 h-5 text-gray-600 dark:text-gray-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </button>
+
+          {/* 下拉菜单 */}
+          {isMenuOpen && (
+            <div className="absolute top-12 right-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-30">
+              <div className="p-2">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 px-2">
+                  表盘样式
+                </div>
+                <button
+                  onClick={() => handleWatchFaceSelect('arc')}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 rounded-md ${
+                    watchFaceType === 'arc'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-700 dark:text-gray-300'
+                  }`}>
+                  弧形段
+                </button>
+                <button
+                  onClick={() => handleWatchFaceSelect('simple')}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 rounded-md ${
+                    watchFaceType === 'simple'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-700 dark:text-gray-300'
+                  }`}>
+                  简约圆环
+                </button>
+                <button
+                  onClick={() => handleWatchFaceSelect('digital')}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 rounded-md ${
+                    watchFaceType === 'digital'
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-700 dark:text-gray-300'
+                  }`}>
+                  数字方块
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="mb-8">
           <div className="flex justify-center mb-4">
-            <CircularProgress progress={getProgress()} />
+            {renderWatchFace(getProgress())}
           </div>
 
           {nextAlertTimeRef.current !== null && (
