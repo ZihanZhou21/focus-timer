@@ -29,8 +29,8 @@ export const SimpleWatchFace = ({
             <feDropShadow
               dx="2"
               dy="2"
-              stdDeviation="3"
-              floodColor="rgba(0,0,0,0.3)"
+              stdDeviation="4"
+              floodColor="rgba(0,0,0,0.1)"
             />
           </filter>
         </defs>
@@ -42,7 +42,7 @@ export const SimpleWatchFace = ({
           r={normalizedRadius}
           cx={radius}
           cy={radius}
-          className="text-gray-200 dark:text-gray-700"
+          className="text-stone-200 dark:text-slate-700"
           filter="url(#simpleShadow)"
         />
         {/* 进度圆圈 */}
@@ -57,8 +57,8 @@ export const SimpleWatchFace = ({
           cy={radius}
           className={`transition-all duration-1000 ease-in-out ${
             mode === 'focus'
-              ? 'text-red-500 dark:text-red-400'
-              : 'text-green-500 dark:text-green-400'
+              ? 'text-amber-400 dark:text-amber-500'
+              : 'text-emerald-400 dark:text-emerald-500'
           }`}
           style={{ strokeLinecap: 'round' }}
           filter="url(#simpleShadow)"
@@ -66,14 +66,14 @@ export const SimpleWatchFace = ({
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl font-mono font-bold text-gray-800 dark:text-white">
+          <div className="text-5xl font-light text-stone-700 dark:text-slate-200 tracking-wider mb-2">
             {formatTime(timeLeft)}
           </div>
           <div
-            className={`text-sm font-medium ${
+            className={`text-sm font-light tracking-wide ${
               mode === 'focus'
-                ? 'text-gray-600 dark:text-gray-400'
-                : 'text-green-600 dark:text-green-400'
+                ? 'text-stone-500 dark:text-slate-400'
+                : 'text-emerald-600 dark:text-emerald-400'
             }`}>
             {mode === 'focus' ? '专注时间' : '休息时间'}
           </div>

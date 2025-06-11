@@ -96,9 +96,9 @@ export const ArcWatchFace = ({
         className={`transition-colors duration-300 ${
           isFilled
             ? mode === 'focus'
-              ? 'text-red-500 dark:text-gray-600'
-              : 'text-green-500 dark:text-green-400'
-            : 'text-gray-200 dark:text-gray-700'
+              ? 'text-amber-400 dark:text-amber-500'
+              : 'text-emerald-400 dark:text-emerald-500'
+            : 'text-stone-200 dark:text-slate-700'
         }`}
       />
     )
@@ -116,10 +116,10 @@ export const ArcWatchFace = ({
             width="200%"
             height="200%">
             <feDropShadow
-              dx="3"
-              dy="3"
-              stdDeviation="5"
-              floodColor="rgba(0,0,0,0.8)"
+              dx="2"
+              dy="2"
+              stdDeviation="4"
+              floodColor="rgba(0,0,0,0.1)"
             />
           </filter>
         </defs>
@@ -131,8 +131,8 @@ export const ArcWatchFace = ({
           r={outerRadius}
           fill="none"
           stroke="currentColor"
-          strokeWidth="3"
-          className="text-gray-500 dark:text-gray-500"
+          strokeWidth="2"
+          className="text-stone-300 dark:text-slate-600"
           filter="url(#circleShadow)"
         />
         {/* 内边界 - 带阴影 */}
@@ -142,21 +142,21 @@ export const ArcWatchFace = ({
           r={innerRadius}
           fill="none"
           stroke="currentColor"
-          strokeWidth="3"
-          className="text-gray-500 dark:text-gray-500"
+          strokeWidth="2"
+          className="text-stone-300 dark:text-slate-600"
           filter="url(#circleShadow)"
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl font-mono font-bold text-gray-800 dark:text-white">
+          <div className="text-5xl font-light text-stone-700 dark:text-slate-200 tracking-wider mb-2">
             {formatTime(timeLeft)}
           </div>
           <div
-            className={`text-sm font-medium ${
+            className={`text-sm font-light tracking-wide ${
               mode === 'focus'
-                ? 'text-gray-600 dark:text-gray-400'
-                : 'text-green-600 dark:text-green-400'
+                ? 'text-stone-500 dark:text-slate-400'
+                : 'text-emerald-600 dark:text-emerald-400'
             }`}>
             {mode === 'focus' ? '专注时间' : '休息时间'}
           </div>

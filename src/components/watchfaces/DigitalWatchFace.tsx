@@ -11,29 +11,29 @@ export const DigitalWatchFace = ({
 
   return (
     <div className="relative w-80 h-80 flex flex-col items-center justify-center">
-      <div className="grid grid-cols-10 gap-1 mb-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-lg">
+      <div className="grid grid-cols-10 gap-1 mb-6 p-6 bg-stone-50/50 dark:bg-slate-800/30 rounded-2xl backdrop-blur-sm border border-stone-200/50 dark:border-slate-600/30">
         {Array.from({ length: totalBlocks }, (_, i) => (
           <div
             key={i}
-            className={`w-6 h-6 rounded transition-all duration-300 ${
+            className={`w-6 h-6 rounded-md transition-all duration-300 ${
               i < filledBlocks
                 ? mode === 'focus'
-                  ? 'bg-red-500 shadow-md'
-                  : 'bg-green-500 shadow-md'
-                : 'bg-gray-300 dark:bg-gray-600'
+                  ? 'bg-amber-400 dark:bg-amber-500 shadow-sm'
+                  : 'bg-emerald-400 dark:bg-emerald-500 shadow-sm'
+                : 'bg-stone-200 dark:bg-slate-700'
             }`}
           />
         ))}
       </div>
       <div className="text-center">
-        <div className="text-4xl font-mono font-bold text-gray-800 dark:text-white">
+        <div className="text-5xl font-light text-stone-700 dark:text-slate-200 tracking-wider mb-2">
           {formatTime(timeLeft)}
         </div>
         <div
-          className={`text-sm font-medium ${
+          className={`text-sm font-light tracking-wide ${
             mode === 'focus'
-              ? 'text-gray-600 dark:text-gray-400'
-              : 'text-green-600 dark:text-green-400'
+              ? 'text-stone-500 dark:text-slate-400'
+              : 'text-emerald-600 dark:text-emerald-400'
           }`}>
           {mode === 'focus' ? '专注时间' : '休息时间'}
         </div>

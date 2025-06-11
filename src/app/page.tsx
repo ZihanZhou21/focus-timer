@@ -1,345 +1,734 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import {
-  ArcWatchFace,
-  SimpleWatchFace,
-  DigitalWatchFace,
-  WatchFaceType,
-} from '@/components/watchfaces'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { getTodayStats, formatFocusTime, type DailyStats } from '@/lib/storage'
+
+// 数据接口定义
+interface DayData {
+  day: string
+  focus: number
+  cycles: number
+}
+
+interface DayRecord {
+  date: number
+  focusTime: number
+  cycles: number
+  isToday?: boolean
+  hasRecord?: boolean
+}
+
+interface TimelineItem {
+  id: string
+  time: string
+  title: string
+  duration?: string
+  details?: string[]
+  icon: string
+  iconColor: string
+}
 
 export default function Home() {
-  // 状态管理
-  const [mode, setMode] = useState<'focus' | 'break'>('focus') // 当前模式：专注/休息
-  const [timeLeft, setTimeLeft] = useState<number>(90 * 60) // 剩余时间（秒）
-  const [isRunning, setIsRunning] = useState<boolean>(false) // 计时器是否运行中
-  const [completedCycles, setCompletedCycles] = useState<number>(0) // 完成的循环次数
-  const [watchFaceType, setWatchFaceType] = useState<WatchFaceType>('arc')
-  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false) // 菜单开关状态
+  const [todayStats, setTodayStats] = useState<DailyStats>({
+    date: '',
+    totalFocusTime: 0,
+    completedSessions: 0,
+    totalSessions: 0,
+  })
 
-  // 引用
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const nextAlertTimeRef = useRef<number | null>(null) // 使用ref替代state
-  const menuRef = useRef<HTMLDivElement | null>(null) // 菜单引用
+  const [tasks, setTasks] = useState<string[]>([])
+  const [newTask, setNewTask] = useState('')
+  const [activeTab, setActiveTab] = useState<'timer' | 'tasks'>('timer')
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [weeklyData, setWeeklyData] = useState<DayData[]>([])
+  const [isMounted, setIsMounted] = useState(false)
 
-  // 请求通知权限
+  // 在客户端加载今日统计
   useEffect(() => {
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      // 尝试获取通知权限
-      Notification.requestPermission()
+    // 为开发阶段添加一些示例数据（如果localStorage为空的话）
+    if (typeof window !== 'undefined') {
+      const existingSessions = localStorage.getItem('focus-sessions')
+      if (!existingSessions) {
+        const today = new Date().toISOString().split('T')[0]
+        const sampleSessions = [
+          {
+            id: 'sample1',
+            date: today,
+            startTime: 1700000000000, // 固定时间戳
+            duration: 25, // 25分钟
+            targetDuration: 25,
+            completed: true,
+          },
+          {
+            id: 'sample2',
+            date: today,
+            startTime: 1700001800000, // 固定时间戳
+            duration: 30, // 30分钟
+            targetDuration: 30,
+            completed: true,
+          },
+        ]
+        localStorage.setItem('focus-sessions', JSON.stringify(sampleSessions))
+      }
     }
+
+    setTodayStats(getTodayStats())
+    setIsMounted(true)
   }, [])
 
-  // 点击外部关闭菜单
+  // 时间线数据
+  const timelineData: TimelineItem[] = [
+    {
+      id: '1',
+      time: '06:00',
+      title: '起床',
+      icon: '☀️',
+      iconColor: 'bg-yellow-500',
+    },
+    {
+      id: '2',
+      time: '06:30',
+      title: '晨练',
+      duration: '30 分钟',
+      details: ['俯卧撑 x20', '仰卧起坐 x30', '拉伸运动'],
+      icon: '💪',
+      iconColor: 'bg-green-500',
+    },
+    {
+      id: '3',
+      time: '07:30',
+      title: '早餐',
+      duration: '20 分钟',
+      icon: '🍳',
+      iconColor: 'bg-orange-500',
+    },
+    {
+      id: '4',
+      time: '08:00',
+      title: '深度专注',
+      duration: '2 小时',
+      details: ['番茄钟工作法', '完成核心任务', '无干扰环境'],
+      icon: '🎯',
+      iconColor: 'bg-blue-500',
+    },
+    {
+      id: '5',
+      time: '10:30',
+      title: '短暂休息',
+      duration: '15 分钟',
+      icon: '☕',
+      iconColor: 'bg-amber-600',
+    },
+    {
+      id: '6',
+      time: '12:00',
+      title: '午餐时间',
+      duration: '45 分钟',
+      icon: '🥗',
+      iconColor: 'bg-emerald-500',
+    },
+    {
+      id: '7',
+      time: '14:00',
+      title: '会议时间',
+      duration: '1 小时',
+      details: ['团队会议', '项目进度讨论', '下午计划'],
+      icon: '👥',
+      iconColor: 'bg-purple-500',
+    },
+    {
+      id: '8',
+      time: '18:00',
+      title: '运动时间',
+      duration: '1 小时',
+      details: ['跑步 5公里', '力量训练', '拉伸放松'],
+      icon: '🏃',
+      iconColor: 'bg-red-500',
+    },
+  ]
+
+  // 当todayStats更新后，重新生成过去7天的数据
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false)
-      }
-    }
+    const generateLast7DaysData = (): DayData[] => {
+      const data: DayData[] = []
+      const today = new Date()
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [])
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today)
+        date.setDate(today.getDate() - i)
 
-  // 表盘选择处理函数
-  const handleWatchFaceSelect = (type: WatchFaceType) => {
-    setWatchFaceType(type)
-    setIsMenuOpen(false)
-  }
+        const dayNames = [
+          '周日',
+          '周一',
+          '周二',
+          '周三',
+          '周四',
+          '周五',
+          '周六',
+        ]
+        const dayName = dayNames[date.getDay()]
 
-  // 获取表盘显示名称
-  const getWatchFaceName = (type: WatchFaceType) => {
-    switch (type) {
-      case 'arc':
-        return '弧形段'
-      case 'simple':
-        return '简约圆环'
-      case 'digital':
-        return '数字方块'
-      default:
-        return '弧形段'
-    }
-  }
+        // 模拟专注数据，今天的数据可以是实际数据
+        const isToday = i === 0
+        // 使用固定的模拟数据避免水合问题
+        const mockData = [240, 180, 120, 300, 150, 90, 210] // 固定的7天数据
+        const focus = isToday
+          ? Math.max(todayStats.totalFocusTime, 0) // 今天使用真实数据，但至少为0
+          : mockData[6 - i] || 120 // 使用固定数据
+        const cycles = Math.floor(focus / 90)
 
-  // 生成3-5分钟的随机时间（秒）
-  const generateRandomTime = (): number => {
-    return Math.floor(Math.random() * (5 * 60 - 3 * 60 + 1) + 3 * 60)
-  }
-
-  // 播放提示音
-  const playAlert = () => {
-    try {
-      // 尝试使用浏览器内置API播放提示音
-      if ('Audio' in window) {
-        new Audio('/alert.mp3').play().catch(() => {
-          console.log('尝试使用其他方式播放提示音')
-          // 如果播放失败，尝试使用浏览器通知
-          if (
-            'Notification' in window &&
-            Notification.permission === 'granted'
-          ) {
-            new Notification('专注提醒', { body: '请保持专注' })
-          } else {
-            console.log('提示音播放')
-          }
+        data.push({
+          day: dayName,
+          focus,
+          cycles,
         })
-      } else if (
-        'Notification' in window &&
-        Notification.permission === 'granted'
-      ) {
-        new Notification('专注提醒', { body: '请保持专注' })
-      } else {
-        console.log('提示音播放')
       }
-    } catch (error) {
-      console.error('提示音播放失败:', error)
+
+      return data
+    }
+
+    setWeeklyData(generateLast7DaysData())
+  }, [todayStats])
+
+  const maxFocus =
+    weeklyData.length > 0
+      ? Math.max(...weeklyData.map((d) => d.focus), 120)
+      : 120 // 至少120分钟作为最大值
+
+  // 生成日历数据
+  const generateCalendarData = (year: number, month: number): DayRecord[] => {
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+    const today = new Date()
+
+    const startDate = new Date(firstDay)
+    startDate.setDate(startDate.getDate() - firstDay.getDay())
+
+    const endDate = new Date(lastDay)
+    endDate.setDate(endDate.getDate() + (6 - lastDay.getDay()))
+
+    const days: DayRecord[] = []
+    const currentIterDate = new Date(startDate)
+
+    while (currentIterDate <= endDate) {
+      const isCurrentMonth = currentIterDate.getMonth() === month
+      const isToday = currentIterDate.toDateString() === today.toDateString()
+
+      // 模拟专注数据 - 使用固定算法避免水合问题
+      const dayHash =
+        (currentIterDate.getDate() + currentIterDate.getMonth()) % 10
+      const hasRecord = isCurrentMonth && dayHash > 3 // 固定的模式
+      const focusTime = hasRecord ? 60 + dayHash * 30 : 0
+      const cycles = hasRecord ? Math.floor(focusTime / 90) : 0
+
+      days.push({
+        date: currentIterDate.getDate(),
+        focusTime,
+        cycles,
+        isToday,
+        hasRecord: isCurrentMonth && hasRecord,
+      })
+
+      currentIterDate.setDate(currentIterDate.getDate() + 1)
+    }
+
+    return days
+  }
+
+  const calendarData = generateCalendarData(
+    currentDate.getFullYear(),
+    currentDate.getMonth()
+  )
+
+  // 添加任务
+  const addTask = () => {
+    if (newTask.trim()) {
+      setTasks([...tasks, newTask.trim()])
+      setNewTask('')
     }
   }
 
-  // 开始/暂停计时器
-  const toggleTimer = () => {
-    setIsRunning((prev) => {
-      const newIsRunning = !prev
-      if (newIsRunning && mode === 'focus') {
-        // 立即设置第一个随机时间
-        setTimeout(() => {
-          const randomTime = generateRandomTime()
-          nextAlertTimeRef.current = randomTime
-        }, 0)
-      }
-      return newIsRunning
-    })
+  // 删除任务
+  const removeTask = (index: number) => {
+    setTasks(tasks.filter((_, i) => i !== index))
   }
 
-  // 重置计时器
-  const resetTimer = () => {
-    setIsRunning(false)
-    setMode('focus')
-    setTimeLeft(90 * 60)
-    nextAlertTimeRef.current = null
-    setCompletedCycles(0)
+  // 获取过去7天的显示数据
+  const getWeekDays = () => {
+    const today = new Date()
+    const result = []
+
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(today.getDate() - i)
+
+      const dayAbbrevs = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      const dayAbbrev = dayAbbrevs[date.getDay()]
+      const isToday = i === 0
+
+      result.push({
+        day: dayAbbrev,
+        isToday,
+        data: weeklyData[6 - i], // 对应数据数组中的位置
+      })
+    }
+
+    return result
   }
 
-  // 计时器效果
-  useEffect(() => {
-    if (isRunning) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          // 当计时结束时
-          if (prev <= 1) {
-            // 播放提示音
-            playAlert()
-
-            // 切换模式
-            if (mode === 'focus') {
-              setMode('break')
-              nextAlertTimeRef.current = null // 休息模式清空提示时间
-              return 20 * 60 // 切换到休息模式，20分钟
-            } else {
-              // 休息结束后停止计时器，不自动开始下一个循环
-              setIsRunning(false)
-              setCompletedCycles((c) => c + 1)
-              nextAlertTimeRef.current = null
-              return 0 // 停止计时
-            }
-          }
-
-          // 检查是否需要触发提示音（仅在专注模式）
-          if (
-            mode === 'focus' &&
-            nextAlertTimeRef.current !== null &&
-            nextAlertTimeRef.current <= 1
-          ) {
-            playAlert()
-            // 10秒后播放break_end.mp3
-            setTimeout(() => {
-              new Audio('/break_end.mp3').play().catch(() => {
-                console.log('break_end.mp3播放失败')
-              })
-            }, 10000)
-            // 设置下一次提示时间
-            const randomTime = generateRandomTime()
-            nextAlertTimeRef.current = randomTime
-          }
-
-          // 递减下一次提示的剩余时间（仅在专注模式）
-          if (mode === 'focus' && nextAlertTimeRef.current !== null) {
-            nextAlertTimeRef.current = nextAlertTimeRef.current - 1
-          }
-
-          return prev - 1
-        })
-      }, 1000)
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current)
+  // 格式化时间显示
+  const formatTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (hours > 0) {
+      return `${hours}h${mins}m`
     }
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-      }
-    }
-  }, [isRunning, mode])
-
-  // 格式化时间为 MM:SS
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs
-      .toString()
-      .padStart(2, '0')}`
+    return `${mins}m`
   }
 
-  // 计算进度百分比（倒计时）
-  const getProgress = (): number => {
-    const totalTime = mode === 'focus' ? 90 * 60 : 20 * 60
-    return (timeLeft / totalTime) * 100
+  // 获取专注强度颜色
+  const getIntensityColor = (focusTime: number) => {
+    if (focusTime === 0) return 'bg-slate-700'
+    if (focusTime < 90) return 'bg-amber-900/30'
+    if (focusTime < 180) return 'bg-amber-800/50'
+    if (focusTime < 270) return 'bg-amber-700/70'
+    return 'bg-amber-600'
   }
 
-  // 渲染当前选择的表盘
-  const renderWatchFace = (progress: number) => {
-    const watchFaceProps = {
-      progress,
-      timeLeft,
-      mode,
-      formatTime,
-    }
+  // 月份导航
+  const prevMonth = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1)
+    )
+  }
 
-    switch (watchFaceType) {
-      case 'arc':
-        return <ArcWatchFace {...watchFaceProps} />
-      case 'simple':
-        return <SimpleWatchFace {...watchFaceProps} />
-      case 'digital':
-        return <DigitalWatchFace {...watchFaceProps} />
-      default:
-        return <ArcWatchFace {...watchFaceProps} />
-    }
+  const nextMonth = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1)
+    )
+  }
+
+  const months = [
+    '一月',
+    '二月',
+    '三月',
+    '四月',
+    '五月',
+    '六月',
+    '七月',
+    '八月',
+    '九月',
+    '十月',
+    '十一月',
+    '十二月',
+  ]
+
+  // 防止水合问题，在客户端完全加载后才渲染
+  if (!isMounted) {
+    return null
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
-      <div className="w-full max-w-md p-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-        <h1 className="text-3xl font-bold text-center mb-6 text-gray-800 dark:text-white">
-          专注闹钟
-        </h1>
+    <div className="h-screen bg-slate-900 text-white flex flex-col">
+      {/* 顶部导航栏 */}
+      <header className="flex items-center justify-between px-8 py-6 flex-shrink-0">
+        {/* Logo */}
+        <div className="text-xl font-bold text-slate-300">LOGO</div>
 
-        {/* 表盘选择菜单 - 改为图标按钮 */}
-        <div className="mb-6 relative" ref={menuRef}>
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="absolute top-2 right-2 p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors duration-200 z-20"
-            title={`当前表盘: ${getWatchFaceName(watchFaceType)}`}>
-            {/* 设置图标 */}
-            <svg
-              className="w-5 h-5 text-gray-600 dark:text-gray-300"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
+        {/* 中间导航 */}
+        <nav className="bg-slate-800 rounded-2xl p-1 ">
+          <div className="flex space-x-1">
+            <Link
+              href="/"
+              className="px-4 py-2 rounded-2xl text-white bg-slate-700 transition-colors">
+              Dashboard
+            </Link>
+            <Link
+              href="/stats"
+              className="px-4 py-2 rounded-2xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+              Stats
+            </Link>
+            <Link
+              href="/calendar"
+              className="px-4 py-2 rounded-2xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+              History
+            </Link>
+          </div>
+        </nav>
+
+        {/* 右侧操作 */}
+        <div className="flex items-center space-x-4">
+          <button className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors">
+            <span className="text-lg">+</span>
           </button>
+          <div className="w-8 h-8 bg-slate-600 rounded-full"></div>
+        </div>
+      </header>
 
-          {/* 下拉菜单 */}
-          {isMenuOpen && (
-            <div className="absolute top-12 right-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-30">
-              <div className="p-2">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 px-2">
-                  表盘样式
-                </div>
+      <div className="flex flex-1 min-h-0">
+        {/* 左侧面板 - Today & Activity */}
+        <div className="w-1/3 p-6 overflow-y-auto flex flex-col justify-between">
+          {/* Today 区域 - 每日专注时间柱状图 */}
+          <div className="flex-1 flex flex-col">
+            <h3 className="text-lg font-light mb-4 text-slate-200">Today</h3>
+
+            {/* 过去7天专注时间竖向柱状图 */}
+            <div className="bg-slate-800 rounded-2xl p-4 flex-1 flex flex-col mb-4">
+              <h4 className="text-xs text-slate-400 mb-4">过去7天专注时间</h4>
+              <div className="flex items-end justify-between flex-1 mb-3">
+                {getWeekDays().map(({ day, isToday, data }) => (
+                  <div
+                    key={day}
+                    className="flex flex-col items-center flex-1 mx-1 h-full">
+                    {/* 时间标签 */}
+                    <div
+                      className={`text-xs mb-2 transition-opacity duration-300 ${
+                        data && (data.focus > 0 || isToday)
+                          ? 'opacity-100'
+                          : 'opacity-0'
+                      } ${isToday ? 'text-amber-400' : 'text-slate-300'}`}>
+                      {data && (data.focus > 0 || isToday)
+                        ? formatTime(data.focus)
+                        : ''}
+                    </div>
+
+                    {/* 柱子容器 */}
+                    <div className="w-full max-w-8 h-full flex flex-col justify-end">
+                      {/* 柱子 */}
+                      <div
+                        className={`w-full rounded-t-md transition-all duration-700 cursor-pointer hover:opacity-80 ${
+                          isToday ? 'bg-amber-500' : 'bg-slate-600'
+                        }`}
+                        style={{
+                          height: `${
+                            data && data.focus > 0
+                              ? Math.max((data.focus / maxFocus) * 100, 8)
+                              : isToday
+                              ? 8 // 今天即使没有数据也显示最小高度
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 星期标签 */}
+              <div className="flex justify-between">
+                {getWeekDays().map(({ day, isToday }) => (
+                  <div key={day} className="flex-1 mx-1">
+                    <div
+                      className={`text-xs text-center ${
+                        isToday
+                          ? 'text-amber-400 font-medium'
+                          : 'text-slate-500'
+                      }`}>
+                      {day}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Activity 区域 - 专注日历 */}
+          <div className="flex-shrink-0">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-light text-slate-200">Activity</h3>
+              <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => handleWatchFaceSelect('arc')}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 rounded-md ${
-                    watchFaceType === 'arc'
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                      : 'text-gray-700 dark:text-gray-300'
-                  }`}>
-                  弧形段
+                  onClick={prevMonth}
+                  className="p-1 rounded hover:bg-slate-800 transition-colors">
+                  <svg
+                    className="w-4 h-4 text-slate-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
                 </button>
+                <span className="text-sm text-slate-400 min-w-[4rem] text-center">
+                  {months[currentDate.getMonth()]}
+                </span>
                 <button
-                  onClick={() => handleWatchFaceSelect('simple')}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 rounded-md ${
-                    watchFaceType === 'simple'
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                      : 'text-gray-700 dark:text-gray-300'
-                  }`}>
-                  简约圆环
-                </button>
-                <button
-                  onClick={() => handleWatchFaceSelect('digital')}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 rounded-md ${
-                    watchFaceType === 'digital'
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                      : 'text-gray-700 dark:text-gray-300'
-                  }`}>
-                  数字方块
+                  onClick={nextMonth}
+                  className="p-1 rounded hover:bg-slate-800 transition-colors">
+                  <svg
+                    className="w-4 h-4 text-slate-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
-          )}
+
+            {/* 专注日历热力图 */}
+            <div className="bg-slate-800 rounded-2xl p-3">
+              {/* 星期标题 */}
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+                  <div
+                    key={index}
+                    className="text-center text-xs text-slate-500 py-1">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* 日历网格 */}
+              <div className="grid grid-cols-7 gap-1">
+                {calendarData.map((day, index) => (
+                  <div
+                    key={index}
+                    className={`aspect-square rounded text-xs flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 ${
+                      day.isToday ? 'ring-1 ring-amber-400' : ''
+                    } ${getIntensityColor(day.focusTime)}`}
+                    title={
+                      day.hasRecord
+                        ? `${formatTime(day.focusTime)}, ${day.cycles}循环`
+                        : '无专注记录'
+                    }>
+                    <span
+                      className={`${
+                        day.isToday
+                          ? 'text-amber-200 font-medium'
+                          : day.hasRecord
+                          ? 'text-slate-200'
+                          : 'text-slate-500'
+                      }`}>
+                      {day.date}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* 强度图例 */}
+              <div className="flex items-center justify-center space-x-1 mt-3">
+                <span className="text-xs text-slate-500">Less</span>
+                <div className="w-2 h-2 rounded bg-slate-700"></div>
+                <div className="w-2 h-2 rounded bg-amber-900/30"></div>
+                <div className="w-2 h-2 rounded bg-amber-800/50"></div>
+                <div className="w-2 h-2 rounded bg-amber-700/70"></div>
+                <div className="w-2 h-2 rounded bg-amber-600"></div>
+                <span className="text-xs text-slate-500">More</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mb-8">
-          <div className="flex justify-center mb-4">
-            {renderWatchFace(getProgress())}
+        {/* 中间面板 - 工作时间流程 */}
+        <div className="w-1/3 p-6 overflow-y-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-light text-slate-200">今日流程</h2>
+            <button className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors">
+              <span className="text-lg">+</span>
+            </button>
           </div>
 
-          {nextAlertTimeRef.current !== null && (
-            <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-              下一次提示: {formatTime(nextAlertTimeRef.current)}
+          {/* 时间线 */}
+          <div className="relative">
+            {/* 垂直连接线 */}
+            <div className="absolute left-7 top-0 bottom-0 w-0.5 bg-slate-700"></div>
+
+            {/* 时间线项目 */}
+            <div className="space-y-6">
+              {timelineData.map((item) => (
+                <div key={item.id} className="relative flex items-start">
+                  {/* 时间 */}
+                  <div className="text-slate-400 text-sm font-mono w-16 pt-2 text-right pr-2">
+                    {item.time}
+                  </div>
+
+                  {/* 图标 */}
+                  <div
+                    className={`w-10 h-10 rounded-full ${item.iconColor} flex items-center justify-center text-white relative z-10 mx-2 flex-shrink-0 shadow-lg`}>
+                    <span className="text-base">{item.icon}</span>
+                  </div>
+
+                  {/* 内容 */}
+                  <div className="flex-1 min-w-0">
+                    <div className="bg-slate-800 rounded-xl p-4 mr-4 border-1 border-solid !border-slate-600 hover:!border-slate-500 transition-all duration-200 cursor-pointer hover:bg-slate-700 group">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="text-slate-200 font-medium text-base group-hover:text-white transition-colors">
+                          {item.title}
+                        </h3>
+                        {item.duration && (
+                          <span className="text-slate-400 text-xs bg-slate-700 px-2 py-1 rounded-md">
+                            {item.duration}
+                          </span>
+                        )}
+                      </div>
+
+                      {item.details && (
+                        <div className="space-y-1 mt-3">
+                          {item.details.map((detail, detailIndex) => (
+                            <div
+                              key={detailIndex}
+                              className="text-slate-400 text-sm flex items-center">
+                              <span className="w-1 h-1 bg-slate-600 rounded-full mr-2 flex-shrink-0"></span>
+                              {detail}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
         </div>
 
-        <div className="flex justify-center space-x-4 mb-6">
-          <button
-            onClick={toggleTimer}
-            className={`px-6 py-2 rounded-lg font-medium shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95 ${
-              isRunning
-                ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/30'
-                : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/30'
-            }`}
-            style={{
-              boxShadow: isRunning
-                ? '0 4px 15px rgba(239, 68, 68, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1)'
-                : '0 4px 15px rgba(59, 130, 246, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1)',
-            }}>
-            {isRunning ? '暂停' : '开始'}
-          </button>
+        {/* 右侧面板 - My Focus */}
+        <div className="w-1/3 p-6 overflow-y-auto">
+          <div className="bg-slate-800 rounded-xl p-8 h-full border-slate-700">
+            <h1 className="text-3xl font-light mb-6 text-slate-200">
+              My Focus
+            </h1>
 
-          <button
-            onClick={resetTimer}
-            className="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg font-medium shadow-lg transform transition-all duration-200 hover:scale-105 active:scale-95"
-            style={{
-              boxShadow:
-                '0 4px 15px rgba(156, 163, 175, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1)',
-            }}>
-            重置
-          </button>
+            {/* 标签页 */}
+            <div className="flex mb-6 bg-slate-700 rounded-2xl p-1">
+              <button
+                onClick={() => setActiveTab('tasks')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'tasks'
+                    ? 'bg-slate-600 text-white'
+                    : 'text-slate-400 hover:text-white'
+                }`}>
+                Tasks
+              </button>
+              <button
+                onClick={() => setActiveTab('timer')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'timer'
+                    ? 'bg-slate-600 text-white'
+                    : 'text-slate-400 hover:text-white'
+                }`}>
+                Timer
+              </button>
+            </div>
+
+            {/* 计时器内容 */}
+            {activeTab === 'timer' && (
+              <>
+                {/* 计时器圆形显示 */}
+                <div className="flex flex-col items-center my-8">
+                  <div className="relative w-48 h-48 mb-6">
+                    <div className="absolute inset-0 rounded-full border-4 border-slate-700"></div>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <div className="text-4xl font-mono text-slate-200 mb-2">
+                        00:00
+                      </div>
+                      <div className="text-slate-400">Focus</div>
+                    </div>
+                  </div>
+                  <Link
+                    href="/timer"
+                    className="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-2xl text-white font-medium transition-colors">
+                    Start
+                  </Link>
+                </div>
+
+                {/* 统计信息 */}
+                <div className="">
+                  <h3 className="text-2xl font-medium mb-4 text-slate-300">
+                    Statistics
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-slate-400 text-sm mb-1">
+                        Focused Time
+                      </div>
+                      <div className="text-white text-lg font-medium">
+                        {formatFocusTime(todayStats.totalFocusTime)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 text-sm mb-1">
+                        Sessions
+                      </div>
+                      <div className="text-white text-lg font-medium">
+                        {todayStats.completedSessions}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 text-sm mb-1">
+                        Success Rate
+                      </div>
+                      <div className="text-white text-lg font-medium">
+                        {todayStats.totalSessions > 0
+                          ? Math.round(
+                              (todayStats.completedSessions /
+                                todayStats.totalSessions) *
+                                100
+                            )
+                          : 0}
+                        %
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-slate-400 text-sm mb-1">
+                        Total Time
+                      </div>
+                      <div className="text-white text-lg font-medium">
+                        {formatFocusTime(todayStats.totalFocusTime * 7)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* 任务内容 */}
+            {activeTab === 'tasks' && (
+              <div className="space-y-4">
+                <div className="flex">
+                  <input
+                    type="text"
+                    value={newTask}
+                    onChange={(e) => setNewTask(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addTask()}
+                    placeholder="Add a new task..."
+                    className="flex-1 px-4 py-2 bg-slate-700 border border-slate-600 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
+                  />
+                  <button
+                    onClick={addTask}
+                    className="ml-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-2xl text-white transition-colors">
+                    Add
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {tasks.map((task, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-slate-700 rounded-2xl">
+                      <span className="text-slate-200">{task}</span>
+                      <button
+                        onClick={() => removeTask(index)}
+                        className="text-slate-400 hover:text-red-400 transition-colors">
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-
-        <div className="text-center text-sm text-gray-600 dark:text-gray-400">
-          已完成循环: {completedCycles}
-        </div>
-      </div>
-
-      <div className="mt-8 text-sm text-gray-600 dark:text-gray-400 max-w-md text-center">
-        <p>90分钟专注 + 20分钟休息 = 1个循环</p>
-        <p className="mt-1">专注时间内，每隔3-5分钟随机提示一次</p>
       </div>
     </div>
   )
