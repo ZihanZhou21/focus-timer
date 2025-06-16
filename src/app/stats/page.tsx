@@ -1,97 +1,51 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import FocusTimer from '@/components/FocusTimer'
 
-interface DayData {
-  day: string
-  focus: number
-  cycles: number
-}
+export default function FocusPage() {
+  const [isMounted, setIsMounted] = useState(false)
+  const [currentQuote, setCurrentQuote] = useState(0)
 
-interface StatsData {
-  totalFocusTime: number
-  completedCycles: number
-  averageSessionLength: number
-  streakDays: number
-  dailyData: DayData[]
-}
+  // 专注励志语句
+  const quotes = [
+    { text: '专注是成功的秘诀', author: '拉尔夫·瓦尔多·爱默生' },
+    { text: '一心一意，无往不胜', author: '孔子' },
+    { text: '专注让平凡变成非凡', author: '约翰·C·麦克斯韦尔' },
+    { text: '心无旁骛，方得始终', author: '古语' },
+    { text: '专注当下，未来自来', author: '佛陀' },
+  ]
 
-export default function StatsPage() {
-  const [selectedPeriod, setSelectedPeriod] = useState<
-    'week' | 'month' | 'year'
-  >('week')
+  useEffect(() => {
+    setIsMounted(true)
+    // 每30秒切换一次励志语句
+    const interval = setInterval(() => {
+      setCurrentQuote((prev) => (prev + 1) % quotes.length)
+    }, 30000)
 
-  // 模拟统计数据
-  const stats: Record<'week' | 'month' | 'year', StatsData> = {
-    week: {
-      totalFocusTime: 1260, // 分钟
-      completedCycles: 14,
-      averageSessionLength: 90,
-      streakDays: 7,
-      dailyData: [
-        { day: '周一', focus: 180, cycles: 2 },
-        { day: '周二', focus: 240, cycles: 3 },
-        { day: '周三', focus: 90, cycles: 1 },
-        { day: '周四', focus: 270, cycles: 3 },
-        { day: '周五', focus: 180, cycles: 2 },
-        { day: '周六', focus: 150, cycles: 2 },
-        { day: '周日', focus: 150, cycles: 1 },
-      ],
-    },
-    month: {
-      totalFocusTime: 5400,
-      completedCycles: 60,
-      averageSessionLength: 90,
-      streakDays: 25,
-      dailyData: [
-        { day: '第1周', focus: 1260, cycles: 14 },
-        { day: '第2周', focus: 1350, cycles: 15 },
-        { day: '第3周', focus: 1440, cycles: 16 },
-        { day: '第4周', focus: 1350, cycles: 15 },
-      ],
-    },
-    year: {
-      totalFocusTime: 64800,
-      completedCycles: 720,
-      averageSessionLength: 90,
-      streakDays: 300,
-      dailyData: [
-        { day: '1月', focus: 5400, cycles: 60 },
-        { day: '2月', focus: 4860, cycles: 54 },
-        { day: '3月', focus: 5940, cycles: 66 },
-        { day: '4月', focus: 5400, cycles: 60 },
-        { day: '5月', focus: 5760, cycles: 64 },
-        { day: '6月', focus: 5220, cycles: 58 },
-        { day: '7月', focus: 5580, cycles: 62 },
-        { day: '8月', focus: 5940, cycles: 66 },
-        { day: '9月', focus: 5400, cycles: 60 },
-        { day: '10月', focus: 5580, cycles: 62 },
-        { day: '11月', focus: 5220, cycles: 58 },
-        { day: '12月', focus: 5700, cycles: 63 },
-      ],
-    },
+    return () => clearInterval(interval)
+  }, [quotes.length])
+
+  if (!isMounted) {
+    return null
   }
-
-  const currentStats = stats[selectedPeriod]
-
-  const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    if (hours > 0) {
-      return `${hours}h ${mins}m`
-    }
-    return `${mins}m`
-  }
-
-  const maxFocus = Math.max(
-    ...currentStats.dailyData.map((d: DayData) => d.focus)
-  )
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-screen bg-slate-900 text-white relative overflow-hidden">
+      {/* 背景装饰 */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-20 w-72 h-72 bg-gradient-to-br from-amber-400/5 to-orange-400/5 rounded-full blur-3xl animate-pulse"></div>
+        <div
+          className="absolute bottom-20 right-20 w-72 h-72 bg-gradient-to-tl from-blue-400/5 to-cyan-400/5 rounded-full blur-3xl animate-pulse"
+          style={{ animationDelay: '1.5s' }}></div>
+        <div
+          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-violet-400/3 to-pink-400/3 rounded-full blur-3xl animate-pulse"
+          style={{ animationDelay: '3s' }}></div>
+      </div>
+
       {/* 顶部导航栏 */}
-      <header className="flex items-center justify-between px-8 py-6 border-b border-slate-800">
+      <header className="relative z-10 flex items-center justify-between px-8 py-6 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800">
         <div className="flex items-center space-x-12">
           <div className="text-xl font-bold text-slate-300">LOGO</div>
           <nav className="flex space-x-8">
@@ -101,9 +55,9 @@ export default function StatsPage() {
               Dashboard
             </Link>
             <Link
-              href="/stats"
+              href="/focus"
               className="text-white hover:text-amber-400 transition-colors">
-              Stats
+              Focus
             </Link>
             <Link
               href="/calendar"
@@ -121,143 +75,161 @@ export default function StatsPage() {
       </header>
 
       {/* 主要内容 */}
-      <main className="p-8">
-        <div className="container mx-auto max-w-6xl">
+      <main className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-88px)] p-6">
+        <div className="text-center max-w-4xl mx-auto">
           {/* 页面标题 */}
           <div className="mb-12">
-            <h1 className="text-4xl font-light text-slate-200 mb-2">
-              专注统计
+            <h1 className="text-4xl md:text-5xl font-extralight text-slate-100 mb-4 tracking-wide">
+              专注空间
             </h1>
-            <p className="text-slate-400">追踪您的专注习惯和进步</p>
+            <p className="text-lg text-slate-400 font-light mb-8">
+              在这里，时间有了意义
+            </p>
+
+            {/* 励志语句 */}
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 mb-8">
+              <blockquote className="text-slate-300 text-lg font-light italic mb-2">
+                &ldquo;{quotes[currentQuote].text}&rdquo;
+              </blockquote>
+              <cite className="text-slate-500 text-sm">
+                — {quotes[currentQuote].author}
+              </cite>
+            </div>
+
+            {/* 装饰线 */}
+            <div className="flex items-center justify-center space-x-4">
+              <div className="w-12 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+              <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
+              <div className="w-12 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+            </div>
           </div>
 
-          <div className="space-y-8">
-            {/* 时间周期选择 */}
-            <div className="flex justify-center">
-              <div className="bg-slate-800 rounded-lg p-1 border border-slate-700">
-                {(['week', 'month', 'year'] as const).map((period) => (
-                  <button
-                    key={period}
-                    onClick={() => setSelectedPeriod(period)}
-                    className={`px-6 py-2 rounded-md font-medium text-sm transition-all duration-200 ${
-                      selectedPeriod === period
-                        ? 'bg-amber-600 text-white'
-                        : 'text-slate-400 hover:text-white'
-                    }`}>
-                    {period === 'week' && '本周'}
-                    {period === 'month' && '本月'}
-                    {period === 'year' && '本年'}
-                  </button>
-                ))}
+          {/* 计时器容器 */}
+          <div className="relative mb-12">
+            {/* 计时器背景装饰 */}
+            <div className="absolute -inset-8 bg-gradient-to-r from-amber-400/5 via-orange-400/5 to-red-400/5 rounded-full blur-2xl opacity-50"></div>
+
+            {/* 计时器组件 */}
+            <div className="relative bg-slate-800/60 backdrop-blur-xl rounded-3xl p-8 border border-slate-700/50 shadow-2xl">
+              <FocusTimer showSettings={true} />
+            </div>
+          </div>
+
+          {/* 专注小贴士 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50">
+              <div className="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                <span className="text-2xl">🎯</span>
               </div>
+              <h3 className="text-slate-200 font-medium mb-2">设定目标</h3>
+              <p className="text-slate-400 text-sm">
+                明确的目标是专注的起点，让每一分钟都有方向感
+              </p>
             </div>
 
-            {/* 统计卡片 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <div className="text-center">
-                  <div className="text-3xl font-light text-amber-400 mb-2">
-                    {formatTime(currentStats.totalFocusTime)}
-                  </div>
-                  <div className="text-sm text-slate-400 font-light">
-                    总专注时间
-                  </div>
-                </div>
+            <div className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50">
+              <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                <span className="text-2xl">🧘</span>
               </div>
-
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <div className="text-center">
-                  <div className="text-3xl font-light text-emerald-400 mb-2">
-                    {currentStats.completedCycles}
-                  </div>
-                  <div className="text-sm text-slate-400 font-light">
-                    完成循环
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <div className="text-center">
-                  <div className="text-3xl font-light text-blue-400 mb-2">
-                    {formatTime(currentStats.averageSessionLength)}
-                  </div>
-                  <div className="text-sm text-slate-400 font-light">
-                    平均时长
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <div className="text-center">
-                  <div className="text-3xl font-light text-purple-400 mb-2">
-                    {currentStats.streakDays}
-                  </div>
-                  <div className="text-sm text-slate-400 font-light">
-                    连续天数
-                  </div>
-                </div>
-              </div>
+              <h3 className="text-slate-200 font-medium mb-2">保持专注</h3>
+              <p className="text-slate-400 text-sm">
+                排除干扰，沉浸在当下的任务中，感受专注的力量
+              </p>
             </div>
 
-            {/* 每日数据图表 */}
-            <div className="bg-slate-800 rounded-lg p-8 border border-slate-700">
-              <h3 className="text-lg font-light text-slate-200 mb-6">
-                {selectedPeriod === 'week' && '每日专注时间'}
-                {selectedPeriod === 'month' && '每周专注时间'}
-                {selectedPeriod === 'year' && '每月专注时间'}
-              </h3>
-              <div className="space-y-4">
-                {currentStats.dailyData.map((day: DayData) => (
-                  <div key={day.day} className="flex items-center space-x-4">
-                    <div className="w-12 text-sm text-slate-400 font-light">
-                      {day.day}
-                    </div>
-                    <div className="flex-1 bg-slate-700 rounded-full h-3 overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500"
-                        style={{ width: `${(day.focus / maxFocus) * 100}%` }}
-                      />
-                    </div>
-                    <div className="w-20 text-sm text-slate-400 font-light text-right">
-                      {formatTime(day.focus)}
-                    </div>
-                    <div className="w-16 text-sm text-slate-500 font-light text-right">
-                      {day.cycles}个循环
-                    </div>
-                  </div>
-                ))}
+            <div className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50">
+              <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                <span className="text-2xl">🏆</span>
               </div>
+              <h3 className="text-slate-200 font-medium mb-2">享受成果</h3>
+              <p className="text-slate-400 text-sm">
+                每个专注时段都是成长，记录并庆祝您的进步
+              </p>
             </div>
+          </div>
 
-            {/* 成就徽章 */}
-            <div className="bg-slate-800 rounded-lg p-8 border border-slate-700">
-              <h3 className="text-lg font-light text-slate-200 mb-6">
-                成就徽章
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="text-4xl mb-2">🔥</div>
-                  <div className="text-sm font-light text-slate-400">
-                    连续7天专注
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-4xl mb-2">⭐</div>
-                  <div className="text-sm font-light text-slate-400">
-                    完成100个循环
-                  </div>
-                </div>
-                <div className="text-center opacity-50">
-                  <div className="text-4xl mb-2">🏆</div>
-                  <div className="text-sm font-light text-slate-400">
-                    月度专注王
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* 快速操作 */}
+          <div className="flex items-center justify-center space-x-6">
+            <Link
+              href="/timer"
+              className="group inline-flex items-center px-6 py-3 bg-amber-600/80 hover:bg-amber-600 backdrop-blur-xl rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl border border-amber-500/50">
+              <span className="text-white font-medium">全屏专注</span>
+              <svg
+                className="w-4 h-4 ml-2 text-white group-hover:translate-x-1 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 7l5 5m0 0l-5 5m5-5H6"
+                />
+              </svg>
+            </Link>
+
+            <Link
+              href="/calendar"
+              className="group inline-flex items-center px-6 py-3 bg-slate-700/80 hover:bg-slate-700 backdrop-blur-xl rounded-2xl transition-all duration-300 shadow-lg hover:shadow-xl border border-slate-600/50">
+              <span className="text-slate-200 font-medium">查看历史</span>
+              <svg
+                className="w-4 h-4 ml-2 text-slate-400 group-hover:translate-x-1 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            </Link>
           </div>
         </div>
       </main>
+
+      {/* 底部提示 */}
+      <div className="relative z-10 pb-6">
+        <div className="flex items-center justify-center space-x-8 text-sm text-slate-500">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
+            <span>专注当下</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div
+              className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"
+              style={{ animationDelay: '1s' }}></div>
+            <span>保持节奏</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div
+              className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"
+              style={{ animationDelay: '2s' }}></div>
+            <span>享受过程</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 键盘快捷键提示 */}
+      <div className="fixed bottom-6 right-6 z-20">
+        <div className="bg-slate-800/80 backdrop-blur-xl rounded-2xl p-4 border border-slate-700/50 shadow-lg opacity-60 hover:opacity-100 transition-opacity duration-300">
+          <div className="text-xs text-slate-400 space-y-1">
+            <div className="flex items-center justify-between space-x-4">
+              <span>开始/暂停</span>
+              <kbd className="px-2 py-1 bg-slate-700 rounded text-xs font-mono">
+                Space
+              </kbd>
+            </div>
+            <div className="flex items-center justify-between space-x-4">
+              <span>重置</span>
+              <kbd className="px-2 py-1 bg-slate-700 rounded text-xs font-mono">
+                R
+              </kbd>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

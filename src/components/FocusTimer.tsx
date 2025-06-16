@@ -90,7 +90,7 @@ export default function FocusTimer({
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isMenuOpen])
+  }, [isMenuOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 表盘选择处理函数
   const handleWatchFaceSelect = (type: WatchFaceType) => {
