@@ -1015,7 +1015,17 @@ export default function Home() {
                         }`}>
                         <div className="absolute inset-0 overflow-hidden rounded-3xl bg-slate-700/50">
                           <div
-                            className="absolute inset-0 rounded-r-3xl rounded-l-3xl bg-gradient-to-r from-slate-600/80 to-slate-500/80 transition-all duration-1000"
+                            className={`absolute inset-0 rounded-r-3xl rounded-l-3xl transition-all duration-1000 ${(() => {
+                              const progress = getItemProgress(item)
+                              const isCompleted =
+                                item.category === 'habit'
+                                  ? isHabitChecked(item.id)
+                                  : progress >= 80
+
+                              return isCompleted
+                                ? 'bg-slate-600/80'
+                                : 'bg-gradient-to-r from-slate-600/80 to-slate-500/80'
+                            })()}`}
                             style={{
                               width: `${getItemProgress(item)}%`,
                               boxShadow: `4px 0 8px ${getCategoryShadowColor(
@@ -1046,7 +1056,13 @@ export default function Home() {
                               </h3>
                             </div>
                             {item.duration && (
-                              <span className="text-slate-400 text-xs bg-slate-700/80 backdrop-blur-sm px-2 py-1 rounded-md shadow-[inset_0_2px_4px_rgba(0,0,0,0.2),inset_0_-1px_2px_rgba(255,255,255,0.05)] ml-2">
+                              <span
+                                className={`text-slate-400 text-xs bg-slate-700/80 backdrop-blur-sm px-2 py-1 rounded-md ml-2 ${
+                                  isCurrentTimeItem(item) ||
+                                  selectedTimelineItem?.id === item.id
+                                    ? 'shadow-[inset_0_2px_4px_rgba(0,0,0,0.2),inset_0_-1px_2px_rgba(255,255,255,0.05)]'
+                                    : ''
+                                }`}>
                                 {item.duration}
                               </span>
                             )}
@@ -1058,7 +1074,13 @@ export default function Home() {
                                 <div
                                   key={detailIndex}
                                   className="text-slate-400 text-sm flex items-center">
-                                  <span className="w-1 h-1 bg-slate-600 rounded-full mr-2 flex-shrink-0 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2),inset_0_-1px_1px_rgba(255,255,255,0.05)]"></span>
+                                  <span
+                                    className={`w-1 h-1 bg-slate-600 rounded-full mr-2 flex-shrink-0 ${
+                                      isCurrentTimeItem(item) ||
+                                      selectedTimelineItem?.id === item.id
+                                        ? 'shadow-[inset_0_1px_2px_rgba(0,0,0,0.2),inset_0_-1px_1px_rgba(255,255,255,0.05)]'
+                                        : ''
+                                    }`}></span>
                                   {detail}
                                 </div>
                               ))}
@@ -1070,7 +1092,9 @@ export default function Home() {
                           className={`absolute inset-0 rounded-3xl pointer-events-none ${
                             selectedTimelineItem?.id === item.id
                               ? 'shadow-[inset_0_4px_8px_rgba(0,0,0,0.3),inset_0_-2px_4px_rgba(255,255,255,0.08)]'
-                              : 'shadow-[inset_0_4px_8px_rgba(0,0,0,0.2),inset_0_-2px_4px_rgba(255,255,255,0.05)]'
+                              : isCurrentTimeItem(item)
+                              ? 'shadow-[inset_0_4px_8px_rgba(0,0,0,0.2),inset_0_-2px_4px_rgba(255,255,255,0.05)]'
+                              : ''
                           }`}></div>
                       </div>
                     </div>

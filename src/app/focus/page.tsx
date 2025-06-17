@@ -116,44 +116,32 @@ function ModernTimer({
   }, [])
 
   return (
-    <div className="w-full max-w-6xl mx-auto flex flex-col justify-between h-full">
+    <div className="w-full max-w-6xl mx-auto flex flex-col h-full">
       {/* 上部区域 - 倒计时显示 */}
-      <div className="flex flex-col items-center space-y-8">
-        {/* 时间显示框 - 更大尺寸 */}
-        <div className="bg-gray-900 text-green-400 border-4 border-green-400 p-8 font-mono shadow-lg shadow-green-400/20">
-          <div className="text-8xl font-bold tracking-wider text-center">
+      <div className="flex flex-col items-center space-y-8 mb-16">
+        {/* 时间显示框 */}
+        <div className="bg-slate-800/80 backdrop-blur-xl text-white p-8 rounded-3xl border border-slate-700/50 shadow-2xl">
+          <div className="text-8xl font-light tracking-wider text-center">
             {formatTime(timeRemaining)}
           </div>
         </div>
-
-        {/* 状态和进度显示 - 水平排列 */}
-        {/* <div className="flex items-center space-x-8">
-          <div className="bg-gray-800 text-cyan-400 border-2 border-cyan-400 px-6 py-3 font-mono font-bold text-lg">
-            {isRunning ? 'STATUS: RUNNING' : 'STATUS: READY'}
-          </div>
-          <div className="bg-gray-700 text-yellow-400 border-2 border-yellow-400 px-6 py-3 font-mono font-bold text-lg">
-            PROGRESS: {Math.round(progress)}%
-          </div>
-        </div> */}
       </div>
 
       {/* 中部区域 - 进度条 */}
-      <div className="flex-1 flex flex-col justify-center mb-12">
+      <div className="flex flex-col justify-start max-w-4xl mx-auto w-full">
         <div className="relative">
-          {/* LOADING文字和百分比 */}
+          {/* 进度文字和百分比 */}
           <div className="flex justify-between items-center mb-6">
-            <div className="text-2xl font-mono font-bold text-green-400 tracking-wider">
-              LOADING...
+            <div className="text-2xl font-light text-slate-200 tracking-wider">
+              专注进度
             </div>
-            <div className="text-2xl font-mono font-bold text-green-400">
+            <div className="text-2xl font-light text-green-400">
               {Math.round(progress)}%
             </div>
           </div>
 
-          {/* 暗色像素化进度条容器 - 更大尺寸 */}
-          <div
-            className="relative bg-gray-900 p-3 rounded-none shadow-lg shadow-green-400/20"
-            style={{ border: '4px solid #15803d' }}>
+          {/* 进度条容器 */}
+          <div className="relative bg-slate-800/60 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-slate-700/50">
             {/* 进度条内容区域 */}
             <div className="relative h-12 bg-gray-800 flex gap-1">
               {/* 20个独立方格 */}
@@ -200,69 +188,21 @@ function ModernTimer({
               })}
             </div>
           </div>
-
-          {/* 关键节点标记 - 暗色像素化风格 */}
-          <div className="absolute -bottom-12 w-full flex justify-between items-center">
-            {/* 25% 标记 */}
-            <div
-              className="absolute"
-              style={{ left: '25%', transform: 'translateX(-50%)' }}>
-              <div className="flex flex-col items-center">
-                <div
-                  className={`w-5 h-5 border-2 border-cyan-400 ${
-                    progress >= 25 ? 'bg-cyan-400' : 'bg-gray-700'
-                  } transition-all duration-300`}></div>
-                <div className="text-sm font-mono text-cyan-400 mt-2 bg-gray-900 border border-cyan-400 px-2 py-1">
-                  25%
-                </div>
-              </div>
-            </div>
-
-            {/* 50% 标记 */}
-            <div
-              className="absolute"
-              style={{ left: '50%', transform: 'translateX(-50%)' }}>
-              <div className="flex flex-col items-center">
-                <div
-                  className={`w-5 h-5 border-2 border-yellow-400 ${
-                    progress >= 50 ? 'bg-yellow-400' : 'bg-gray-700'
-                  } transition-all duration-300`}></div>
-                <div className="text-sm font-mono text-yellow-400 mt-2 bg-gray-900 border border-yellow-400 px-2 py-1">
-                  50%
-                </div>
-              </div>
-            </div>
-
-            {/* 75% 标记 */}
-            <div
-              className="absolute"
-              style={{ left: '75%', transform: 'translateX(-50%)' }}>
-              <div className="flex flex-col items-center">
-                <div
-                  className={`w-5 h-5 border-2 border-purple-400 ${
-                    progress >= 75 ? 'bg-purple-400' : 'bg-gray-700'
-                  } transition-all duration-300`}></div>
-                <div className="text-sm font-mono text-purple-400 mt-2 bg-gray-900 border border-purple-400 px-2 py-1">
-                  75%
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* 下部区域 - 控制按钮 */}
-      <div className="flex items-center justify-center space-x-10">
+      <div className="flex items-center justify-center space-x-6 mt-8 mb-8">
         <button
           onClick={toggleTimer}
-          className="bg-gray-800 text-green-400 border-4 border-green-400 px-12 py-6 font-mono font-bold text-2xl hover:bg-gray-700 active:bg-gray-900 transition-colors duration-150 shadow-lg shadow-green-400/20">
-          {isRunning ? 'PAUSE' : 'START'}
+          className="bg-slate-800/80 backdrop-blur-xl text-white px-8 py-4 rounded-2xl font-medium text-xl hover:bg-slate-700/80 active:bg-slate-900/80 transition-all duration-200 shadow-lg border border-slate-700/50 hover:border-green-400/30">
+          {isRunning ? '暂停' : '开始'}
         </button>
 
         <button
           onClick={resetTimer}
-          className="bg-gray-900 text-red-400 border-4 border-red-400 px-10 py-6 font-mono font-bold text-2xl hover:bg-gray-800 active:bg-black transition-colors duration-150 shadow-lg shadow-red-400/20">
-          RESET
+          className="bg-slate-800/80 backdrop-blur-xl text-slate-300 px-8 py-4 rounded-2xl font-medium text-xl hover:bg-slate-700/80 active:bg-slate-900/80 transition-all duration-200 shadow-lg border border-slate-700/50 hover:border-red-400/30">
+          重置
         </button>
       </div>
     </div>
@@ -325,48 +265,63 @@ function FocusContent() {
   }
 
   return (
-    <div className="h-screen bg-black text-white flex flex-col overflow-hidden">
-      {/* 顶部区域 - 返回按钮 */}
-      <header className="flex items-start justify-between p-8">
-        <button
-          onClick={() => (window.location.href = '/')}
-          className="flex items-center space-x-2 bg-gray-800 text-green-400 border-2 border-green-400 px-4 py-3 font-mono text-sm font-bold hover:bg-gray-700 transition-colors duration-150">
-          <div className="text-lg">←</div>
-          <span>BACK</span>
-        </button>
+    <div className="h-screen bg-slate-900 text-white flex flex-col overflow-hidden">
+      {/* 顶部导航栏 - 与主页面风格一致 */}
+      <header className="flex items-center justify-between px-8 pt-6 flex-shrink-0">
+        <div className="text-xl font-bold text-slate-300">FOCUS</div>
 
-        {/* 右上角显示任务信息 - 只在客户端渲染后显示 */}
-        {taskInfo && (
-          <div className="bg-gray-900 text-cyan-400 border-2 border-cyan-400 px-4 py-2 font-mono text-sm">
-            TASK: {taskInfo.title}
+        <nav className="bg-slate-800 rounded-2xl p-1.5">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => (window.location.href = '/')}
+              className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
+              Dashboard
+            </button>
+            <div className="px-6 py-2.5 rounded-xl text-white bg-slate-700 transition-colors text-base font-medium">
+              Focus
+            </div>
           </div>
-        )}
+        </nav>
+
+        {/* 右上角显示任务信息 */}
+        <div className="flex items-center space-x-4">
+          {taskInfo && (
+            <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium">
+              {taskInfo.icon} {taskInfo.title}
+            </div>
+          )}
+          <div className="w-8 h-8 bg-slate-600 rounded-full"></div>
+        </div>
       </header>
 
-      {/* 主要内容区域 - 全屏布局 */}
-      <main className="flex-1 flex flex-col justify-center px-8 space-y-12">
-        <ModernTimer
-          initialTime={
-            taskInfo?.duration ? parseDurationToMinutes(taskInfo.duration) : 25
-          }
-          onComplete={handleTimerComplete}
-        />
+      {/* 主要内容区域 */}
+      <main className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-4xl">
+          <ModernTimer
+            initialTime={
+              taskInfo?.duration
+                ? parseDurationToMinutes(taskInfo.duration)
+                : 25
+            }
+            onComplete={handleTimerComplete}
+          />
+        </div>
       </main>
 
       {/* 底部区域 - 快捷键提示 */}
       <footer className="p-8">
-        <div className="flex items-center justify-center space-x-12 text-sm">
+        <div className="flex items-center justify-center space-x-8">
           <div className="flex items-center space-x-3">
-            <div className="bg-gray-800 text-green-400 border-2 border-green-400 px-3 py-2 font-mono font-bold">
+            <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700">
               SPACE
             </div>
-            <span className="font-mono text-gray-300">= START/PAUSE</span>
+            <span className="text-slate-400 text-sm">开始/暂停</span>
           </div>
           <div className="flex items-center space-x-3">
-            <div className="bg-gray-800 text-red-400 border-2 border-red-400 px-3 py-2 font-mono font-bold">
+            <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700">
               R
             </div>
-            <span className="font-mono text-gray-300">= RESET</span>
+            <span className="text-slate-400 text-sm">重置</span>
           </div>
         </div>
       </footer>

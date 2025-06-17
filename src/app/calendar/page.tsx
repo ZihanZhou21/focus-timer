@@ -320,29 +320,29 @@ export default function CalendarPage() {
   )
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      {/* 顶部导航栏 */}
-      <header className="flex items-center justify-between px-8 py-6 border-b border-slate-800">
-        <div className="flex items-center space-x-12">
-          <div className="text-xl font-bold text-slate-300">LOGO</div>
-          <nav className="flex space-x-8">
+    <div className="h-screen bg-slate-900 text-white flex flex-col">
+      {/* 顶部导航栏 - 与主页面风格一致 */}
+      <header className="flex items-center justify-between px-8 pt-6 flex-shrink-0">
+        <div className="text-xl font-bold text-slate-300">LOGO</div>
+
+        <nav className="bg-slate-800 rounded-2xl p-1.5">
+          <div className="flex space-x-2">
             <Link
               href="/"
-              className="text-slate-400 hover:text-white transition-colors">
+              className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
               Dashboard
             </Link>
             <Link
               href="/focus"
-              className="text-slate-400 hover:text-white transition-colors">
+              className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
               Focus
             </Link>
-            <Link
-              href="/calendar"
-              className="text-white hover:text-amber-400 transition-colors">
+            <div className="px-6 py-2.5 rounded-xl text-white bg-slate-700 transition-colors text-base font-medium">
               History
-            </Link>
-          </nav>
-        </div>
+            </div>
+          </div>
+        </nav>
+
         <div className="flex items-center space-x-4">
           <button className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors">
             <span className="text-lg">+</span>
@@ -352,11 +352,11 @@ export default function CalendarPage() {
       </header>
 
       {/* 主要内容 */}
-      <main className="p-8">
-        <div className="container mx-auto max-w-6xl">
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="w-full max-w-4xl mx-auto">
           {/* 页面标题 */}
-          <div className="mb-12">
-            <h1 className="text-4xl font-light text-slate-200 mb-2">
+          <div className="mb-8">
+            <h1 className="text-3xl font-light text-slate-200 mb-2">
               历史记录
             </h1>
             <p className="text-slate-400">查看您的专注统计和历史活动</p>
@@ -364,16 +364,16 @@ export default function CalendarPage() {
 
           <div className="space-y-8">
             {/* 时间周期选择 */}
-            <div className="flex justify-center">
-              <div className="bg-slate-800 rounded-lg p-1 border border-slate-700">
+            <div className="flex justify-center mb-6">
+              <div className="bg-slate-800 rounded-2xl p-1.5">
                 {(['week', 'month', 'year'] as const).map((period) => (
                   <button
                     key={period}
                     onClick={() => setSelectedPeriod(period)}
-                    className={`px-6 py-2 rounded-md font-medium text-sm transition-all duration-200 ${
+                    className={`px-6 py-2.5 rounded-xl font-medium text-base transition-all duration-200 ${
                       selectedPeriod === period
-                        ? 'bg-amber-600 text-white'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-slate-700 text-white'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700'
                     }`}>
                     {period === 'week' && '本周'}
                     {period === 'month' && '本月'}
@@ -384,46 +384,46 @@ export default function CalendarPage() {
             </div>
 
             {/* 统计卡片 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700/50">
                 <div className="text-center">
-                  <div className="text-3xl font-light text-amber-400 mb-2">
+                  <div className="text-2xl font-light text-amber-400 mb-2">
                     {formatTime(currentStats.totalFocusTime)}
                   </div>
-                  <div className="text-sm text-slate-400 font-light">
+                  <div className="text-xs text-slate-400 font-light">
                     总专注时间
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+              <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700/50">
                 <div className="text-center">
-                  <div className="text-3xl font-light text-emerald-400 mb-2">
+                  <div className="text-2xl font-light text-emerald-400 mb-2">
                     {currentStats.completedCycles}
                   </div>
-                  <div className="text-sm text-slate-400 font-light">
+                  <div className="text-xs text-slate-400 font-light">
                     完成循环
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+              <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700/50">
                 <div className="text-center">
-                  <div className="text-3xl font-light text-blue-400 mb-2">
+                  <div className="text-2xl font-light text-blue-400 mb-2">
                     {formatTime(currentStats.averageSessionLength)}
                   </div>
-                  <div className="text-sm text-slate-400 font-light">
+                  <div className="text-xs text-slate-400 font-light">
                     平均时长
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+              <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700/50">
                 <div className="text-center">
-                  <div className="text-3xl font-light text-purple-400 mb-2">
+                  <div className="text-2xl font-light text-purple-400 mb-2">
                     {currentStats.streakDays}
                   </div>
-                  <div className="text-sm text-slate-400 font-light">
+                  <div className="text-xs text-slate-400 font-light">
                     连续天数
                   </div>
                 </div>
@@ -431,9 +431,9 @@ export default function CalendarPage() {
             </div>
 
             {/* 专注趋势图 */}
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700/50">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-light text-slate-200">专注趋势</h3>
+                <h3 className="text-lg font-light text-slate-200">专注趋势</h3>
                 {/* 图例 */}
                 <div className="flex items-center gap-4">
                   {Object.entries(categoryConfig).map(([key, config]) => (
@@ -539,7 +539,7 @@ export default function CalendarPage() {
             </div>
 
             {/* 月份导航 */}
-            <div className="flex items-center justify-between bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <div className="flex items-center justify-between bg-slate-800 rounded-3xl p-4 border border-slate-700/50 mb-6">
               <button
                 onClick={prevMonth}
                 className="p-2 rounded-full hover:bg-slate-700 transition-colors duration-200">
@@ -557,7 +557,7 @@ export default function CalendarPage() {
                 </svg>
               </button>
 
-              <h2 className="text-xl font-light text-slate-200">
+              <h2 className="text-lg font-light text-slate-200">
                 {currentDate.getFullYear()}年 {months[currentDate.getMonth()]}
               </h2>
 
@@ -580,8 +580,8 @@ export default function CalendarPage() {
             </div>
 
             {/* 日历网格 */}
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <h3 className="text-xl font-light text-slate-200 mb-6">
+            <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700/50">
+              <h3 className="text-lg font-light text-slate-200 mb-6">
                 专注日历
               </h3>
 
