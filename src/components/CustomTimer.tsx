@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface CustomTimerProps {
   duration?: string // 任务时长，如 "30分钟", "1小时30分钟"
@@ -59,8 +59,7 @@ export default function CustomTimer({
   }
 
   // 开始/暂停计时器
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const toggleTimer = () => {
+  const toggleTimer = useCallback(() => {
     if (isCompleted) {
       // 重置计时器
       setTimeLeft(totalSeconds)
@@ -77,15 +76,14 @@ export default function CustomTimer({
     } else {
       onPause?.()
     }
-  }
+  }, [isCompleted, isRunning, totalSeconds, onStart, onPause])
 
   // 重置计时器
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const resetTimer = () => {
+  const resetTimer = useCallback(() => {
     setIsRunning(false)
     setTimeLeft(totalSeconds)
     setIsCompleted(false)
-  }
+  }, [totalSeconds])
 
   // 计时器逻辑
   useEffect(() => {
@@ -149,14 +147,14 @@ export default function CustomTimer({
   const strokeDashoffset = circumference - (progress / 100) * circumference
 
   return (
-    <div className="flex flex-col items-center space-y-8">
+    <div className="flex flex-col items-center space-y-6 md:space-y-8">
       {/* 主表盘 */}
       <div className="relative">
         {/* 外圈装饰 */}
-        <div className="absolute -inset-4 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-red-500/20 rounded-full blur-xl opacity-60 animate-pulse"></div>
+        <div className="absolute -inset-3 md:-inset-4 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-red-500/20 rounded-full blur-xl opacity-60 animate-pulse"></div>
 
-        {/* 表盘容器 */}
-        <div className="relative w-80 h-80 bg-slate-800/80 backdrop-blur-xl rounded-full border-4 border-slate-700/50 shadow-2xl">
+        {/* 表盘容器 - 响应式尺寸 */}
+        <div className="relative w-64 h-64 md:w-80 md:h-80 bg-slate-800/80 backdrop-blur-xl rounded-full border-4 border-slate-700/50 shadow-2xl">
           {/* SVG 进度环 */}
           <svg
             className="absolute inset-0 w-full h-full transform -rotate-90"
@@ -199,19 +197,19 @@ export default function CustomTimer({
           {/* 中心内容 */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             {/* 时间显示 */}
-            <div className="text-center mb-4">
-              <div className="text-6xl font-mono font-light text-white mb-2">
+            <div className="text-center mb-3 md:mb-4">
+              <div className="text-4xl md:text-6xl font-mono font-light text-white mb-1 md:mb-2">
                 {minutes}
                 <span className="text-slate-400 mx-1">:</span>
                 {seconds}
               </div>
-              <div className="text-slate-400 text-sm font-medium tracking-wider">
+              <div className="text-slate-400 text-xs md:text-sm font-medium tracking-wider">
                 {isCompleted ? '已完成' : isRunning ? '专注中' : '准备开始'}
               </div>
             </div>
 
             {/* 进度指示器 */}
-            <div className="flex items-center space-x-1 mb-4">
+            <div className="flex items-center space-x-1 mb-3 md:mb-4">
               {Array.from({ length: 12 }).map((_, i) => (
                 <div
                   key={i}
@@ -247,13 +245,13 @@ export default function CustomTimer({
               <div
                 key={i}
                 className={`absolute w-0.5 bg-slate-600 origin-bottom ${
-                  i % 5 === 0 ? 'h-4' : 'h-2'
+                  i % 5 === 0 ? 'h-3 md:h-4' : 'h-1.5 md:h-2'
                 }`}
                 style={{
                   left: '50%',
                   top: '8px',
                   transform: `translateX(-50%) rotate(${i * 6}deg)`,
-                  transformOrigin: '50% 148px',
+                  transformOrigin: '50% 120px',
                 }}
               />
             ))}
@@ -262,12 +260,12 @@ export default function CustomTimer({
       </div>
 
       {/* 控制按钮 */}
-      <div className="flex items-center space-x-6">
+      <div className="flex items-center space-x-4 md:space-x-6">
         <button
           onClick={resetTimer}
-          className="w-12 h-12 bg-slate-700/80 hover:bg-slate-600/80 backdrop-blur-xl rounded-full border border-slate-600/50 flex items-center justify-center transition-all duration-300 hover:scale-105 group">
+          className="w-10 h-10 md:w-12 md:h-12 bg-slate-700/80 hover:bg-slate-600/80 backdrop-blur-xl rounded-full border border-slate-600/50 flex items-center justify-center transition-all duration-300 hover:scale-105 group">
           <svg
-            className="w-5 h-5 text-slate-300 group-hover:text-white transition-colors"
+            className="w-4 h-4 md:w-5 md:h-5 text-slate-300 group-hover:text-white transition-colors"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24">
@@ -282,7 +280,7 @@ export default function CustomTimer({
 
         <button
           onClick={toggleTimer}
-          className={`w-20 h-20 backdrop-blur-xl rounded-full border-2 flex items-center justify-center transition-all duration-300 hover:scale-105 group ${
+          className={`w-16 h-16 md:w-20 md:h-20 backdrop-blur-xl rounded-full border-2 flex items-center justify-center transition-all duration-300 hover:scale-105 group ${
             isCompleted
               ? 'bg-blue-600/80 hover:bg-blue-500/80 border-blue-500/50 hover:border-blue-400/50'
               : isRunning
@@ -291,7 +289,7 @@ export default function CustomTimer({
           }`}>
           {isCompleted ? (
             <svg
-              className="w-8 h-8 text-white group-hover:scale-110 transition-transform"
+              className="w-6 h-6 md:w-8 md:h-8 text-white group-hover:scale-110 transition-transform"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24">
@@ -304,7 +302,7 @@ export default function CustomTimer({
             </svg>
           ) : isRunning ? (
             <svg
-              className="w-8 h-8 text-white group-hover:scale-110 transition-transform"
+              className="w-6 h-6 md:w-8 md:h-8 text-white group-hover:scale-110 transition-transform"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24">
@@ -317,7 +315,7 @@ export default function CustomTimer({
             </svg>
           ) : (
             <svg
-              className="w-8 h-8 text-white group-hover:scale-110 transition-transform"
+              className="w-6 h-6 md:w-8 md:h-8 text-white group-hover:scale-110 transition-transform"
               fill="currentColor"
               viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
@@ -325,16 +323,16 @@ export default function CustomTimer({
           )}
         </button>
 
-        <div className="w-12 h-12 flex items-center justify-center">
+        <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
           <div className="text-xs text-slate-400 text-center">
             <div>Space</div>
-            <div className="text-slate-500">开始</div>
+            <div className="text-slate-500 text-xs">开始</div>
           </div>
         </div>
       </div>
 
-      {/* 底部提示 */}
-      <div className="text-center text-slate-400 text-sm">
+      {/* 底部提示 - 在小屏幕上隐藏或简化 */}
+      <div className="hidden md:block text-center text-slate-400 text-sm">
         <div className="flex items-center justify-center space-x-4">
           <span>Space - 开始/暂停</span>
           <span>•</span>

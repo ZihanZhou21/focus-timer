@@ -3,6 +3,26 @@
 import { useState } from 'react'
 import Link from 'next/link'
 
+// 项目类型配置
+const categoryConfig = {
+  habit: {
+    name: '习惯',
+    color: 'bg-gray-500',
+  },
+  task: {
+    name: '任务',
+    color: 'bg-blue-500',
+  },
+  focus: {
+    name: '专注',
+    color: 'bg-amber-500',
+  },
+  exercise: {
+    name: '运动',
+    color: 'bg-green-500',
+  },
+}
+
 interface DayRecord {
   date: number
   focusTime: number
@@ -15,6 +35,12 @@ interface DayData {
   day: string
   focus: number
   cycles: number
+  taskBreakdown?: {
+    habit: number
+    task: number
+    focus: number
+    exercise: number
+  }
 }
 
 interface StatsData {
@@ -39,13 +65,48 @@ export default function CalendarPage() {
       averageSessionLength: 90,
       streakDays: 7,
       dailyData: [
-        { day: '周一', focus: 180, cycles: 2 },
-        { day: '周二', focus: 240, cycles: 3 },
-        { day: '周三', focus: 90, cycles: 1 },
-        { day: '周四', focus: 270, cycles: 3 },
-        { day: '周五', focus: 180, cycles: 2 },
-        { day: '周六', focus: 150, cycles: 2 },
-        { day: '周日', focus: 150, cycles: 1 },
+        {
+          day: '周一',
+          focus: 180,
+          cycles: 2,
+          taskBreakdown: { habit: 30, task: 60, focus: 60, exercise: 30 },
+        },
+        {
+          day: '周二',
+          focus: 240,
+          cycles: 3,
+          taskBreakdown: { habit: 40, task: 80, focus: 80, exercise: 40 },
+        },
+        {
+          day: '周三',
+          focus: 90,
+          cycles: 1,
+          taskBreakdown: { habit: 20, task: 30, focus: 30, exercise: 10 },
+        },
+        {
+          day: '周四',
+          focus: 270,
+          cycles: 3,
+          taskBreakdown: { habit: 50, task: 90, focus: 90, exercise: 40 },
+        },
+        {
+          day: '周五',
+          focus: 180,
+          cycles: 2,
+          taskBreakdown: { habit: 30, task: 60, focus: 60, exercise: 30 },
+        },
+        {
+          day: '周六',
+          focus: 150,
+          cycles: 2,
+          taskBreakdown: { habit: 25, task: 50, focus: 50, exercise: 25 },
+        },
+        {
+          day: '周日',
+          focus: 150,
+          cycles: 1,
+          taskBreakdown: { habit: 25, task: 50, focus: 50, exercise: 25 },
+        },
       ],
     },
     month: {
@@ -54,10 +115,30 @@ export default function CalendarPage() {
       averageSessionLength: 90,
       streakDays: 25,
       dailyData: [
-        { day: '第1周', focus: 1260, cycles: 14 },
-        { day: '第2周', focus: 1350, cycles: 15 },
-        { day: '第3周', focus: 1440, cycles: 16 },
-        { day: '第4周', focus: 1350, cycles: 15 },
+        {
+          day: '第1周',
+          focus: 1260,
+          cycles: 14,
+          taskBreakdown: { habit: 200, task: 420, focus: 420, exercise: 220 },
+        },
+        {
+          day: '第2周',
+          focus: 1350,
+          cycles: 15,
+          taskBreakdown: { habit: 220, task: 450, focus: 450, exercise: 230 },
+        },
+        {
+          day: '第3周',
+          focus: 1440,
+          cycles: 16,
+          taskBreakdown: { habit: 240, task: 480, focus: 480, exercise: 240 },
+        },
+        {
+          day: '第4周',
+          focus: 1350,
+          cycles: 15,
+          taskBreakdown: { habit: 220, task: 450, focus: 450, exercise: 230 },
+        },
       ],
     },
     year: {
@@ -66,18 +147,78 @@ export default function CalendarPage() {
       averageSessionLength: 90,
       streakDays: 300,
       dailyData: [
-        { day: '1月', focus: 5400, cycles: 60 },
-        { day: '2月', focus: 4860, cycles: 54 },
-        { day: '3月', focus: 5940, cycles: 66 },
-        { day: '4月', focus: 5400, cycles: 60 },
-        { day: '5月', focus: 5760, cycles: 64 },
-        { day: '6月', focus: 5220, cycles: 58 },
-        { day: '7月', focus: 5580, cycles: 62 },
-        { day: '8月', focus: 5940, cycles: 66 },
-        { day: '9月', focus: 5400, cycles: 60 },
-        { day: '10月', focus: 5580, cycles: 62 },
-        { day: '11月', focus: 5220, cycles: 58 },
-        { day: '12月', focus: 5700, cycles: 63 },
+        {
+          day: '1月',
+          focus: 5400,
+          cycles: 60,
+          taskBreakdown: { habit: 900, task: 1800, focus: 1800, exercise: 900 },
+        },
+        {
+          day: '2月',
+          focus: 4860,
+          cycles: 54,
+          taskBreakdown: { habit: 810, task: 1620, focus: 1620, exercise: 810 },
+        },
+        {
+          day: '3月',
+          focus: 5940,
+          cycles: 66,
+          taskBreakdown: { habit: 990, task: 1980, focus: 1980, exercise: 990 },
+        },
+        {
+          day: '4月',
+          focus: 5400,
+          cycles: 60,
+          taskBreakdown: { habit: 900, task: 1800, focus: 1800, exercise: 900 },
+        },
+        {
+          day: '5月',
+          focus: 5760,
+          cycles: 64,
+          taskBreakdown: { habit: 960, task: 1920, focus: 1920, exercise: 960 },
+        },
+        {
+          day: '6月',
+          focus: 5220,
+          cycles: 58,
+          taskBreakdown: { habit: 870, task: 1740, focus: 1740, exercise: 870 },
+        },
+        {
+          day: '7月',
+          focus: 5580,
+          cycles: 62,
+          taskBreakdown: { habit: 930, task: 1860, focus: 1860, exercise: 930 },
+        },
+        {
+          day: '8月',
+          focus: 5940,
+          cycles: 66,
+          taskBreakdown: { habit: 990, task: 1980, focus: 1980, exercise: 990 },
+        },
+        {
+          day: '9月',
+          focus: 5400,
+          cycles: 60,
+          taskBreakdown: { habit: 900, task: 1800, focus: 1800, exercise: 900 },
+        },
+        {
+          day: '10月',
+          focus: 5580,
+          cycles: 62,
+          taskBreakdown: { habit: 930, task: 1860, focus: 1860, exercise: 930 },
+        },
+        {
+          day: '11月',
+          focus: 5220,
+          cycles: 58,
+          taskBreakdown: { habit: 870, task: 1740, focus: 1740, exercise: 870 },
+        },
+        {
+          day: '12月',
+          focus: 5700,
+          cycles: 63,
+          taskBreakdown: { habit: 950, task: 1900, focus: 1900, exercise: 950 },
+        },
       ],
     },
   }
@@ -291,31 +432,109 @@ export default function CalendarPage() {
 
             {/* 专注趋势图 */}
             <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <h3 className="text-xl font-light text-slate-200 mb-6">
-                专注趋势
-              </h3>
-              <div className="flex items-end justify-between h-64 gap-2">
-                {currentStats.dailyData.map((data, index) => (
-                  <div
-                    key={index}
-                    className="flex-1 flex flex-col items-center justify-end h-full">
-                    <div className="mb-2 text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {formatTime(data.focus)}
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-light text-slate-200">专注趋势</h3>
+                {/* 图例 */}
+                <div className="flex items-center gap-4">
+                  {Object.entries(categoryConfig).map(([key, config]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded ${config.color}`}></div>
+                      <span className="text-xs text-slate-400">
+                        {config.name}
+                      </span>
                     </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-end justify-between h-80 gap-3">
+                {currentStats.dailyData.map((data, index) => {
+                  const breakdown = data.taskBreakdown || {
+                    habit: 0,
+                    task: 0,
+                    focus: 0,
+                    exercise: 0,
+                  }
+
+                  // 计算每个类型的高度百分比（基于320px容器高度）
+                  const habitHeight =
+                    data.focus > 0 ? (breakdown.habit / maxFocus) * 100 : 0
+                  const taskHeight =
+                    data.focus > 0 ? (breakdown.task / maxFocus) * 100 : 0
+                  const focusHeight =
+                    data.focus > 0 ? (breakdown.focus / maxFocus) * 100 : 0
+                  const exerciseHeight =
+                    data.focus > 0 ? (breakdown.exercise / maxFocus) * 100 : 0
+
+                  // 创建显示的分段数组
+                  const segments = []
+                  if (breakdown.habit > 0)
+                    segments.push({
+                      type: 'habit',
+                      height: habitHeight,
+                      value: breakdown.habit,
+                    })
+                  if (breakdown.task > 0)
+                    segments.push({
+                      type: 'task',
+                      height: taskHeight,
+                      value: breakdown.task,
+                    })
+                  if (breakdown.focus > 0)
+                    segments.push({
+                      type: 'focus',
+                      height: focusHeight,
+                      value: breakdown.focus,
+                    })
+                  if (breakdown.exercise > 0)
+                    segments.push({
+                      type: 'exercise',
+                      height: exerciseHeight,
+                      value: breakdown.exercise,
+                    })
+
+                  return (
                     <div
-                      className="w-full bg-gradient-to-t from-amber-600 to-amber-400 rounded-t-md transition-all duration-700 hover:from-amber-500 hover:to-amber-300 cursor-pointer group"
-                      style={{
-                        height: `${Math.max(
-                          (data.focus / maxFocus) * 100,
-                          4
-                        )}%`,
-                      }}
-                    />
-                    <div className="mt-3 text-xs text-slate-400 text-center">
-                      {data.day}
+                      key={index}
+                      className="flex-1 flex flex-col items-center justify-end h-full group">
+                      <div className="mb-2 text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {formatTime(data.focus)}
+                      </div>
+                      <div className="w-full flex flex-col justify-end cursor-pointer h-full">
+                        {segments.map((segment, segmentIndex) => {
+                          const isLast = segmentIndex === segments.length - 1
+                          const colors: { [key: string]: string } = {
+                            habit: 'bg-gray-400/70 hover:bg-gray-400/80',
+                            task: 'bg-blue-400/70 hover:bg-blue-400/80',
+                            focus: 'bg-amber-400/70 hover:bg-amber-400/80',
+                            exercise: 'bg-green-400/70 hover:bg-green-400/80',
+                          }
+                          const names: { [key: string]: string } = {
+                            habit: '习惯',
+                            task: '任务',
+                            focus: '专注',
+                            exercise: '运动',
+                          }
+
+                          return (
+                            <div
+                              key={segment.type}
+                              className={`w-full transition-all duration-300 ${
+                                colors[segment.type]
+                              } rounded-md ${!isLast ? 'mb-0.5' : ''}`}
+                              style={{ height: `${segment.height}%` }}
+                              title={`${names[segment.type]}: ${formatTime(
+                                segment.value
+                              )}`}
+                            />
+                          )
+                        })}
+                      </div>
+                      <div className="mt-3 text-xs text-slate-400 text-center">
+                        {data.day}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 

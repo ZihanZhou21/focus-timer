@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, FormEvent, useRef } from 'react'
+import { useState, useEffect, FormEvent, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { getTodayStats, type DailyStats } from '@/lib/storage'
 
@@ -268,6 +268,29 @@ export default function Home() {
     }
   }, [])
 
+  // 获取当前时间对应的项目
+  const getCurrentTimelineItem = useCallback(() => {
+    const now = new Date()
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now
+      .getMinutes()
+      .toString()
+      .padStart(2, '0')}`
+
+    // 找到当前时间最接近的项目
+    let currentItem = null
+
+    for (let i = 0; i < timelineData.length; i++) {
+      const item = timelineData[i]
+      if (item.time <= currentTime) {
+        currentItem = item
+      } else {
+        break
+      }
+    }
+
+    return currentItem
+  }, [timelineData])
+
   // 定期更新当前时间项目并自动滚动
   useEffect(() => {
     const updateCurrentItem = () => {
@@ -316,7 +339,7 @@ export default function Home() {
     const interval = setInterval(updateCurrentItem, 6000)
 
     return () => clearInterval(interval)
-  }, [timelineData])
+  }, [getCurrentTimelineItem])
 
   // 添加全局点击事件监听器
   useEffect(() => {
@@ -587,29 +610,6 @@ export default function Home() {
     }
   }
 
-  // 获取当前时间对应的项目
-  const getCurrentTimelineItem = () => {
-    const now = new Date()
-    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now
-      .getMinutes()
-      .toString()
-      .padStart(2, '0')}`
-
-    // 找到当前时间最接近的项目
-    let currentItem = null
-
-    for (let i = 0; i < timelineData.length; i++) {
-      const item = timelineData[i]
-      if (item.time <= currentTime) {
-        currentItem = item
-      } else {
-        break
-      }
-    }
-
-    return currentItem
-  }
-
   // 检查项目是否为当前时间项目
   const isCurrentTimeItem = (item: TimelineItem) => {
     const current = getCurrentTimelineItem()
@@ -776,16 +776,21 @@ export default function Home() {
               href={(() => {
                 const currentItem = getCurrentTimelineItem()
                 if (currentItem) {
-                  return `/focus?task=${encodeURIComponent(
-                    JSON.stringify({
-                      id: currentItem.id,
-                      title: currentItem.title,
-                      time: currentItem.time,
-                      duration: currentItem.duration,
-                      details: currentItem.details,
-                      icon: currentItem.icon,
-                    })
-                  )}`
+                  // 保存任务数据到 localStorage
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem(
+                      'currentTask',
+                      JSON.stringify({
+                        id: currentItem.id,
+                        title: currentItem.title,
+                        time: currentItem.time,
+                        duration: currentItem.duration,
+                        details: currentItem.details,
+                        icon: currentItem.icon,
+                      })
+                    )
+                  }
+                  return `/focus?id=${currentItem.id}`
                 } else {
                   return '/focus'
                 }
@@ -1307,16 +1312,23 @@ export default function Home() {
                           </button>
                         ) : (
                           <Link
-                            href={`/focus?task=${encodeURIComponent(
-                              JSON.stringify({
-                                id: selectedTimelineItem.id,
-                                title: selectedTimelineItem.title,
-                                time: selectedTimelineItem.time,
-                                duration: selectedTimelineItem.duration,
-                                details: selectedTimelineItem.details,
-                                icon: selectedTimelineItem.icon,
-                              })
-                            )}`}
+                            href={`/focus?id=${selectedTimelineItem.id}`}
+                            onClick={() => {
+                              // 保存任务数据到 localStorage
+                              if (typeof window !== 'undefined') {
+                                localStorage.setItem(
+                                  'currentTask',
+                                  JSON.stringify({
+                                    id: selectedTimelineItem.id,
+                                    title: selectedTimelineItem.title,
+                                    time: selectedTimelineItem.time,
+                                    duration: selectedTimelineItem.duration,
+                                    details: selectedTimelineItem.details,
+                                    icon: selectedTimelineItem.icon,
+                                  })
+                                )
+                              }
+                            }}
                             className="w-20 h-20 rounded-full border-2 border-slate-500 flex items-center justify-center text-white text-lg hover:border-white transition shrink-0">
                             开始
                           </Link>
@@ -1406,9 +1418,12 @@ export default function Home() {
 
                       {/* 已完成和未完成项目分列显示 */}
                       <div className="flex-1 overflow-y-auto">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-4 relative">
+                          {/* 渐变分隔线 */}
+                          <div className="absolute left-1/2 top-0 bottom-0 w-px transform -translate-x-1/2 bg-gradient-to-b from-transparent via-slate-500/60 to-transparent"></div>
+
                           {/* 已完成项目 */}
-                          <div className="space-y-2">
+                          <div className="space-y-2 pr-2">
                             <h4 className="text-xs text-slate-400 font-medium mb-2">
                               已完成
                             </h4>
@@ -1428,43 +1443,64 @@ export default function Home() {
                                     onClick={() =>
                                       setSelectedTimelineItem(item)
                                     }
-                                    className="group relative bg-slate-500/30 hover:bg-slate-500/40 rounded-2xl px-3 py-2.5 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
-                                    <div className="flex items-center justify-between mb-1">
-                                      <h5 className="text-slate-200 text-sm truncate flex-1">
-                                        {item.title}
-                                      </h5>
-                                      <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                                        <div className="flex items-center gap-1">
+                                    className="group relative bg-slate-500/30 hover:bg-slate-400/50 rounded-3xl px-4.5 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
+                                    {item.category === 'habit' ? (
+                                      <>
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-2 flex-1">
+                                            <span
+                                              className={`w-1.5 h-1.5 rounded-full ${
+                                                categoryConfig[item.category]
+                                                  .color
+                                              }`}></span>
+                                            <h5 className="text-slate-100 text-md truncate flex-1">
+                                              {item.title}
+                                            </h5>
+                                          </div>
+                                          <div className="w-5 h-5 rounded-full flex items-center justify-center bg-green-500/20 ml-2">
+                                            <svg
+                                              className="w-3 h-3 text-green-400"
+                                              fill="currentColor"
+                                              viewBox="0 0 20 20">
+                                              <path
+                                                fillRule="evenodd"
+                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                clipRule="evenodd"
+                                              />
+                                            </svg>
+                                          </div>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="flex items-center gap-2 mb-1">
                                           <span
                                             className={`w-1.5 h-1.5 rounded-full ${
                                               categoryConfig[item.category]
                                                 .color
                                             }`}></span>
-                                          <span className="text-xs text-slate-400">
-                                            {categoryConfig[item.category].name}
-                                          </span>
+                                          <h5 className="text-slate-100 text-md truncate flex-1">
+                                            {item.title}
+                                          </h5>
+                                          {item.duration && (
+                                            <span className="text-xs text-slate-400 ml-2">
+                                              {item.duration}
+                                            </span>
+                                          )}
                                         </div>
-                                        {item.duration && (
-                                          <span className="text-xs text-slate-500">
-                                            {item.duration}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {item.category !== 'habit' && (
-                                      <div className="w-full h-1 bg-slate-600/20 rounded-full overflow-hidden">
-                                        <div
-                                          className={`h-full transition-all duration-700 rounded-full ${
-                                            progress >= 80
-                                              ? 'bg-green-400'
-                                              : categoryConfig[
-                                                  item.category
-                                                ].color.replace('bg-', 'bg-')
-                                          }`}
-                                          style={{ width: `${progress}%` }}
-                                        />
-                                      </div>
+                                        <div className="w-full h-1 bg-slate-600/20 rounded-full overflow-hidden">
+                                          <div
+                                            className={`h-full transition-all duration-700 rounded-full ${
+                                              progress >= 80
+                                                ? 'bg-green-400/50'
+                                                : categoryConfig[
+                                                    item.category
+                                                  ].color.replace('bg-', 'bg-')
+                                            }`}
+                                            style={{ width: `${progress}%` }}
+                                          />
+                                        </div>
+                                      </>
                                     )}
                                   </div>
                                 )
@@ -1472,7 +1508,7 @@ export default function Home() {
                           </div>
 
                           {/* 未完成项目 */}
-                          <div className="space-y-2">
+                          <div className="space-y-2 pl-2">
                             <h4 className="text-xs text-slate-400 font-medium mb-2">
                               未完成
                             </h4>
@@ -1492,43 +1528,55 @@ export default function Home() {
                                     onClick={() =>
                                       setSelectedTimelineItem(item)
                                     }
-                                    className="group relative bg-slate-500/30 hover:bg-slate-500/40 rounded-2xl px-3 py-2.5 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
-                                    <div className="flex items-center justify-between mb-1">
-                                      <h5 className="text-slate-200 text-sm truncate flex-1">
-                                        {item.title}
-                                      </h5>
-                                      <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                                        <div className="flex items-center gap-1">
+                                    className="group relative bg-slate-600/70 hover:bg-slate-400/50 rounded-3xl px-4.5 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
+                                    {item.category === 'habit' ? (
+                                      <>
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-2 flex-1">
+                                            <span
+                                              className={`w-1.5 h-1.5 rounded-full ${
+                                                categoryConfig[item.category]
+                                                  .color
+                                              }`}></span>
+                                            <h5 className="text-slate-200 text-md truncate flex-1">
+                                              {item.title}
+                                            </h5>
+                                          </div>
+                                          <div className="w-4 h-4 rounded-full flex items-center justify-center border-3 !border-amber-400/80">
+                                            {/* <div className="w-3 h-3 rounded-full border-2 !border-amber-400"></div> */}
+                                          </div>
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="flex items-center gap-2 mb-1">
                                           <span
                                             className={`w-1.5 h-1.5 rounded-full ${
                                               categoryConfig[item.category]
                                                 .color
                                             }`}></span>
-                                          <span className="text-xs text-slate-400">
-                                            {categoryConfig[item.category].name}
-                                          </span>
+                                          <h5 className="text-slate-200 text-md truncate flex-1">
+                                            {item.title}
+                                          </h5>
+                                          {item.duration && (
+                                            <span className="text-xs text-slate-500 ml-2">
+                                              {item.duration}
+                                            </span>
+                                          )}
                                         </div>
-                                        {item.duration && (
-                                          <span className="text-xs text-slate-500">
-                                            {item.duration}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {item.category !== 'habit' && (
-                                      <div className="w-full h-1 bg-slate-600/20 rounded-full overflow-hidden">
-                                        <div
-                                          className={`h-full transition-all duration-700 rounded-full ${
-                                            progress > 0
-                                              ? categoryConfig[
-                                                  item.category
-                                                ].color.replace('bg-', 'bg-')
-                                              : 'bg-slate-600'
-                                          }`}
-                                          style={{ width: `${progress}%` }}
-                                        />
-                                      </div>
+                                        <div className="w-full h-1 bg-slate-600/20 rounded-full overflow-hidden">
+                                          <div
+                                            className={`h-full transition-all duration-700 rounded-full ${
+                                              progress > 0
+                                                ? categoryConfig[
+                                                    item.category
+                                                  ].color.replace('bg-', 'bg-')
+                                                : 'bg-slate-600'
+                                            }`}
+                                            style={{ width: `${progress}%` }}
+                                          />
+                                        </div>
+                                      </>
                                     )}
                                   </div>
                                 )
