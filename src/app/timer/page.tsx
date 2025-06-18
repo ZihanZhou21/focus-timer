@@ -1,3 +1,5 @@
+'use client'
+
 import FocusTimer from '@/components/FocusTimer'
 import Link from 'next/link'
 

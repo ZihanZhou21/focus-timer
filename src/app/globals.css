@@ -26,9 +26,7 @@
   }
 }
 
-* {
-  border-color: hsl(var(--border));
-}
+/* 移除全局border-color设置，避免与Tailwind CSS冲突 */
 
 body {
   background: var(--background);

@@ -280,6 +280,11 @@ function FocusContent() {
             <div className="px-6 py-2.5 rounded-xl text-white bg-slate-700 transition-colors text-base font-medium">
               Focus
             </div>
+            <button
+              onClick={() => (window.location.href = '/calendar')}
+              className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
+              History
+            </button>
           </div>
         </nav>
 

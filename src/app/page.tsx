@@ -635,7 +635,10 @@ export default function Home() {
   }
 
   // 处理习惯打卡
-  const handleHabitCheck = (habitId: string) => {
+  const handleHabitCheck = (
+    habitId: string,
+    shouldNavigate: boolean = false
+  ) => {
     const today = new Date().toISOString().split('T')[0]
     const newCheckedHabits = new Set(checkedHabits)
 
@@ -643,6 +646,12 @@ export default function Home() {
       newCheckedHabits.delete(habitId)
     } else {
       newCheckedHabits.add(habitId)
+      // 只有在打卡完成时跳转到总览页面
+      if (shouldNavigate) {
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }, 100)
+      }
     }
 
     setCheckedHabits(newCheckedHabits)
@@ -816,7 +825,7 @@ export default function Home() {
 
       <div className="flex flex-1 min-h-0">
         {/* 左侧面板 - Today & Activity */}
-        <div className="w-1/3 p-6 overflow-y-auto flex flex-col justify-between">
+        <div className="w-[30%] p-6 overflow-y-auto flex flex-col justify-between">
           <div className="flex-1 flex flex-col">
             <h3 className="text-lg font-light mb-4 text-slate-200">Week</h3>
 
@@ -1020,7 +1029,7 @@ export default function Home() {
                               const isCompleted =
                                 item.category === 'habit'
                                   ? isHabitChecked(item.id)
-                                  : progress >= 80
+                                  : progress >= 100
 
                               return isCompleted
                                 ? 'bg-slate-600/80'
@@ -1464,9 +1473,13 @@ export default function Home() {
                                 return (
                                   <div
                                     key={item.id}
-                                    onClick={() =>
-                                      setSelectedTimelineItem(item)
-                                    }
+                                    onClick={() => {
+                                      if (item.category === 'habit') {
+                                        handleHabitCheck(item.id, false)
+                                      } else {
+                                        setSelectedTimelineItem(item)
+                                      }
+                                    }}
                                     className="group relative bg-slate-500/30 hover:bg-slate-400/50 rounded-3xl px-4.5 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
                                     {item.category === 'habit' ? (
                                       <>
@@ -1549,9 +1562,13 @@ export default function Home() {
                                 return (
                                   <div
                                     key={item.id}
-                                    onClick={() =>
-                                      setSelectedTimelineItem(item)
-                                    }
+                                    onClick={() => {
+                                      if (item.category === 'habit') {
+                                        handleHabitCheck(item.id, true)
+                                      } else {
+                                        setSelectedTimelineItem(item)
+                                      }
+                                    }}
                                     className="group relative bg-slate-600/70 hover:bg-slate-400/50 rounded-3xl px-4.5 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
                                     {item.category === 'habit' ? (
                                       <>
@@ -1566,9 +1583,7 @@ export default function Home() {
                                               {item.title}
                                             </h5>
                                           </div>
-                                          <div className="w-4 h-4 rounded-full flex items-center justify-center border-3 !border-amber-400/80">
-                                            {/* <div className="w-3 h-3 rounded-full border-2 !border-amber-400"></div> */}
-                                          </div>
+                                          <div className="w-4 h-4 rounded-full flex items-center justify-center border-2 border-amber-400"></div>
                                         </div>
                                       </>
                                     ) : (
