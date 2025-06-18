@@ -1,8 +1,13 @@
 'use client'
 
-import { useState, useEffect, FormEvent, useRef, useCallback } from 'react'
+import { useState, useEffect, FormEvent, useRef } from 'react'
 import Link from 'next/link'
 import { getTodayStats, type DailyStats } from '@/lib/storage'
+import {
+  useProjectStore,
+  categoryConfig,
+  type ProjectCategory,
+} from '@/lib/stores/projectStore'
 
 // 数据接口定义
 interface DayData {
@@ -17,21 +22,6 @@ interface DayRecord {
   cycles: number
   isToday?: boolean
   hasRecord?: boolean
-}
-
-// 项目类别枚举
-type ProjectCategory = 'habit' | 'task' | 'focus' | 'exercise'
-
-interface TimelineItem {
-  id: string
-  time: string
-  title: string
-  duration?: string
-  details?: string[]
-  icon: string
-  iconColor: string
-  completed: boolean
-  category: ProjectCategory
 }
 
 // 常用图标列表
@@ -66,117 +56,6 @@ const commonIcons = [
   '🚗',
 ]
 
-// 项目类别配置
-const categoryConfig = {
-  habit: {
-    name: '习惯',
-    color: 'bg-gray-500',
-    description: '日常习惯和待办事项',
-  },
-  task: {
-    name: '任务',
-    color: 'bg-blue-500',
-    description: '重要任务，需要统计时长',
-  },
-  focus: {
-    name: '专注',
-    color: 'bg-amber-500',
-    description: '深度专注工作，重点统计',
-  },
-  exercise: {
-    name: '运动',
-    color: 'bg-green-500',
-    description: '运动健身，保持身体健康',
-  },
-}
-
-// 时间线初始数据
-const initialTimelineData: TimelineItem[] = [
-  {
-    id: '1',
-    time: '06:00',
-    title: '起床',
-    icon: '☀️',
-    iconColor: 'bg-yellow-500',
-    completed: true,
-    category: 'habit',
-  },
-  {
-    id: '2',
-    time: '06:30',
-    title: '晨练',
-    duration: '30分钟',
-    details: ['俯卧撑 x20', '仰卧起坐 x30', '拉伸运动'],
-    icon: '💪',
-    iconColor: 'bg-green-500',
-    completed: true,
-    category: 'exercise',
-  },
-  {
-    id: '3',
-    time: '07:30',
-    title: '早餐',
-    duration: '20分钟',
-    icon: '🍳',
-    iconColor: 'bg-amber-500',
-    completed: true,
-    category: 'habit',
-  },
-  {
-    id: '4',
-    time: '08:00',
-    title: '深度专注',
-    duration: '2小时',
-    details: ['番茄钟工作法', '完成核心任务', '无干扰环境'],
-    icon: '🎯',
-    iconColor: 'bg-blue-500',
-    completed: false,
-    category: 'focus',
-  },
-  {
-    id: '5',
-    time: '10:30',
-    title: '短暂休息',
-    duration: '15分钟',
-    icon: '☕',
-    iconColor: 'bg-amber-600',
-    completed: false,
-    category: 'habit',
-  },
-  {
-    id: '6',
-    time: '12:00',
-    title: '午餐时间',
-    duration: '45分钟',
-    icon: '🥗',
-    iconColor: 'bg-emerald-500',
-    completed: false,
-    category: 'habit',
-  },
-  {
-    id: '7',
-    time: '14:00',
-    title: '会议时间',
-    duration: '1小时',
-    details: ['团队会议', '项目进度讨论', '下午计划'],
-    icon: '👥',
-    iconColor: 'bg-purple-500',
-    completed: false,
-    category: 'task',
-  },
-  {
-    id: '8',
-    time: '18:00',
-    title: '运动时间',
-    duration: '1小时',
-    details: ['跑步 5公里', '力量训练', '拉伸放松'],
-    icon: '🏃',
-    iconColor: 'bg-red-500',
-    completed: false,
-    category: 'exercise',
-  },
-]
-
 const parseDetail = (detail: string) => {
   const parts = detail.split(' ')
   if (parts.length < 2) {
@@ -199,6 +78,28 @@ const parseDetail = (detail: string) => {
 }
 
 export default function Home() {
+  // Zustand store
+  const {
+    timelineItems,
+    selectedItem,
+    isEditingInPanel,
+    isAddingInPanel,
+    formData,
+    setSelectedItem,
+    startAdd,
+    startEdit,
+    cancelEdit,
+    setFormData,
+    addTimelineItem,
+    updateTimelineItem,
+    toggleHabitCheck,
+    isHabitChecked,
+    getCurrentTimelineItem,
+    getItemProgress,
+    getTodayStats: getProjectStats,
+  } = useProjectStore()
+
+  // 本地状态
   const [todayStats, setTodayStats] = useState<DailyStats>({
     date: '',
     totalFocusTime: 0,
@@ -209,25 +110,8 @@ export default function Home() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [weeklyData, setWeeklyData] = useState<DayData[]>([])
   const [isMounted, setIsMounted] = useState(false)
-
-  const [timelineData, setTimelineData] =
-    useState<TimelineItem[]>(initialTimelineData)
-  const [newTimelineItem, setNewTimelineItem] = useState({
-    time: '',
-    title: '',
-    duration: '',
-    icon: '💡',
-    details: '',
-    category: 'task' as ProjectCategory,
-  })
-  const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [isIconSelectorOpen, setIsIconSelectorOpen] = useState(false)
-  const [selectedTimelineItem, setSelectedTimelineItem] =
-    useState<TimelineItem | null>(null)
-  const [isEditingInPanel, setIsEditingInPanel] = useState(false)
-  const [isAddingInPanel, setIsAddingInPanel] = useState(false)
   const timelineContainerRef = useRef<HTMLDivElement>(null)
-  const [checkedHabits, setCheckedHabits] = useState<Set<string>>(new Set())
 
   // 在客户端加载今日统计
   useEffect(() => {
@@ -259,37 +143,7 @@ export default function Home() {
 
     setTodayStats(getTodayStats())
     setIsMounted(true)
-
-    // 加载今日打卡记录
-    const today = new Date().toISOString().split('T')[0]
-    const savedCheckedHabits = localStorage.getItem(`checked-habits-${today}`)
-    if (savedCheckedHabits) {
-      setCheckedHabits(new Set(JSON.parse(savedCheckedHabits)))
-    }
   }, [])
-
-  // 获取当前时间对应的项目
-  const getCurrentTimelineItem = useCallback(() => {
-    const now = new Date()
-    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now
-      .getMinutes()
-      .toString()
-      .padStart(2, '0')}`
-
-    // 找到当前时间最接近的项目
-    let currentItem = null
-
-    for (let i = 0; i < timelineData.length; i++) {
-      const item = timelineData[i]
-      if (item.time <= currentTime) {
-        currentItem = item
-      } else {
-        break
-      }
-    }
-
-    return currentItem
-  }, [timelineData])
 
   // 定期更新当前时间项目并自动滚动
   useEffect(() => {
@@ -336,7 +190,7 @@ export default function Home() {
     updateCurrentItem()
 
     // 每分钟更新一次
-    const interval = setInterval(updateCurrentItem, 6000)
+    const interval = setInterval(updateCurrentItem, 60000)
 
     return () => clearInterval(interval)
   }, [getCurrentTimelineItem])
@@ -357,13 +211,13 @@ export default function Home() {
         !target.closest('.timeline-item') &&
         !target.closest('.project-detail-panel')
       ) {
-        setSelectedTimelineItem(null)
+        setSelectedItem(null)
       }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isEditingInPanel, isAddingInPanel])
+  }, [isEditingInPanel, isAddingInPanel, cancelEdit, setSelectedItem])
 
   // 时间线数据
   useEffect(() => {
@@ -411,88 +265,37 @@ export default function Home() {
       ? Math.max(...weeklyData.map((d) => d.focus), 120)
       : 120
 
-  // 在右侧面板开始添加新项目
-  const handleStartAddInPanel = () => {
-    setEditingItemId(null)
-    setNewTimelineItem({
-      time: '',
-      title: '',
-      duration: '',
-      icon: '💡',
-      details: '',
-      category: 'task' as ProjectCategory,
-    })
-    setIsAddingInPanel(true)
-  }
+  // 获取过去7天的显示数据
+  const getWeekDays = () => {
+    const today = new Date()
+    const result = []
 
-  // 清除编辑状态
-  const cancelEdit = () => {
-    setEditingItemId(null)
-    setNewTimelineItem({
-      time: '',
-      title: '',
-      duration: '',
-      icon: '💡',
-      details: '',
-      category: 'task' as ProjectCategory,
-    })
-    setIsEditingInPanel(false)
-    setIsAddingInPanel(false)
-  }
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(today.getDate() - i)
 
-  // 提交表单（添加或更新）
-  const handleSubmitTimelineItem = (e: FormEvent) => {
-    e.preventDefault()
-    if (!newTimelineItem.time || !newTimelineItem.title) return
+      const dayAbbrevs = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+      const dayAbbrev = dayAbbrevs[date.getDay()]
+      const isToday = i === 0
 
-    const detailsArray = newTimelineItem.details
-      .split('\n')
-      .filter((d) => d.trim() !== '')
-
-    if (editingItemId) {
-      const updatedItem = {
-        time: newTimelineItem.time,
-        title: newTimelineItem.title,
-        duration: newTimelineItem.duration,
-        icon: newTimelineItem.icon,
-        details: detailsArray,
-        category: newTimelineItem.category,
-        iconColor: categoryConfig[newTimelineItem.category].color,
-      }
-
-      const updatedTimeline = timelineData.map((item) =>
-        item.id === editingItemId ? { ...item, ...updatedItem } : item
-      )
-      setTimelineData(
-        updatedTimeline.sort((a, b) => a.time.localeCompare(b.time))
-      )
-
-      if (isEditingInPanel && selectedTimelineItem?.id === editingItemId) {
-        setSelectedTimelineItem({ ...selectedTimelineItem, ...updatedItem })
-      }
-    } else {
-      const newItem: TimelineItem = {
-        id: Date.now().toString(),
-        time: newTimelineItem.time,
-        title: newTimelineItem.title,
-        duration: newTimelineItem.duration,
-        icon: newTimelineItem.icon,
-        details: detailsArray,
-        iconColor: categoryConfig[newTimelineItem.category].color,
-        completed: false,
-        category: newTimelineItem.category,
-      }
-      const updatedTimeline = [...timelineData, newItem].sort((a, b) =>
-        a.time.localeCompare(b.time)
-      )
-      setTimelineData(updatedTimeline)
-
-      if (isAddingInPanel) {
-        setSelectedTimelineItem(newItem)
-      }
+      result.push({
+        day: dayAbbrev,
+        isToday,
+        data: weeklyData[6 - i],
+      })
     }
 
-    cancelEdit()
+    return result
+  }
+
+  // 格式化时间显示
+  const formatTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (hours > 0) {
+      return `${hours}h${mins}m`
+    }
+    return `${mins}m`
   }
 
   // 生成日历数据
@@ -534,44 +337,6 @@ export default function Home() {
     return days
   }
 
-  const calendarData = generateCalendarData(
-    currentDate.getFullYear(),
-    currentDate.getMonth()
-  )
-
-  // 获取过去7天的显示数据
-  const getWeekDays = () => {
-    const today = new Date()
-    const result = []
-
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today)
-      date.setDate(today.getDate() - i)
-
-      const dayAbbrevs = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-      const dayAbbrev = dayAbbrevs[date.getDay()]
-      const isToday = i === 0
-
-      result.push({
-        day: dayAbbrev,
-        isToday,
-        data: weeklyData[6 - i],
-      })
-    }
-
-    return result
-  }
-
-  // 格式化时间显示
-  const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    if (hours > 0) {
-      return `${hours}h${mins}m`
-    }
-    return `${mins}m`
-  }
-
   // 获取专注强度颜色
   const getIntensityColor = (focusTime: number) => {
     if (focusTime === 0) return 'bg-slate-700'
@@ -611,144 +376,69 @@ export default function Home() {
   }
 
   // 检查项目是否为当前时间项目
-  const isCurrentTimeItem = (item: TimelineItem) => {
+  const isCurrentTimeItem = (item: { id: string; time: string }) => {
     const current = getCurrentTimelineItem()
     return current?.id === item.id
   }
 
   // 获取当前项目的高亮样式
-  const getCurrentItemHighlightClass = (item: TimelineItem) => {
+  const getCurrentItemHighlightClass = (item: {
+    id: string
+    time: string
+    category: ProjectCategory
+  }) => {
     if (!isCurrentTimeItem(item)) return ''
 
     switch (item.category) {
       case 'habit':
-        return '!border-gray-400 bg-slate-700/80 ring-4 ring-gray-400/50 shadow-lg shadow-gray-400/20 scale-[1.02]'
+        return 'border-gray-400 bg-slate-700/80 ring-4 ring-gray-400/50 shadow-lg shadow-gray-400/20 scale-[1.02]'
       case 'task':
-        return '!border-blue-400 bg-slate-700/80 ring-4 ring-blue-400/50 shadow-lg shadow-blue-400/20 scale-[1.02]'
+        return 'border-blue-400 bg-slate-700/80 ring-4 ring-blue-400/50 shadow-lg shadow-blue-400/20 scale-[1.02]'
       case 'focus':
-        return '!border-amber-400 bg-slate-700/80 ring-4 ring-amber-400/50 shadow-lg shadow-amber-400/20 scale-[1.02]'
+        return 'border-amber-400 bg-slate-700/80 ring-4 ring-amber-400/50 shadow-lg shadow-amber-400/20 scale-[1.02]'
       case 'exercise':
-        return '!border-green-400 bg-slate-700/80 ring-4 ring-green-400/50 shadow-lg shadow-green-400/20 scale-[1.02]'
+        return 'border-green-400 bg-slate-700/80 ring-4 ring-green-400/50 shadow-lg shadow-green-400/20 scale-[1.02]'
       default:
-        return '!border-amber-400 bg-slate-700/80 ring-4 ring-amber-400/50 shadow-lg shadow-amber-400/20 scale-[1.02]'
+        return 'border-amber-400 bg-slate-700/80 ring-4 ring-amber-400/50 shadow-lg shadow-amber-400/20 scale-[1.02]'
     }
   }
 
-  // 处理习惯打卡
-  const handleHabitCheck = (
-    habitId: string,
-    shouldNavigate: boolean = false
-  ) => {
-    const today = new Date().toISOString().split('T')[0]
-    const newCheckedHabits = new Set(checkedHabits)
+  // 提交表单（添加或更新）
+  const handleSubmitTimelineItem = (e: FormEvent) => {
+    e.preventDefault()
+    if (!formData.time || !formData.title) return
 
-    if (newCheckedHabits.has(habitId)) {
-      newCheckedHabits.delete(habitId)
+    const detailsArray = formData.details
+      .split('\n')
+      .filter((d) => d.trim() !== '')
+
+    if (isEditingInPanel) {
+      // 更新项目
+      updateTimelineItem(selectedItem!.id, {
+        time: formData.time,
+        title: formData.title,
+        duration: formData.duration,
+        icon: formData.icon,
+        details: detailsArray,
+        category: formData.category,
+        iconColor: categoryConfig[formData.category].color,
+      })
     } else {
-      newCheckedHabits.add(habitId)
-      // 只有在打卡完成时跳转到总览页面
-      if (shouldNavigate) {
-        setTimeout(() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' })
-        }, 100)
-      }
+      // 添加项目
+      addTimelineItem({
+        time: formData.time,
+        title: formData.title,
+        duration: formData.duration,
+        icon: formData.icon,
+        details: detailsArray,
+        category: formData.category,
+      })
     }
 
-    setCheckedHabits(newCheckedHabits)
-
-    // 保存到localStorage
-    localStorage.setItem(
-      `checked-habits-${today}`,
-      JSON.stringify([...newCheckedHabits])
-    )
+    cancelEdit()
   }
 
-  // 检查习惯是否已打卡
-  const isHabitChecked = (habitId: string) => {
-    return checkedHabits.has(habitId)
-  }
-
-  // 计算项目进度
-  const getItemProgress = (item: TimelineItem) => {
-    const now = new Date()
-    const currentTime = now.getHours() * 60 + now.getMinutes()
-
-    // 解析项目时间
-    const [hours, minutes] = item.time.split(':').map(Number)
-    const itemStartTime = hours * 60 + minutes
-
-    // 解析项目时长，默认60分钟
-    let durationMinutes = 60
-    if (item.duration) {
-      const hourMatch = item.duration.match(/(\d+)小时/)
-      const minuteMatch = item.duration.match(/(\d+)分钟/)
-      durationMinutes = 0
-      if (hourMatch) durationMinutes += parseInt(hourMatch[1]) * 60
-      if (minuteMatch) durationMinutes += parseInt(minuteMatch[1])
-      if (durationMinutes === 0) durationMinutes = 60
-    }
-
-    const itemEndTime = itemStartTime + durationMinutes
-
-    // 对于习惯项目，根据打卡状态显示进度
-    if (item.category === 'habit') {
-      return isHabitChecked(item.id) ? 100 : 0
-    }
-
-    // 对于其他项目，根据时间状态显示进度
-    if (currentTime < itemStartTime) {
-      // 还没开始
-      return 0
-    } else if (currentTime >= itemEndTime) {
-      // 已经结束，显示完成状态（这里可以根据实际完成情况调整）
-      return item.completed ? 100 : 80 // 如果有完成标记则100%，否则80%
-    } else {
-      // 正在进行中
-      const elapsed = currentTime - itemStartTime
-      return Math.min((elapsed / durationMinutes) * 100, 95) // 最多95%，留一点给完成状态
-    }
-  }
-
-  // 获取今日项目统计
-  const getTodayProjectStats = () => {
-    const totalProjects = timelineData.length
-    const completedProjects = timelineData.filter((item) => {
-      if (item.category === 'habit') {
-        return isHabitChecked(item.id)
-      } else {
-        const progress = getItemProgress(item)
-        return progress >= 80 // 进度80%以上认为完成
-      }
-    }).length
-
-    const habitProjects = timelineData.filter(
-      (item) => item.category === 'habit'
-    )
-    const completedHabits = habitProjects.filter((item) =>
-      isHabitChecked(item.id)
-    ).length
-
-    const taskProjects = timelineData.filter(
-      (item) => item.category !== 'habit'
-    )
-    const completedTasks = taskProjects.filter(
-      (item) => getItemProgress(item) >= 80
-    ).length
-
-    return {
-      totalProjects,
-      completedProjects,
-      habitProjects: habitProjects.length,
-      completedHabits,
-      taskProjects: taskProjects.length,
-      completedTasks,
-      completionRate:
-        totalProjects > 0
-          ? Math.round((completedProjects / totalProjects) * 100)
-          : 0,
-    }
-  }
-
+  // 简化的月份数组
   const months = [
     '一月',
     '二月',
@@ -772,7 +462,7 @@ export default function Home() {
     <div className="h-screen bg-slate-900 text-white flex flex-col">
       {/* 顶部导航栏 */}
       <header className="flex items-center justify-between px-8 pt-6 flex-shrink-0">
-        <div className="text-xl font-bold text-slate-300">LOGO</div>
+        <div className="text-xl font-bold text-slate-300">Focus Timer</div>
 
         <nav className="bg-slate-800 rounded-2xl p-1.5">
           <div className="flex space-x-2">
@@ -824,11 +514,10 @@ export default function Home() {
       </header>
 
       <div className="flex flex-1 min-h-0">
-        {/* 左侧面板 - Today & Activity */}
+        {/* 左侧面板 - Week & Activity */}
         <div className="w-[30%] p-6 overflow-y-auto flex flex-col justify-between">
           <div className="flex-1 flex flex-col">
             <h3 className="text-lg font-light mb-4 text-slate-200">Week</h3>
-
             <div className="bg-slate-800 rounded-3xl p-4 flex-1 flex flex-col mb-4">
               <h4 className="text-xs text-slate-400 mb-4">过去7天专注时间</h4>
               <div className="flex items-end justify-between flex-1 mb-3">
@@ -939,7 +628,10 @@ export default function Home() {
               </div>
 
               <div className="grid grid-cols-7 gap-1">
-                {calendarData.map((day, index) => (
+                {generateCalendarData(
+                  currentDate.getFullYear(),
+                  currentDate.getMonth()
+                ).map((day, index) => (
                   <div
                     key={index}
                     className={`aspect-square rounded-full text-xs flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 ${
@@ -982,7 +674,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xl font-light text-slate-200">Today</h2>
             <button
-              onClick={handleStartAddInPanel}
+              onClick={startAdd}
               className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors">
               <span className="text-lg">+</span>
             </button>
@@ -996,7 +688,7 @@ export default function Home() {
                 <div
                   className="absolute left-7 top-0 w-0.5 bg-slate-700"
                   style={{ height: 'calc(100% + 400px)' }}></div>
-                {timelineData.map((item) => (
+                {timelineItems.map((item) => (
                   <div
                     key={item.id}
                     id={`timeline-item-${item.id}`}
@@ -1014,13 +706,13 @@ export default function Home() {
 
                     <div className="flex-1 min-w-0">
                       <div
-                        onClick={() => setSelectedTimelineItem(item)}
+                        onClick={() => setSelectedItem(item)}
                         className={`timeline-item relative bg-slate-800 rounded-3xl p-4 mr-4 transition-all duration-200 cursor-pointer hover:bg-slate-700 group ${
-                          selectedTimelineItem?.id === item.id
-                            ? '!border-amber-500 bg-slate-700'
+                          selectedItem?.id === item.id
+                            ? 'border border-amber-500 bg-slate-700'
                             : isCurrentTimeItem(item)
                             ? getCurrentItemHighlightClass(item)
-                            : '!border-slate-600 hover:!border-slate-500'
+                            : 'border border-slate-600 hover:border-slate-500'
                         }`}>
                         <div className="absolute inset-0 overflow-hidden rounded-3xl bg-slate-700/50">
                           <div
@@ -1048,7 +740,7 @@ export default function Home() {
                             <div className="flex-1 min-w-0">
                               <h3
                                 className={`font-medium text-base group-hover:text-white transition-colors ${
-                                  selectedTimelineItem?.id === item.id
+                                  selectedItem?.id === item.id
                                     ? 'text-amber-200'
                                     : 'text-slate-200'
                                 }`}>
@@ -1068,7 +760,7 @@ export default function Home() {
                               <span
                                 className={`text-slate-400 text-xs bg-slate-700/80 backdrop-blur-sm px-2 py-1 rounded-md ml-2 ${
                                   isCurrentTimeItem(item) ||
-                                  selectedTimelineItem?.id === item.id
+                                  selectedItem?.id === item.id
                                     ? 'shadow-[inset_0_2px_4px_rgba(0,0,0,0.2),inset_0_-1px_2px_rgba(255,255,255,0.05)]'
                                     : ''
                                 }`}>
@@ -1086,7 +778,7 @@ export default function Home() {
                                   <span
                                     className={`w-1 h-1 bg-slate-600 rounded-full mr-2 flex-shrink-0 ${
                                       isCurrentTimeItem(item) ||
-                                      selectedTimelineItem?.id === item.id
+                                      selectedItem?.id === item.id
                                         ? 'shadow-[inset_0_1px_2px_rgba(0,0,0,0.2),inset_0_-1px_1px_rgba(255,255,255,0.05)]'
                                         : ''
                                     }`}></span>
@@ -1099,7 +791,7 @@ export default function Home() {
 
                         <div
                           className={`absolute inset-0 rounded-3xl pointer-events-none ${
-                            selectedTimelineItem?.id === item.id
+                            selectedItem?.id === item.id
                               ? 'shadow-[inset_0_4px_8px_rgba(0,0,0,0.3),inset_0_-2px_4px_rgba(255,255,255,0.08)]'
                               : isCurrentTimeItem(item)
                               ? 'shadow-[inset_0_4px_8px_rgba(0,0,0,0.2),inset_0_-2px_4px_rgba(255,255,255,0.05)]'
@@ -1122,528 +814,469 @@ export default function Home() {
         {/* 右侧面板 - 项目详情 */}
         <div className="flex-1 p-6 flex flex-col">
           <div className="bg-slate-800 rounded-3xl p-8 flex-1 border-slate-700 flex flex-col overflow-hidden">
-            {/* <h1 className="text-3xl font-light mb-6 text-slate-200">
-              项目详情
-            </h1> */}
-            <div className="py-2"></div>
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="project-detail-panel flex-1 overflow-y-auto">
-                  {isEditingInPanel || isAddingInPanel ? (
-                    // 编辑表单
-                    <form
-                      onSubmit={handleSubmitTimelineItem}
-                      className="space-y-4">
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-slate-400 text-sm mb-2">
-                              时间
-                            </label>
-                            <input
-                              type="time"
-                              value={newTimelineItem.time}
-                              onChange={(e) =>
-                                setNewTimelineItem({
-                                  ...newTimelineItem,
-                                  time: e.target.value,
-                                })
-                              }
-                              required
-                              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-slate-400 text-sm mb-2">
-                              时长
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="可选"
-                              value={newTimelineItem.duration}
-                              onChange={(e) =>
-                                setNewTimelineItem({
-                                  ...newTimelineItem,
-                                  duration: e.target.value,
-                                })
-                              }
-                              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-slate-400 text-sm mb-2">
-                            标题
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="项目标题"
-                            value={newTimelineItem.title}
-                            onChange={(e) =>
-                              setNewTimelineItem({
-                                ...newTimelineItem,
-                                title: e.target.value,
-                              })
-                            }
-                            required
-                            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
-                          />
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <label className="text-slate-400 text-sm">
-                            图标:
-                          </label>
-                          <input
-                            type="text"
-                            value={newTimelineItem.icon}
-                            onChange={(e) =>
-                              setNewTimelineItem({
-                                ...newTimelineItem,
-                                icon: e.target.value,
-                              })
-                            }
-                            maxLength={2}
-                            className="w-12 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-center"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setIsIconSelectorOpen(true)}
-                            className="px-3 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-sm text-white">
-                            选择
-                          </button>
-                        </div>
-
-                        <div>
-                          <label className="block text-slate-400 text-sm mb-2">
-                            项目类别
-                          </label>
-                          <select
-                            value={newTimelineItem.category}
-                            onChange={(e) =>
-                              setNewTimelineItem({
-                                ...newTimelineItem,
-                                category: e.target.value as ProjectCategory,
-                              })
-                            }
-                            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-400">
-                            <option value="habit">
-                              {categoryConfig.habit.name} -{' '}
-                              {categoryConfig.habit.description}
-                            </option>
-                            <option value="task">
-                              {categoryConfig.task.name} -{' '}
-                              {categoryConfig.task.description}
-                            </option>
-                            <option value="focus">
-                              {categoryConfig.focus.name} -{' '}
-                              {categoryConfig.focus.description}
-                            </option>
-                            <option value="exercise">
-                              {categoryConfig.exercise.name} -{' '}
-                              {categoryConfig.exercise.description}
-                            </option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-slate-400 text-sm mb-2">
-                            详细内容
-                          </label>
-                          <textarea
-                            value={newTimelineItem.details}
-                            onChange={(e) =>
-                              setNewTimelineItem({
-                                ...newTimelineItem,
-                                details: e.target.value,
-                              })
-                            }
-                            placeholder="每行一个详细信息"
-                            rows={4}
-                            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
-                          />
-                        </div>
-
-                        <div className="flex space-x-2 pt-4">
-                          <button
-                            type="submit"
-                            className="flex-1 bg-amber-600 hover:bg-amber-700 rounded-lg text-white font-medium transition-colors py-2 px-4">
-                            {isEditingInPanel ? '更新项目' : '添加项目'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={cancelEdit}
-                            className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white transition-colors">
-                            取消
-                          </button>
-                        </div>
+            <div className="project-detail-panel flex-1 overflow-y-auto">
+              {isEditingInPanel || isAddingInPanel ? (
+                // 编辑表单
+                <form onSubmit={handleSubmitTimelineItem} className="space-y-4">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-slate-400 text-sm mb-2">
+                          时间
+                        </label>
+                        <input
+                          type="time"
+                          value={formData.time}
+                          onChange={(e) =>
+                            setFormData({ time: e.target.value })
+                          }
+                          required
+                          className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
+                        />
                       </div>
-                    </form>
-                  ) : selectedTimelineItem ? (
-                    <div className="flex flex-col h-full">
-                      {/* Top Part */}
-                      <div className="flex justify-between items-start pb-6">
-                        <div className="flex-1">
-                          <p className="text-sm text-slate-400 mb-2">
-                            当前任务
-                          </p>
-                          <h3 className="text-4xl font-bold text-white my-1 flex items-center">
-                            <span
-                              className={`inline-block w-3 h-3 rounded-full mr-3 ${
-                                categoryConfig[selectedTimelineItem.category]
-                                  .color
-                              }`}></span>
-                            {selectedTimelineItem.title}
-                          </h3>
-                          <div className="text-slate-400 text-sm">
-                            <span>计划 {selectedTimelineItem.time}</span>
-                            {selectedTimelineItem.duration && (
-                              <span className="mx-2">|</span>
-                            )}
-                            {selectedTimelineItem.duration && (
-                              <span>时长 {selectedTimelineItem.duration}</span>
-                            )}
-                            {selectedTimelineItem.category !== 'habit' && (
-                              <>
-                                <span className="mx-2">|</span>
-                                <span>
-                                  {
-                                    categoryConfig[
-                                      selectedTimelineItem.category
-                                    ].name
-                                  }
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {selectedTimelineItem.category === 'habit' ? (
-                          <button
-                            onClick={() =>
-                              handleHabitCheck(selectedTimelineItem.id)
-                            }
-                            className={`w-20 h-20 rounded-full border-2 flex items-center justify-center text-white text-lg transition shrink-0 ${
-                              isHabitChecked(selectedTimelineItem.id)
-                                ? 'border-green-500 bg-green-500/20 text-green-400'
-                                : 'border-slate-500 hover:border-green-400 hover:text-green-400'
-                            }`}>
-                            {isHabitChecked(selectedTimelineItem.id) ? (
-                              <svg
-                                className="w-8 h-8"
-                                fill="currentColor"
-                                viewBox="0 0 20 20">
-                                <path
-                                  fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            ) : (
-                              '打卡'
-                            )}
-                          </button>
-                        ) : (
-                          <Link
-                            href={`/focus?id=${selectedTimelineItem.id}`}
-                            onClick={() => {
-                              // 保存任务数据到 localStorage
-                              if (typeof window !== 'undefined') {
-                                localStorage.setItem(
-                                  'currentTask',
-                                  JSON.stringify({
-                                    id: selectedTimelineItem.id,
-                                    title: selectedTimelineItem.title,
-                                    time: selectedTimelineItem.time,
-                                    duration: selectedTimelineItem.duration,
-                                    details: selectedTimelineItem.details,
-                                    icon: selectedTimelineItem.icon,
-                                  })
-                                )
-                              }
-                            }}
-                            className="w-20 h-20 rounded-full border-2 border-slate-500 flex items-center justify-center text-white text-lg hover:border-white transition shrink-0">
-                            开始
-                          </Link>
+                      <div>
+                        <label className="block text-slate-400 text-sm mb-2">
+                          时长
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="可选"
+                          value={formData.duration}
+                          onChange={(e) =>
+                            setFormData({ duration: e.target.value })
+                          }
+                          className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 text-sm mb-2">
+                        标题
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="项目标题"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ title: e.target.value })}
+                        required
+                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <label className="text-slate-400 text-sm">图标:</label>
+                      <input
+                        type="text"
+                        value={formData.icon}
+                        onChange={(e) => setFormData({ icon: e.target.value })}
+                        maxLength={2}
+                        className="w-12 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-center"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsIconSelectorOpen(true)}
+                        className="px-3 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-sm text-white">
+                        选择
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 text-sm mb-2">
+                        项目类别
+                      </label>
+                      <select
+                        value={formData.category}
+                        onChange={(e) =>
+                          setFormData({
+                            category: e.target.value as ProjectCategory,
+                          })
+                        }
+                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-400">
+                        <option value="habit">
+                          {categoryConfig.habit.name} -{' '}
+                          {categoryConfig.habit.description}
+                        </option>
+                        <option value="task">
+                          {categoryConfig.task.name} -{' '}
+                          {categoryConfig.task.description}
+                        </option>
+                        <option value="focus">
+                          {categoryConfig.focus.name} -{' '}
+                          {categoryConfig.focus.description}
+                        </option>
+                        <option value="exercise">
+                          {categoryConfig.exercise.name} -{' '}
+                          {categoryConfig.exercise.description}
+                        </option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 text-sm mb-2">
+                        详细内容
+                      </label>
+                      <textarea
+                        value={formData.details}
+                        onChange={(e) =>
+                          setFormData({ details: e.target.value })
+                        }
+                        placeholder="每行一个详细信息"
+                        rows={4}
+                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+
+                    <div className="flex space-x-2 pt-4">
+                      <button
+                        type="submit"
+                        className="flex-1 bg-amber-600 hover:bg-amber-700 rounded-lg text-white font-medium transition-colors py-2 px-4">
+                        {isEditingInPanel ? '更新项目' : '添加项目'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        className="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg text-white transition-colors">
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              ) : selectedItem ? (
+                // 项目详情
+                <div className="flex flex-col h-full">
+                  <div className="flex justify-between items-start pb-6">
+                    <div className="flex-1">
+                      <p className="text-sm text-slate-400 mb-2">当前任务</p>
+                      <h3 className="text-4xl font-bold text-white my-1 flex items-center">
+                        <span
+                          className={`inline-block w-3 h-3 rounded-full mr-3 ${
+                            categoryConfig[selectedItem.category].color
+                          }`}></span>
+                        {selectedItem.title}
+                      </h3>
+                      <div className="text-slate-400 text-sm">
+                        <span>计划 {selectedItem.time}</span>
+                        {selectedItem.duration && (
+                          <span className="mx-2">|</span>
+                        )}
+                        {selectedItem.duration && (
+                          <span>时长 {selectedItem.duration}</span>
+                        )}
+                        {selectedItem.category !== 'habit' && (
+                          <>
+                            <span className="mx-2">|</span>
+                            <span>
+                              {categoryConfig[selectedItem.category].name}
+                            </span>
+                          </>
                         )}
                       </div>
-
-                      {/* Bottom Part */}
-                      <div className="flex-1 overflow-y-auto pr-2">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-slate-400 text-sm font-medium">
-                            准备信息
-                          </h4>
-                          <button
-                            onClick={() => {
-                              setEditingItemId(selectedTimelineItem.id)
-                              setNewTimelineItem({
-                                time: selectedTimelineItem.time,
-                                title: selectedTimelineItem.title,
-                                duration: selectedTimelineItem.duration || '',
-                                icon: selectedTimelineItem.icon,
-                                details: (
-                                  selectedTimelineItem.details || []
-                                ).join('\n'),
-                                category: selectedTimelineItem.category,
+                    </div>
+                    {selectedItem.category === 'habit' ? (
+                      <button
+                        onClick={() => toggleHabitCheck(selectedItem.id)}
+                        className={`w-20 h-20 rounded-full border-2 flex items-center justify-center text-white text-lg transition shrink-0 ${
+                          isHabitChecked(selectedItem.id)
+                            ? 'border-green-500 bg-green-500/20 text-green-400'
+                            : 'border-slate-500 hover:border-green-400 hover:text-green-400'
+                        }`}>
+                        {isHabitChecked(selectedItem.id) ? (
+                          <svg
+                            className="w-8 h-8"
+                            fill="currentColor"
+                            viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        ) : (
+                          '打卡'
+                        )}
+                      </button>
+                    ) : (
+                      <Link
+                        href={`/focus?id=${selectedItem.id}`}
+                        onClick={() => {
+                          // 保存任务数据到 localStorage
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem(
+                              'currentTask',
+                              JSON.stringify({
+                                id: selectedItem.id,
+                                title: selectedItem.title,
+                                time: selectedItem.time,
+                                duration: selectedItem.duration,
+                                details: selectedItem.details,
+                                icon: selectedItem.icon,
                               })
-                              setIsEditingInPanel(true)
-                            }}
-                            className="text-xs text-slate-400 hover:text-amber-400 transition-colors">
-                            编辑
-                          </button>
-                        </div>
-                        <div className="space-y-3">
-                          {selectedTimelineItem.details &&
-                            selectedTimelineItem.details.map(
-                              (detail: string, index: number) => {
-                                const { title, label, value } =
-                                  parseDetail(detail)
-                                const colors = [
-                                  'bg-blue-500',
-                                  'bg-orange-500',
-                                  'bg-green-500',
-                                  'bg-purple-500',
-                                ]
-                                const color = colors[index % colors.length]
+                            )
+                          }
+                        }}
+                        className="w-20 h-20 rounded-full border-2 border-slate-500 flex items-center justify-center text-white text-lg hover:border-white transition shrink-0">
+                        开始
+                      </Link>
+                    )}
+                  </div>
 
-                                return (
-                                  <div
-                                    key={index}
-                                    className="bg-slate-700/50 rounded-2xl p-4 flex justify-between items-center">
-                                    <div>
-                                      <p className="text-white font-medium">
-                                        {title}
-                                      </p>
-                                      {label && value && (
-                                        <p className="text-slate-400 text-sm">
-                                          {label} {value}
-                                        </p>
+                  {/* Bottom Part */}
+                  <div className="flex-1 overflow-y-auto pr-2">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-slate-400 text-sm font-medium">
+                        准备信息
+                      </h4>
+                      <button
+                        onClick={() => {
+                          startEdit(selectedItem.id)
+                        }}
+                        className="text-xs text-slate-400 hover:text-amber-400 transition-colors">
+                        编辑
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {selectedItem.details &&
+                        selectedItem.details.map(
+                          (detail: string, index: number) => {
+                            const { title, label, value } = parseDetail(detail)
+                            const colors = [
+                              'bg-blue-500',
+                              'bg-orange-500',
+                              'bg-green-500',
+                              'bg-purple-500',
+                            ]
+                            const color = colors[index % colors.length]
+
+                            return (
+                              <div
+                                key={index}
+                                className="bg-slate-700/50 rounded-2xl p-4 flex justify-between items-center">
+                                <div>
+                                  <p className="text-white font-medium">
+                                    {title}
+                                  </p>
+                                  {label && value && (
+                                    <p className="text-slate-400 text-sm">
+                                      {label} {value}
+                                    </p>
+                                  )}
+                                </div>
+                                <div
+                                  className={`w-8 h-8 rounded-full ${color} border-2 border-slate-900`}></div>
+                              </div>
+                            )
+                          }
+                        )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // 今日项目统计 - 简约设计
+                <div className="flex flex-col h-full">
+                  {/* 简约标题栏 */}
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-xl font-light text-slate-200">
+                      今日项目
+                    </h3>
+                    <div className="flex items-center space-x-2">
+                      <div className="text-2xl font-light text-amber-400">
+                        {getProjectStats().completedProjects}
+                      </div>
+                      <div className="text-slate-500">/</div>
+                      <div className="text-lg text-slate-400">
+                        {getProjectStats().totalProjects}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 已完成和未完成项目分列显示 */}
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-4 relative">
+                      {/* 渐变分隔线 */}
+                      <div className="absolute left-1/2 top-0 bottom-0 w-px transform -translate-x-1/2 bg-gradient-to-b from-transparent via-slate-500/60 to-transparent"></div>
+
+                      {/* 已完成项目 */}
+                      <div className="space-y-2 pr-2">
+                        <h4 className="text-xs text-slate-400 font-medium mb-2">
+                          已完成
+                        </h4>
+                        {timelineItems
+                          .filter((item) => {
+                            const progress = getItemProgress(item)
+                            return item.category === 'habit'
+                              ? isHabitChecked(item.id)
+                              : progress >= 80
+                          })
+                          .map((item) => {
+                            const progress = getItemProgress(item)
+
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => {
+                                  if (item.category === 'habit') {
+                                    toggleHabitCheck(item.id)
+                                  } else {
+                                    setSelectedItem(item)
+                                  }
+                                }}
+                                className="group relative bg-slate-500/30 hover:bg-slate-400/50 rounded-3xl px-4.5 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
+                                {item.category === 'habit' ? (
+                                  <>
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <span
+                                          className={`w-1.5 h-1.5 rounded-full ${
+                                            categoryConfig[item.category].color
+                                          }`}></span>
+                                        <h5 className="text-slate-100 text-md truncate flex-1">
+                                          {item.title}
+                                        </h5>
+                                      </div>
+                                      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-green-500/20 ml-2">
+                                        <svg
+                                          className="w-3 h-3 text-green-400"
+                                          fill="currentColor"
+                                          viewBox="0 0 20 20">
+                                          <path
+                                            fillRule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clipRule="evenodd"
+                                          />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span
+                                        className={`w-1.5 h-1.5 rounded-full ${
+                                          categoryConfig[item.category].color
+                                        }`}></span>
+                                      <h5 className="text-slate-100 text-md truncate flex-1">
+                                        {item.title}
+                                      </h5>
+                                      {item.duration && (
+                                        <span className="text-xs text-slate-400 ml-2">
+                                          {item.duration}
+                                        </span>
                                       )}
                                     </div>
-                                    <div
-                                      className={`w-8 h-8 rounded-full ${color} border-2 border-slate-900`}></div>
-                                  </div>
-                                )
-                              }
-                            )}
-                        </div>
+                                    <div className="w-full h-1 bg-slate-600/20 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full transition-all duration-700 rounded-full ${
+                                          progress >= 80
+                                            ? 'bg-green-400/50'
+                                            : categoryConfig[
+                                                item.category
+                                              ].color.replace('bg-', 'bg-')
+                                        }`}
+                                        style={{ width: `${progress}%` }}
+                                      />
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )
+                          })}
+                      </div>
+
+                      {/* 未完成项目 */}
+                      <div className="space-y-2 pl-2">
+                        <h4 className="text-xs text-slate-400 font-medium mb-2">
+                          未完成
+                        </h4>
+                        {timelineItems
+                          .filter((item) => {
+                            const progress = getItemProgress(item)
+                            return item.category === 'habit'
+                              ? !isHabitChecked(item.id)
+                              : progress < 80
+                          })
+                          .map((item) => {
+                            const progress = getItemProgress(item)
+
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => {
+                                  if (item.category === 'habit') {
+                                    toggleHabitCheck(item.id)
+                                  } else {
+                                    setSelectedItem(item)
+                                  }
+                                }}
+                                className="group relative bg-slate-600/70 hover:bg-slate-400/50 rounded-3xl px-4.5 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
+                                {item.category === 'habit' ? (
+                                  <>
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2 flex-1">
+                                        <span
+                                          className={`w-1.5 h-1.5 rounded-full ${
+                                            categoryConfig[item.category].color
+                                          }`}></span>
+                                        <h5 className="text-slate-200 text-md truncate flex-1">
+                                          {item.title}
+                                        </h5>
+                                      </div>
+                                      <div className="w-4 h-4 rounded-full flex items-center justify-center border-2 border-amber-400"></div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span
+                                        className={`w-1.5 h-1.5 rounded-full ${
+                                          categoryConfig[item.category].color
+                                        }`}></span>
+                                      <h5 className="text-slate-200 text-md truncate flex-1">
+                                        {item.title}
+                                      </h5>
+                                      {item.duration && (
+                                        <span className="text-xs text-slate-500 ml-2">
+                                          {item.duration}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="w-full h-1 bg-slate-600/20 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full transition-all duration-700 rounded-full ${
+                                          progress > 0
+                                            ? categoryConfig[
+                                                item.category
+                                              ].color.replace('bg-', 'bg-')
+                                            : 'bg-slate-600'
+                                        }`}
+                                        style={{ width: `${progress}%` }}
+                                      />
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )
+                          })}
                       </div>
                     </div>
-                  ) : (
-                    // 今日项目统计 - 简约设计
-                    <div className="flex flex-col h-full">
-                      {/* 简约标题栏 */}
-                      <div className="flex items-center justify-between mb-8">
-                        <h3 className="text-xl font-light text-slate-200">
-                          今日项目
-                        </h3>
-                        <div className="flex items-center space-x-2">
-                          <div className="text-2xl font-light text-amber-400">
-                            {getTodayProjectStats().completedProjects}
-                          </div>
-                          <div className="text-slate-500">/</div>
-                          <div className="text-lg text-slate-400">
-                            {getTodayProjectStats().totalProjects}
-                          </div>
-                        </div>
-                      </div>
+                  </div>
 
-                      {/* 已完成和未完成项目分列显示 */}
-                      <div className="flex-1 overflow-y-auto">
-                        <div className="grid grid-cols-2 gap-4 relative">
-                          {/* 渐变分隔线 */}
-                          <div className="absolute left-1/2 top-0 bottom-0 w-px transform -translate-x-1/2 bg-gradient-to-b from-transparent via-slate-500/60 to-transparent"></div>
-
-                          {/* 已完成项目 */}
-                          <div className="space-y-2 pr-2">
-                            <h4 className="text-xs text-slate-400 font-medium mb-2">
-                              已完成
-                            </h4>
-                            {timelineData
-                              .filter((item) => {
-                                const progress = getItemProgress(item)
-                                return item.category === 'habit'
-                                  ? isHabitChecked(item.id)
-                                  : progress >= 80
-                              })
-                              .map((item) => {
-                                const progress = getItemProgress(item)
-
-                                return (
-                                  <div
-                                    key={item.id}
-                                    onClick={() => {
-                                      if (item.category === 'habit') {
-                                        handleHabitCheck(item.id, false)
-                                      } else {
-                                        setSelectedTimelineItem(item)
-                                      }
-                                    }}
-                                    className="group relative bg-slate-500/30 hover:bg-slate-400/50 rounded-3xl px-4.5 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
-                                    {item.category === 'habit' ? (
-                                      <>
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-2 flex-1">
-                                            <span
-                                              className={`w-1.5 h-1.5 rounded-full ${
-                                                categoryConfig[item.category]
-                                                  .color
-                                              }`}></span>
-                                            <h5 className="text-slate-100 text-md truncate flex-1">
-                                              {item.title}
-                                            </h5>
-                                          </div>
-                                          <div className="w-5 h-5 rounded-full flex items-center justify-center bg-green-500/20 ml-2">
-                                            <svg
-                                              className="w-3 h-3 text-green-400"
-                                              fill="currentColor"
-                                              viewBox="0 0 20 20">
-                                              <path
-                                                fillRule="evenodd"
-                                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                                clipRule="evenodd"
-                                              />
-                                            </svg>
-                                          </div>
-                                        </div>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <span
-                                            className={`w-1.5 h-1.5 rounded-full ${
-                                              categoryConfig[item.category]
-                                                .color
-                                            }`}></span>
-                                          <h5 className="text-slate-100 text-md truncate flex-1">
-                                            {item.title}
-                                          </h5>
-                                          {item.duration && (
-                                            <span className="text-xs text-slate-400 ml-2">
-                                              {item.duration}
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className="w-full h-1 bg-slate-600/20 rounded-full overflow-hidden">
-                                          <div
-                                            className={`h-full transition-all duration-700 rounded-full ${
-                                              progress >= 80
-                                                ? 'bg-green-400/50'
-                                                : categoryConfig[
-                                                    item.category
-                                                  ].color.replace('bg-', 'bg-')
-                                            }`}
-                                            style={{ width: `${progress}%` }}
-                                          />
-                                        </div>
-                                      </>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                          </div>
-
-                          {/* 未完成项目 */}
-                          <div className="space-y-2 pl-2">
-                            <h4 className="text-xs text-slate-400 font-medium mb-2">
-                              未完成
-                            </h4>
-                            {timelineData
-                              .filter((item) => {
-                                const progress = getItemProgress(item)
-                                return item.category === 'habit'
-                                  ? !isHabitChecked(item.id)
-                                  : progress < 80
-                              })
-                              .map((item) => {
-                                const progress = getItemProgress(item)
-
-                                return (
-                                  <div
-                                    key={item.id}
-                                    onClick={() => {
-                                      if (item.category === 'habit') {
-                                        handleHabitCheck(item.id, true)
-                                      } else {
-                                        setSelectedTimelineItem(item)
-                                      }
-                                    }}
-                                    className="group relative bg-slate-600/70 hover:bg-slate-400/50 rounded-3xl px-4.5 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
-                                    {item.category === 'habit' ? (
-                                      <>
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-2 flex-1">
-                                            <span
-                                              className={`w-1.5 h-1.5 rounded-full ${
-                                                categoryConfig[item.category]
-                                                  .color
-                                              }`}></span>
-                                            <h5 className="text-slate-200 text-md truncate flex-1">
-                                              {item.title}
-                                            </h5>
-                                          </div>
-                                          <div className="w-4 h-4 rounded-full flex items-center justify-center border-2 border-amber-400"></div>
-                                        </div>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <span
-                                            className={`w-1.5 h-1.5 rounded-full ${
-                                              categoryConfig[item.category]
-                                                .color
-                                            }`}></span>
-                                          <h5 className="text-slate-200 text-md truncate flex-1">
-                                            {item.title}
-                                          </h5>
-                                          {item.duration && (
-                                            <span className="text-xs text-slate-500 ml-2">
-                                              {item.duration}
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className="w-full h-1 bg-slate-600/20 rounded-full overflow-hidden">
-                                          <div
-                                            className={`h-full transition-all duration-700 rounded-full ${
-                                              progress > 0
-                                                ? categoryConfig[
-                                                    item.category
-                                                  ].color.replace('bg-', 'bg-')
-                                                : 'bg-slate-600'
-                                            }`}
-                                            style={{ width: `${progress}%` }}
-                                          />
-                                        </div>
-                                      </>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 简约底部统计 */}
-                      <div className="mt-6 pt-4 border-t border-slate-700/30">
-                        <div className="flex justify-between text-xs text-slate-500">
-                          <span>
-                            习惯 {getTodayProjectStats().completedHabits}/
-                            {getTodayProjectStats().habitProjects}
-                          </span>
-                          <span>
-                            任务 {getTodayProjectStats().completedTasks}/
-                            {getTodayProjectStats().taskProjects}
-                          </span>
-                          <span>
-                            {getTodayProjectStats().completionRate}% 完成
-                          </span>
-                        </div>
-                      </div>
+                  {/* 简约底部统计 */}
+                  <div className="mt-6 pt-4 border-t border-slate-700/30">
+                    <div className="flex justify-between text-xs text-slate-500">
+                      <span>
+                        习惯 {getProjectStats().completedHabits}/
+                        {getProjectStats().habitProjects}
+                      </span>
+                      <span>
+                        任务 {getProjectStats().completedTasks}/
+                        {getProjectStats().taskProjects}
+                      </span>
+                      <span>{getProjectStats().completionRate}% 完成</span>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -1672,11 +1305,11 @@ export default function Home() {
                     key={icon}
                     type="button"
                     onClick={() => {
-                      setNewTimelineItem({ ...newTimelineItem, icon })
+                      setFormData({ icon })
                       setIsIconSelectorOpen(false)
                     }}
                     className={`text-lg p-1.5 rounded transition-all duration-200 ${
-                      newTimelineItem.icon === icon
+                      formData.icon === icon
                         ? 'bg-amber-500'
                         : 'bg-slate-700 hover:bg-slate-600'
                     }`}>

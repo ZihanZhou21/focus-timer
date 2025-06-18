@@ -323,7 +323,7 @@ export default function CalendarPage() {
     <div className="h-screen bg-slate-900 text-white flex flex-col">
       {/* 顶部导航栏 - 与主页面风格一致 */}
       <header className="flex items-center justify-between px-8 pt-6 flex-shrink-0">
-        <div className="text-xl font-bold text-slate-300">LOGO</div>
+        <div className="text-xl font-bold text-slate-300">Focus Timer</div>
 
         <nav className="bg-slate-800 rounded-2xl p-1.5">
           <div className="flex space-x-2">

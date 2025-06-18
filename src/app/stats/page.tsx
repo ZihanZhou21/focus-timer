@@ -47,7 +47,7 @@ export default function FocusPage() {
       {/* 顶部导航栏 */}
       <header className="relative z-10 flex items-center justify-between px-8 py-6 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800">
         <div className="flex items-center space-x-12">
-          <div className="text-xl font-bold text-slate-300">LOGO</div>
+          <div className="text-xl font-bold text-slate-300">Focus Timer</div>
           <nav className="flex space-x-8">
             <Link
               href="/"
