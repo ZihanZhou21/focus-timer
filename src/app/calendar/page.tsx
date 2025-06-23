@@ -156,37 +156,26 @@ export default function CalendarPage() {
     return labels
   }
 
-  // 加载数据
+  // 加载数据 - 优化为单次请求
   const loadPeriodData = async () => {
     setIsLoading(true)
     try {
       const { start, end } = getDateRange(currentDate, selectedPeriod)
-      const allProjects: ProjectItem[] = []
 
-      // 根据时间段获取数据
-      const current = new Date(start)
-      while (current <= end) {
-        const dateStr = current.toISOString().split('T')[0]
-        try {
-          const response = await fetch(
-            `/api/projects?date=${dateStr}&userId=user_001`
-          )
-          if (response.ok) {
-            const dayProjects: ProjectItem[] = await response.json()
-            allProjects.push(
-              ...dayProjects.map((p) => ({ ...p, date: dateStr }))
-            )
-          }
-        } catch (error) {
-          console.error(`Failed to load data for ${dateStr}:`, error)
-        }
+      // 格式化日期范围
+      const startDateStr = start.toISOString().split('T')[0]
+      const endDateStr = end.toISOString().split('T')[0]
 
-        if (selectedPeriod === 'year') {
-          current.setMonth(current.getMonth() + 1)
-        } else {
-          current.setDate(current.getDate() + 1)
-        }
+      // 单次请求获取整个时间段的数据
+      const response = await fetch(
+        `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=user_001`
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch projects data')
       }
+
+      const allProjects: ProjectItem[] = await response.json()
 
       // 按日期分组数据
       const groupedData = new Map<string, ProjectItem[]>()
@@ -284,6 +273,14 @@ export default function CalendarPage() {
       })
     } catch (error) {
       console.error('Failed to load period data:', error)
+      // 设置空数据以避免界面崩溃
+      setPeriodStats({
+        totalFocusTime: 0,
+        completedCycles: 0,
+        averageSessionLength: 0,
+        streakDays: 0,
+        dailyData: [],
+      })
     } finally {
       setIsLoading(false)
     }

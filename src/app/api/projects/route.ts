@@ -33,28 +33,51 @@ async function writeProjectsData(projects: ProjectItem[]): Promise<void> {
 
 // 使用共享的工具函数
 
-// GET - 获取项目列表
+// GET - 获取项目列表（支持日期范围）
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const date = searchParams.get('date')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
     const userId = searchParams.get('userId') || 'user_001'
 
     const projects = await readProjectsData()
 
-    // 根据日期和用户ID过滤
+    // 根据用户ID过滤
     let filteredProjects = projects.filter(
       (project) => project.userId === userId
     )
 
+    // 按日期过滤
     if (date) {
+      // 单日查询（保持兼容性）
       filteredProjects = filteredProjects.filter(
         (project) => project.date === date
       )
+    } else if (startDate && endDate) {
+      // 日期范围查询（新功能）
+      filteredProjects = filteredProjects.filter(
+        (project) => project.date >= startDate && project.date <= endDate
+      )
+    } else if (startDate) {
+      // 只有开始日期
+      filteredProjects = filteredProjects.filter(
+        (project) => project.date >= startDate
+      )
+    } else if (endDate) {
+      // 只有结束日期
+      filteredProjects = filteredProjects.filter(
+        (project) => project.date <= endDate
+      )
     }
 
-    // 按时间排序
-    filteredProjects.sort((a, b) => a.time.localeCompare(b.time))
+    // 按日期和时间排序
+    filteredProjects.sort((a, b) => {
+      const dateCompare = a.date.localeCompare(b.date)
+      if (dateCompare !== 0) return dateCompare
+      return a.time.localeCompare(b.time)
+    })
 
     return NextResponse.json(filteredProjects)
   } catch (error) {

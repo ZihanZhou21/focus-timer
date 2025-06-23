@@ -51,56 +51,62 @@ export default function Home() {
   const [calendarData, setCalendarData] = useState<DayRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // 生成过去7天数据 - 直接使用原始API
+  // 生成过去7天数据 - 优化为单次请求
   const generateLast7DaysData = async (): Promise<DayData[]> => {
-    const data: DayData[] = []
     const today = new Date()
+    const weekStart = new Date(today)
+    weekStart.setDate(today.getDate() - 6)
 
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today)
-      date.setDate(today.getDate() - i)
-      const dateStr = date.toISOString().split('T')[0]
+    const startDateStr = weekStart.toISOString().split('T')[0]
+    const endDateStr = today.toISOString().split('T')[0]
 
-      const month = date.getMonth() + 1
-      const day = date.getDate()
-      const dayLabel = `${month}/${day}`
+    try {
+      // 单次请求获取整周数据
+      const response = await fetch(
+        `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=user_001`
+      )
 
-      try {
-        // 直接获取ProjectItem数据
-        const response = await fetch(
-          `/api/projects?date=${dateStr}&userId=user_001`
-        )
-        if (response.ok) {
-          const dayProjects: ProjectItem[] = await response.json()
-          const focus = dataUtils.calculateFocusTime(dayProjects)
-          const cycles = dataUtils.calculateCycles(dayProjects)
+      if (response.ok) {
+        const allProjects: ProjectItem[] = await response.json()
+
+        // 按日期分组
+        const projectsByDate = new Map<string, ProjectItem[]>()
+        allProjects.forEach((project) => {
+          if (!projectsByDate.has(project.date)) {
+            projectsByDate.set(project.date, [])
+          }
+          projectsByDate.get(project.date)!.push(project)
+        })
+
+        // 生成7天数据
+        const data: DayData[] = []
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(today)
+          date.setDate(today.getDate() - i)
+          const dateStr = date.toISOString().split('T')[0]
+          const dayProjects = projectsByDate.get(dateStr) || []
+
+          const month = date.getMonth() + 1
+          const day = date.getDate()
+          const dayLabel = `${month}/${day}`
 
           data.push({
             day: dayLabel,
-            focus,
-            cycles,
-          })
-        } else {
-          data.push({
-            day: dayLabel,
-            focus: 0,
-            cycles: 0,
+            focus: dataUtils.calculateFocusTime(dayProjects),
+            cycles: dataUtils.calculateCycles(dayProjects),
           })
         }
-      } catch (error) {
-        console.error(`Failed to load data for ${dateStr}:`, error)
-        data.push({
-          day: dayLabel,
-          focus: 0,
-          cycles: 0,
-        })
+
+        return data
       }
+    } catch (error) {
+      console.error('Failed to load weekly data:', error)
     }
 
-    return data
+    return []
   }
 
-  // 更新日历数据 - 直接使用ProjectItem
+  // 更新日历数据 - 优化为单次请求
   const generateCalendarData = async (
     year: number,
     month: number
@@ -115,49 +121,62 @@ export default function Home() {
     const endDate = new Date(lastDay)
     endDate.setDate(endDate.getDate() + (6 - lastDay.getDay()))
 
-    const days: DayRecord[] = []
-    const currentIterDate = new Date(startDate)
+    const startDateStr = startDate.toISOString().split('T')[0]
+    const endDateStr = endDate.toISOString().split('T')[0]
 
-    while (currentIterDate <= endDate) {
-      const isCurrentMonth = currentIterDate.getMonth() === month
-      const isToday = currentIterDate.toDateString() === today.toDateString()
-      const dateStr = currentIterDate.toISOString().split('T')[0]
+    try {
+      // 单次请求获取整月数据
+      const response = await fetch(
+        `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=user_001`
+      )
 
-      let focusTime = 0
-      let hasRecord = false
-      let cycles = 0
+      if (response.ok) {
+        const allProjects: ProjectItem[] = await response.json()
 
-      if (isCurrentMonth) {
-        try {
-          // 直接获取ProjectItem数据
-          const response = await fetch(
-            `/api/projects?date=${dateStr}&userId=user_001`
-          )
-          if (response.ok) {
-            const dayProjects: ProjectItem[] = await response.json()
-            focusTime = dataUtils.calculateFocusTime(dayProjects)
-            cycles = dataUtils.calculateCycles(dayProjects)
-            hasRecord = dayProjects.some(
-              (p) => p.completed && p.durationMinutes > 0
-            )
+        // 按日期分组
+        const projectsByDate = new Map<string, ProjectItem[]>()
+        allProjects.forEach((project) => {
+          if (!projectsByDate.has(project.date)) {
+            projectsByDate.set(project.date, [])
           }
-        } catch (error) {
-          console.error(`Failed to load data for ${dateStr}:`, error)
+          projectsByDate.get(project.date)!.push(project)
+        })
+
+        // 生成日历数据
+        const days: DayRecord[] = []
+        const currentIterDate = new Date(startDate)
+
+        while (currentIterDate <= endDate) {
+          const isCurrentMonth = currentIterDate.getMonth() === month
+          const isToday =
+            currentIterDate.toDateString() === today.toDateString()
+          const dateStr = currentIterDate.toISOString().split('T')[0]
+
+          const dayProjects = projectsByDate.get(dateStr) || []
+          const focusTime = dataUtils.calculateFocusTime(dayProjects)
+          const cycles = dataUtils.calculateCycles(dayProjects)
+          const hasRecord = dayProjects.some(
+            (p) => p.completed && p.durationMinutes > 0
+          )
+
+          days.push({
+            date: currentIterDate.getDate(),
+            focusTime,
+            cycles,
+            isToday,
+            hasRecord: isCurrentMonth && hasRecord,
+          })
+
+          currentIterDate.setDate(currentIterDate.getDate() + 1)
         }
+
+        return days
       }
-
-      days.push({
-        date: currentIterDate.getDate(),
-        focusTime,
-        cycles,
-        isToday,
-        hasRecord: isCurrentMonth && hasRecord,
-      })
-
-      currentIterDate.setDate(currentIterDate.getDate() + 1)
+    } catch (error) {
+      console.error('Failed to load calendar data:', error)
     }
 
-    return days
+    return []
   }
 
   // 初始化数据
