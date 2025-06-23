@@ -1,34 +1,21 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
-
-// 项目类型配置
-const categoryConfig = {
-  habit: {
-    name: '习惯',
-    color: 'bg-gray-400',
-    description: '日常习惯打卡',
-  },
-  task: {
-    name: '任务',
-    color: 'bg-blue-400',
-    description: '工作任务',
-  },
-  focus: {
-    name: '专注',
-    color: 'bg-amber-400',
-    description: '深度专注',
-  },
-  exercise: {
-    name: '运动',
-    color: 'bg-green-400',
-    description: '运动健身',
-  },
-}
-
-type ProjectCategory = 'habit' | 'task' | 'focus' | 'exercise'
-type TimePeriod = 'week' | 'month' | 'year'
+import {
+  categoryConfig,
+  DEFAULT_USER_ID,
+  ProjectCategory,
+  TimePeriod,
+} from '@/lib/constants'
+import {
+  formatTimeInHours,
+  generateDateLabels,
+  getDateRange,
+  groupProjectsByDate,
+} from '@/lib/utils'
+import { dataUtils } from '@/lib/api'
+import AppNavigation from '@/components/AppNavigation'
+import StatsCard from '@/components/StatsCard'
 
 interface ProjectItem {
   id: string
@@ -79,83 +66,6 @@ export default function CalendarPage() {
   })
   const [isLoading, setIsLoading] = useState(true)
 
-  // 格式化时间显示 - 统一使用小时格式
-  const formatTime = (minutes: number) => {
-    if (minutes === 0) return '0h'
-    const hours = minutes / 60
-    return `${hours.toFixed(1)}h`
-  }
-
-  // 计算专注时间（按项目类型加权）
-  const calculateFocusTime = (projects: ProjectItem[]) => {
-    return projects.reduce((total, project) => {
-      if (!project.completed) return total
-
-      const weight = {
-        focus: 1.0,
-        task: 1.0,
-        exercise: 0.7,
-        habit: 0.5,
-      }[project.category]
-
-      return total + project.durationMinutes * weight
-    }, 0)
-  }
-
-  // 计算循环次数
-  const calculateCycles = (projects: ProjectItem[]) => {
-    return projects.filter((p) => p.completed && p.durationMinutes >= 25).length
-  }
-
-  // 获取日期范围
-  const getDateRange = (date: Date, period: TimePeriod) => {
-    const start = new Date(date)
-    const end = new Date(date)
-
-    switch (period) {
-      case 'week':
-        const dayOfWeek = start.getDay()
-        start.setDate(start.getDate() - dayOfWeek)
-        end.setDate(start.getDate() + 6)
-        break
-      case 'month':
-        start.setDate(1)
-        end.setMonth(end.getMonth() + 1, 0)
-        break
-      case 'year':
-        start.setMonth(0, 1)
-        end.setMonth(11, 31)
-        break
-    }
-
-    return { start, end }
-  }
-
-  // 生成日期标签
-  const generateDateLabels = (start: Date, end: Date, period: TimePeriod) => {
-    const labels = []
-    const current = new Date(start)
-
-    while (current <= end) {
-      switch (period) {
-        case 'week':
-          labels.push(`${current.getMonth() + 1}/${current.getDate()}`)
-          current.setDate(current.getDate() + 1)
-          break
-        case 'month':
-          labels.push(`${current.getDate()}`)
-          current.setDate(current.getDate() + 1)
-          break
-        case 'year':
-          labels.push(`${current.getMonth() + 1}月`)
-          current.setMonth(current.getMonth() + 1)
-          break
-      }
-    }
-
-    return labels
-  }
-
   // 加载数据 - 优化为单次请求
   const loadPeriodData = useCallback(async () => {
     setIsLoading(true)
@@ -168,7 +78,7 @@ export default function CalendarPage() {
 
       // 单次请求获取整个时间段的数据
       const response = await fetch(
-        `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=user_001`
+        `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=${DEFAULT_USER_ID}`
       )
 
       if (!response.ok) {
@@ -178,18 +88,23 @@ export default function CalendarPage() {
       const allProjects: ProjectItem[] = await response.json()
 
       // 按日期分组数据
-      const groupedData = new Map<string, ProjectItem[]>()
-      allProjects.forEach((project) => {
-        const key =
-          selectedPeriod === 'year'
-            ? project.date.substring(0, 7) // YYYY-MM
-            : project.date
+      const groupedData = groupProjectsByDate(allProjects)
 
-        if (!groupedData.has(key)) {
-          groupedData.set(key, [])
-        }
-        groupedData.get(key)!.push(project)
-      })
+      // 处理年视图的特殊分组（按月）
+      if (selectedPeriod === 'year') {
+        const monthlyGrouped = new Map<string, ProjectItem[]>()
+        allProjects.forEach((project) => {
+          const monthKey = project.date.substring(0, 7) // YYYY-MM
+          if (!monthlyGrouped.has(monthKey)) {
+            monthlyGrouped.set(monthKey, [])
+          }
+          monthlyGrouped.get(monthKey)!.push(project)
+        })
+        groupedData.clear()
+        monthlyGrouped.forEach((projects, key) => {
+          groupedData.set(key, projects)
+        })
+      }
 
       // 生成每日数据
       const dailyData: DayData[] = []
@@ -213,20 +128,20 @@ export default function CalendarPage() {
         }
 
         const dayProjects = groupedData.get(dateKey) || []
-        const totalFocusTime = calculateFocusTime(dayProjects)
-        const completedCycles = calculateCycles(dayProjects)
+        const totalFocusTime = dataUtils.calculateFocusTime(dayProjects)
+        const completedCycles = dataUtils.calculateCycles(dayProjects)
 
         const categoryBreakdown = {
-          habit: calculateFocusTime(
+          habit: dataUtils.calculateFocusTime(
             dayProjects.filter((p) => p.category === 'habit')
           ),
-          task: calculateFocusTime(
+          task: dataUtils.calculateFocusTime(
             dayProjects.filter((p) => p.category === 'task')
           ),
-          focus: calculateFocusTime(
+          focus: dataUtils.calculateFocusTime(
             dayProjects.filter((p) => p.category === 'focus')
           ),
-          exercise: calculateFocusTime(
+          exercise: dataUtils.calculateFocusTime(
             dayProjects.filter((p) => p.category === 'exercise')
           ),
         }
@@ -348,25 +263,7 @@ export default function CalendarPage() {
           <div className="text-xl font-bold text-slate-300">Focus Timer</div>
         </div>
 
-        <nav className="bg-slate-800 rounded-2xl p-1.5">
-          <div className="flex space-x-2">
-            <Link
-              href="/"
-              className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
-              Dashboard
-            </Link>
-            <Link
-              href="/focus"
-              className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
-              Focus
-            </Link>
-            <Link
-              href="/calendar"
-              className="px-6 py-2.5 rounded-xl text-white bg-slate-700 transition-colors text-base font-medium">
-              History
-            </Link>
-          </div>
-        </nav>
+        <AppNavigation />
 
         <div className="flex items-center space-x-4">
           <button className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors">
@@ -441,49 +338,26 @@ export default function CalendarPage() {
 
           {/* 统计卡片 */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700/50">
-              <div className="text-center">
-                <div className="text-3xl font-light text-amber-400 mb-2">
-                  {formatTime(periodStats.totalFocusTime)}
-                </div>
-                <div className="text-sm text-slate-400 font-light">
-                  总专注时间
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700/50">
-              <div className="text-center">
-                <div className="text-3xl font-light text-emerald-400 mb-2">
-                  {periodStats.completedCycles}
-                </div>
-                <div className="text-sm text-slate-400 font-light">
-                  完成循环
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700/50">
-              <div className="text-center">
-                <div className="text-3xl font-light text-blue-400 mb-2">
-                  {formatTime(periodStats.averageSessionLength)}
-                </div>
-                <div className="text-sm text-slate-400 font-light">
-                  平均时长
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700/50">
-              <div className="text-center">
-                <div className="text-3xl font-light text-purple-400 mb-2">
-                  {periodStats.streakDays}
-                </div>
-                <div className="text-sm text-slate-400 font-light">
-                  连续天数
-                </div>
-              </div>
-            </div>
+            <StatsCard
+              title="总专注时间"
+              value={formatTimeInHours(periodStats.totalFocusTime)}
+              color="amber"
+            />
+            <StatsCard
+              title="完成循环"
+              value={periodStats.completedCycles}
+              color="emerald"
+            />
+            <StatsCard
+              title="平均时长"
+              value={formatTimeInHours(periodStats.averageSessionLength)}
+              color="blue"
+            />
+            <StatsCard
+              title="连续天数"
+              value={periodStats.streakDays}
+              color="purple"
+            />
           </div>
 
           {/* 专注趋势图 */}
@@ -493,7 +367,8 @@ export default function CalendarPage() {
               <div className="flex items-center space-x-6">
                 {Object.entries(categoryConfig).map(([key, config]) => (
                   <div key={key} className="flex items-center space-x-2">
-                    <div className={`w-3 h-3 rounded ${config.color}`}></div>
+                    <div
+                      className={`w-3 h-3 rounded ${config.lightColor}`}></div>
                     <span className="text-sm text-slate-400">
                       {config.name}
                     </span>
@@ -570,7 +445,7 @@ export default function CalendarPage() {
                       }}>
                       {/* 悬停时显示总时间 */}
                       <div className="mb-2 text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                        {formatTime(data.totalFocusTime)}
+                        {formatTimeInHours(data.totalFocusTime)}
                       </div>
 
                       {/* 堆叠柱状图 */}
@@ -604,9 +479,9 @@ export default function CalendarPage() {
                                 style={{
                                   height: `${Math.max(segment.height, 2)}%`,
                                 }}
-                                title={`${names[segment.type]}: ${formatTime(
-                                  segment.value
-                                )}`}
+                                title={`${
+                                  names[segment.type]
+                                }: ${formatTimeInHours(segment.value)}`}
                               />
                             )
                           })

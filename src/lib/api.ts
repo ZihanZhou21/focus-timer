@@ -1,4 +1,5 @@
 // API服务层 - 提供前端调用后端API的方法
+import { FOCUS_TIME_WEIGHTS, MIN_CYCLE_DURATION } from './constants'
 
 // API相关类型定义
 export interface ProjectItem {
@@ -58,13 +59,7 @@ export const dataUtils = {
     return projects.reduce((total, project) => {
       if (!project.completed) return total
 
-      const weight = {
-        focus: 1.0,
-        task: 1.0,
-        exercise: 0.7,
-        habit: 0.5,
-      }[project.category]
-
+      const weight = FOCUS_TIME_WEIGHTS[project.category]
       return total + project.durationMinutes * weight
     }, 0)
   },
@@ -72,7 +67,8 @@ export const dataUtils = {
   // 计算完成周期数（已完成且≥25分钟）
   calculateCycles(projects: ProjectItem[]): number {
     return projects.filter(
-      (project) => project.completed && project.durationMinutes >= 25
+      (project) =>
+        project.completed && project.durationMinutes >= MIN_CYCLE_DURATION
     ).length
   },
 

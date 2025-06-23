@@ -2,31 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { dataUtils, ProjectItem, formatDuration } from '@/lib/api'
-
-// 项目类型配置
-const categoryConfig = {
-  habit: {
-    name: '习惯',
-    color: 'bg-gray-500',
-    description: '日常习惯打卡',
-  },
-  task: {
-    name: '任务',
-    color: 'bg-blue-500',
-    description: '工作任务',
-  },
-  focus: {
-    name: '专注',
-    color: 'bg-amber-500',
-    description: '深度专注',
-  },
-  exercise: {
-    name: '运动',
-    color: 'bg-green-500',
-    description: '运动健身',
-  },
-}
+import { dataUtils, ProjectItem } from '@/lib/api'
+import { categoryConfig, DEFAULT_USER_ID } from '@/lib/constants'
+import {
+  formatTimeInHours,
+  formatDuration,
+  getIntensityColor,
+  groupProjectsByDate,
+} from '@/lib/utils'
+import AppNavigation from '@/components/AppNavigation'
 
 interface DayData {
   day: string
@@ -63,20 +47,14 @@ export default function Home() {
     try {
       // 单次请求获取整周数据
       const response = await fetch(
-        `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=user_001`
+        `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=${DEFAULT_USER_ID}`
       )
 
       if (response.ok) {
         const allProjects: ProjectItem[] = await response.json()
 
         // 按日期分组
-        const projectsByDate = new Map<string, ProjectItem[]>()
-        allProjects.forEach((project) => {
-          if (!projectsByDate.has(project.date)) {
-            projectsByDate.set(project.date, [])
-          }
-          projectsByDate.get(project.date)!.push(project)
-        })
+        const projectsByDate = groupProjectsByDate(allProjects)
 
         // 生成7天数据
         const data: DayData[] = []
@@ -127,20 +105,14 @@ export default function Home() {
     try {
       // 单次请求获取整月数据
       const response = await fetch(
-        `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=user_001`
+        `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=${DEFAULT_USER_ID}`
       )
 
       if (response.ok) {
         const allProjects: ProjectItem[] = await response.json()
 
         // 按日期分组
-        const projectsByDate = new Map<string, ProjectItem[]>()
-        allProjects.forEach((project) => {
-          if (!projectsByDate.has(project.date)) {
-            projectsByDate.set(project.date, [])
-          }
-          projectsByDate.get(project.date)!.push(project)
-        })
+        const projectsByDate = groupProjectsByDate(allProjects)
 
         // 生成日历数据
         const days: DayRecord[] = []
@@ -187,7 +159,7 @@ export default function Home() {
 
         // 并行加载所有初始数据
         const [projectsResponse, weekData, calData] = await Promise.all([
-          fetch(`/api/projects?date=${today}&userId=user_001`),
+          fetch(`/api/projects?date=${today}&userId=${DEFAULT_USER_ID}`),
           generateLast7DaysData(),
           generateCalendarData(new Date().getFullYear(), new Date().getMonth()),
         ])
@@ -226,21 +198,6 @@ export default function Home() {
       updateCalendarData()
     }
   }, [currentDate, isLoading])
-
-  // 辅助函数 - 统一使用小时格式
-  const formatTime = (minutes: number) => {
-    if (minutes === 0) return '0h'
-    const hours = minutes / 60
-    return `${hours.toFixed(1)}h`
-  }
-
-  const getIntensityColor = (focusTime: number) => {
-    if (focusTime === 0) return 'bg-slate-700'
-    if (focusTime < 90) return 'bg-amber-900/30'
-    if (focusTime < 180) return 'bg-amber-800/50'
-    if (focusTime < 270) return 'bg-amber-700/70'
-    return 'bg-amber-600'
-  }
 
   const maxFocus =
     weeklyData.length > 0
@@ -309,25 +266,7 @@ export default function Home() {
           <div className="text-xl font-bold text-slate-300">Focus Timer</div>
         </div>
 
-        <nav className="bg-slate-800 rounded-2xl p-1.5">
-          <div className="flex space-x-2">
-            <Link
-              href="/"
-              className="px-6 py-2.5 rounded-xl text-white bg-slate-700 transition-colors text-base font-medium">
-              Dashboard
-            </Link>
-            <Link
-              href="/focus"
-              className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
-              Focus
-            </Link>
-            <Link
-              href="/calendar"
-              className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
-              History
-            </Link>
-          </div>
-        </nav>
+        <AppNavigation />
 
         <div className="flex items-center space-x-4">
           <button className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors">
@@ -356,7 +295,7 @@ export default function Home() {
                           : 'opacity-0'
                       } ${isToday ? 'text-amber-400' : 'text-slate-300'}`}>
                       {data && (data.focus > 0 || isToday)
-                        ? formatTime(data.focus)
+                        ? formatTimeInHours(data.focus)
                         : ''}
                     </div>
 
@@ -460,7 +399,9 @@ export default function Home() {
                     } ${getIntensityColor(day.focusTime)}`}
                     title={
                       day.hasRecord
-                        ? `${formatTime(day.focusTime)}, ${day.cycles}循环`
+                        ? `${formatTimeInHours(day.focusTime)}, ${
+                            day.cycles
+                          }循环`
                         : '无专注记录'
                     }>
                     <span
