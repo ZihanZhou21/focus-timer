@@ -34,11 +34,12 @@ async function writeProjectsData(projects: ProjectItem[]): Promise<void> {
 // GET - 获取单个项目
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const projects = await readProjectsData()
-    const project = projects.find((p) => p.id === params.id)
+    const project = projects.find((p) => p.id === id)
 
     if (!project) {
       return NextResponse.json({ error: '项目不存在' }, { status: 404 })
@@ -54,13 +55,14 @@ export async function GET(
 // PUT - 更新单个项目
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const updateData = await request.json()
     const projects = await readProjectsData()
 
-    const index = projects.findIndex((p) => p.id === params.id)
+    const index = projects.findIndex((p) => p.id === id)
     if (index === -1) {
       return NextResponse.json({ error: '项目不存在' }, { status: 404 })
     }
@@ -79,12 +81,13 @@ export async function PUT(
 // DELETE - 删除单个项目
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const projects = await readProjectsData()
 
-    const index = projects.findIndex((p) => p.id === params.id)
+    const index = projects.findIndex((p) => p.id === id)
     if (index === -1) {
       return NextResponse.json({ error: '项目不存在' }, { status: 404 })
     }
