@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 
 // 项目类型配置
@@ -157,7 +157,7 @@ export default function CalendarPage() {
   }
 
   // 加载数据 - 优化为单次请求
-  const loadPeriodData = async () => {
+  const loadPeriodData = useCallback(async () => {
     setIsLoading(true)
     try {
       const { start, end } = getDateRange(currentDate, selectedPeriod)
@@ -284,12 +284,12 @@ export default function CalendarPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedPeriod, currentDate])
 
   // 监听时间段和日期变化
   useEffect(() => {
     loadPeriodData()
-  }, [selectedPeriod, currentDate])
+  }, [loadPeriodData])
 
   // 导航函数
   const navigatePeriod = (direction: 'prev' | 'next') => {
