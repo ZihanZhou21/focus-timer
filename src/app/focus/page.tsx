@@ -8,6 +8,7 @@ import React, {
   useRef,
 } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { apiService } from '@/lib/api'
 
 // 现代化计时器组件
 function ModernTimer({
@@ -44,13 +45,49 @@ function ModernTimer({
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           setIsRunning(false)
+
+          // 保存专注记录到后端
+          const today = new Date().toISOString().split('T')[0]
+          const now = new Date()
+          const startTime = new Date(Date.now() - initialTime * 60 * 1000)
+
+          // 创建专注项目记录
+          const focusProject = {
+            userId: 'user_001',
+            date: today,
+            time: `${startTime
+              .getHours()
+              .toString()
+              .padStart(2, '0')}:${startTime
+              .getMinutes()
+              .toString()
+              .padStart(2, '0')}`,
+            title: `专注时间 ${initialTime}分钟`,
+            durationMinutes: initialTime,
+            icon: '🎯',
+            iconColor: 'bg-amber-500',
+            category: 'focus' as const,
+            completed: true,
+            details: [
+              '番茄钟专注法',
+              `完成时间: ${now.getHours().toString().padStart(2, '0')}:${now
+                .getMinutes()
+                .toString()
+                .padStart(2, '0')}`,
+            ],
+          }
+
+          apiService.saveProject(focusProject).catch((error: unknown) => {
+            console.error('Failed to save focus session:', error)
+          })
+
           onComplete?.()
           return 0
         }
         return prev - 1
       })
     }, 1000)
-  }, [onComplete])
+  }, [onComplete, initialTime])
 
   // 暂停计时器
   const pauseTimer = useCallback(() => {
@@ -262,6 +299,45 @@ function FocusContent() {
   const handleTimerComplete = () => {
     // 可以添加完成音效或通知
     console.log('专注时段完成')
+
+    // 保存专注记录到后端
+    if (taskInfo) {
+      const today = new Date().toISOString().split('T')[0]
+      const duration = taskInfo.duration
+        ? parseDurationToMinutes(taskInfo.duration)
+        : 25
+
+      // 创建专注项目记录
+      const now = new Date()
+      const startTime = new Date(Date.now() - duration * 60 * 1000)
+
+      const focusProject = {
+        userId: 'user_001',
+        date: today,
+        time: `${startTime.getHours().toString().padStart(2, '0')}:${startTime
+          .getMinutes()
+          .toString()
+          .padStart(2, '0')}`,
+        title: taskInfo.title || `专注时间 ${duration}分钟`,
+        durationMinutes: duration,
+        icon: taskInfo.icon || '🎯',
+        iconColor: 'bg-amber-500',
+        category: 'focus' as const,
+        completed: true,
+        details: [
+          '番茄钟专注法',
+          `完成时间: ${now.getHours().toString().padStart(2, '0')}:${now
+            .getMinutes()
+            .toString()
+            .padStart(2, '0')}`,
+          ...(taskInfo.details || []),
+        ],
+      }
+
+      apiService.saveProject(focusProject).catch((error: unknown) => {
+        console.error('Failed to save focus session:', error)
+      })
+    }
   }
 
   return (

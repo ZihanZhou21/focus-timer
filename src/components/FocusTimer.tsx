@@ -7,6 +7,7 @@ import {
   DigitalWatchFace,
   WatchFaceType,
 } from '@/components/watchfaces'
+import { apiService } from '@/lib/api'
 
 interface FocusTimerProps {
   showSettings?: boolean
@@ -117,36 +118,6 @@ export default function FocusTimer({
     return Math.floor(Math.random() * (5 * 60 - 3 * 60 + 1) + 3 * 60)
   }
 
-  // 播放提示音
-  const playAlert = () => {
-    try {
-      // 尝试使用浏览器内置API播放提示音
-      if ('Audio' in window) {
-        new Audio('/alert.mp3').play().catch(() => {
-          console.log('尝试使用其他方式播放提示音')
-          // 如果播放失败，尝试使用浏览器通知
-          if (
-            'Notification' in window &&
-            Notification.permission === 'granted'
-          ) {
-            new Notification('专注提醒', { body: '请保持专注' })
-          } else {
-            console.log('提示音播放')
-          }
-        })
-      } else if (
-        'Notification' in window &&
-        Notification.permission === 'granted'
-      ) {
-        new Notification('专注提醒', { body: '请保持专注' })
-      } else {
-        console.log('提示音播放')
-      }
-    } catch (error) {
-      console.error('提示音播放失败:', error)
-    }
-  }
-
   // 开始/暂停计时器
   const toggleTimer = () => {
     setIsRunning((prev) => {
@@ -173,6 +144,36 @@ export default function FocusTimer({
 
   // 计时器效果
   useEffect(() => {
+    // 播放提示音函数
+    const playAlert = () => {
+      try {
+        // 尝试使用浏览器内置API播放提示音
+        if ('Audio' in window) {
+          new Audio('/alert.mp3').play().catch(() => {
+            console.log('尝试使用其他方式播放提示音')
+            // 如果播放失败，尝试使用浏览器通知
+            if (
+              'Notification' in window &&
+              Notification.permission === 'granted'
+            ) {
+              new Notification('专注提醒', { body: '请保持专注' })
+            } else {
+              console.log('提示音播放')
+            }
+          })
+        } else if (
+          'Notification' in window &&
+          Notification.permission === 'granted'
+        ) {
+          new Notification('专注提醒', { body: '请保持专注' })
+        } else {
+          console.log('提示音播放')
+        }
+      } catch (error) {
+        console.error('提示音播放失败:', error)
+      }
+    }
+
     if (isRunning) {
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
@@ -183,6 +184,20 @@ export default function FocusTimer({
 
             // 切换模式
             if (mode === 'focus') {
+              // 保存专注记录到后端
+              const today = new Date().toISOString().split('T')[0]
+              apiService
+                .saveFocusSession({
+                  date: today,
+                  startTime: Date.now() - initialFocusTime * 60 * 1000,
+                  duration: initialFocusTime,
+                  targetDuration: initialFocusTime,
+                  completed: true,
+                })
+                .catch((error) => {
+                  console.error('Failed to save focus session:', error)
+                })
+
               setMode('break')
               nextAlertTimeRef.current = null // 休息模式清空提示时间
               return initialBreakTime * 60 // 切换到休息模式，initialBreakTime分钟
@@ -221,16 +236,20 @@ export default function FocusTimer({
           return prev - 1
         })
       }, 1000)
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current)
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
     }
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current)
+        timerRef.current = null
       }
     }
-  }, [isRunning, mode, initialBreakTime])
+  }, [isRunning, mode, initialFocusTime, initialBreakTime])
 
   // 格式化时间为 MM:SS
   const formatTime = (seconds: number): string => {
