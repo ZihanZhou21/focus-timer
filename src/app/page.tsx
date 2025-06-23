@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { apiService } from '@/lib/api'
+import { dataUtils, ProjectItem, formatDuration } from '@/lib/api'
 
 // 项目类型配置
 const categoryConfig = {
@@ -28,20 +28,6 @@ const categoryConfig = {
   },
 }
 
-type ProjectCategory = 'habit' | 'task' | 'focus' | 'exercise'
-
-interface TimelineItem {
-  id: string
-  time: string
-  title: string
-  duration?: string
-  details?: string[]
-  icon: string
-  iconColor: string
-  completed: boolean
-  category: ProjectCategory
-}
-
 interface DayData {
   day: string
   focus: number
@@ -57,141 +43,64 @@ interface DayRecord {
 }
 
 export default function Home() {
-  // 本地状态管理
-  const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([])
-  const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null)
+  // 本地状态管理 - 统一使用ProjectItem
+  const [timelineItems, setTimelineItems] = useState<ProjectItem[]>([])
+  const [selectedItem, setSelectedItem] = useState<ProjectItem | null>(null)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [weeklyData, setWeeklyData] = useState<DayData[]>([])
   const [calendarData, setCalendarData] = useState<DayRecord[]>([])
-  const [isMounted, setIsMounted] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // 初始化数据
-  useEffect(() => {
-    const initializeApp = async () => {
-      if (typeof window !== 'undefined') {
-        try {
-          // 获取今天的项目数据
-          const today = new Date().toISOString().split('T')[0]
-          const projects = await apiService.getProjects(today)
-          setTimelineItems(projects)
+  // 生成过去7天数据 - 直接使用原始API
+  const generateLast7DaysData = async (): Promise<DayData[]> => {
+    const data: DayData[] = []
+    const today = new Date()
 
-          // 初始化日历数据
-          const initialCalendarData = await generateCalendarData(
-            new Date().getFullYear(),
-            new Date().getMonth()
-          )
-          setCalendarData(initialCalendarData)
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(today.getDate() - i)
+      const dateStr = date.toISOString().split('T')[0]
 
-          setIsMounted(true)
-        } catch (error) {
-          console.error('Failed to load data:', error)
-        }
-      }
-    }
+      const month = date.getMonth() + 1
+      const day = date.getDate()
+      const dayLabel = `${month}/${day}`
 
-    initializeApp()
-  }, [])
-
-  // 计算专注时间（按项目类型加权）- 与calendar页面保持一致
-  const calculateFocusTime = (projects: TimelineItem[]) => {
-    return projects.reduce((total, project) => {
-      if (!project.completed) return total
-
-      const weight = {
-        focus: 1.0,
-        task: 1.0,
-        exercise: 0.7,
-        habit: 0.5,
-      }[project.category]
-
-      // 从duration字符串中提取分钟数
-      const durationMinutes = parseDurationToMinutes(project.duration || '0')
-      return total + durationMinutes * weight
-    }, 0)
-  }
-
-  // 计算循环次数 - 与calendar页面保持一致
-  const calculateCycles = (projects: TimelineItem[]) => {
-    return projects.filter((p) => {
-      const durationMinutes = parseDurationToMinutes(p.duration || '0')
-      return p.completed && durationMinutes >= 25
-    }).length
-  }
-
-  // 解析时长字符串为分钟数
-  const parseDurationToMinutes = (duration: string): number => {
-    if (!duration) return 0
-
-    // 匹配 "1h30m", "30m", "1h" 等格式
-    const hourMatch = duration.match(/(\d+)h/)
-    const minuteMatch = duration.match(/(\d+)m/)
-
-    const hours = hourMatch ? parseInt(hourMatch[1]) : 0
-    const minutes = minuteMatch ? parseInt(minuteMatch[1]) : 0
-
-    return hours * 60 + minutes
-  }
-
-  // 更新周数据 - 使用项目数据计算
-  useEffect(() => {
-    if (isMounted) {
-      const generateLast7DaysData = async () => {
-        const data: DayData[] = []
-        const today = new Date()
-
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date(today)
-          date.setDate(today.getDate() - i)
-          const dateStr = date.toISOString().split('T')[0]
-
-          const month = date.getMonth() + 1
-          const day = date.getDate()
-          const dayLabel = `${month}/${day}`
-
-          try {
-            // 获取当天的项目数据
-            const dayProjects = await apiService.getProjects(dateStr)
-
-            const focus = calculateFocusTime(dayProjects)
-            const cycles = calculateCycles(dayProjects)
-
-            data.push({
-              day: dayLabel,
-              focus,
-              cycles,
-            })
-          } catch (error) {
-            console.error(`Failed to load data for ${dateStr}:`, error)
-            data.push({
-              day: dayLabel,
-              focus: 0,
-              cycles: 0,
-            })
-          }
-        }
-
-        setWeeklyData(data)
-      }
-
-      generateLast7DaysData()
-    }
-  }, [isMounted])
-
-  // 当月份改变时更新日历数据
-  useEffect(() => {
-    if (isMounted) {
-      const updateCalendarData = async () => {
-        const newCalendarData = await generateCalendarData(
-          currentDate.getFullYear(),
-          currentDate.getMonth()
+      try {
+        // 直接获取ProjectItem数据
+        const response = await fetch(
+          `/api/projects?date=${dateStr}&userId=user_001`
         )
-        setCalendarData(newCalendarData)
-      }
-      updateCalendarData()
-    }
-  }, [currentDate, isMounted])
+        if (response.ok) {
+          const dayProjects: ProjectItem[] = await response.json()
+          const focus = dataUtils.calculateFocusTime(dayProjects)
+          const cycles = dataUtils.calculateCycles(dayProjects)
 
-  // 更新日历数据 - 使用项目数据计算
+          data.push({
+            day: dayLabel,
+            focus,
+            cycles,
+          })
+        } else {
+          data.push({
+            day: dayLabel,
+            focus: 0,
+            cycles: 0,
+          })
+        }
+      } catch (error) {
+        console.error(`Failed to load data for ${dateStr}:`, error)
+        data.push({
+          day: dayLabel,
+          focus: 0,
+          cycles: 0,
+        })
+      }
+    }
+
+    return data
+  }
+
+  // 更新日历数据 - 直接使用ProjectItem
   const generateCalendarData = async (
     year: number,
     month: number
@@ -220,14 +129,18 @@ export default function Home() {
 
       if (isCurrentMonth) {
         try {
-          // 获取当天的项目数据
-          const dayProjects = await apiService.getProjects(dateStr)
-
-          focusTime = calculateFocusTime(dayProjects)
-          cycles = calculateCycles(dayProjects)
-          hasRecord = dayProjects.some(
-            (p) => p.completed && parseDurationToMinutes(p.duration || '0') > 0
+          // 直接获取ProjectItem数据
+          const response = await fetch(
+            `/api/projects?date=${dateStr}&userId=user_001`
           )
+          if (response.ok) {
+            const dayProjects: ProjectItem[] = await response.json()
+            focusTime = dataUtils.calculateFocusTime(dayProjects)
+            cycles = dataUtils.calculateCycles(dayProjects)
+            hasRecord = dayProjects.some(
+              (p) => p.completed && p.durationMinutes > 0
+            )
+          }
         } catch (error) {
           console.error(`Failed to load data for ${dateStr}:`, error)
         }
@@ -246,6 +159,54 @@ export default function Home() {
 
     return days
   }
+
+  // 初始化数据
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0]
+
+        // 并行加载所有初始数据
+        const [projectsResponse, weekData, calData] = await Promise.all([
+          fetch(`/api/projects?date=${today}&userId=user_001`),
+          generateLast7DaysData(),
+          generateCalendarData(new Date().getFullYear(), new Date().getMonth()),
+        ])
+
+        if (projectsResponse.ok) {
+          const projects: ProjectItem[] = await projectsResponse.json()
+          setTimelineItems(projects)
+        }
+
+        setWeeklyData(weekData)
+        setCalendarData(calData)
+      } catch (error) {
+        console.error('Failed to initialize app:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    initializeApp()
+  }, [])
+
+  // 当月份改变时更新日历数据
+  useEffect(() => {
+    if (!isLoading) {
+      const updateCalendarData = async () => {
+        try {
+          const newCalendarData = await generateCalendarData(
+            currentDate.getFullYear(),
+            currentDate.getMonth()
+          )
+          setCalendarData(newCalendarData)
+        } catch (error) {
+          console.error('Failed to update calendar data:', error)
+        }
+      }
+      updateCalendarData()
+    }
+  }, [currentDate, isLoading])
 
   // 辅助函数 - 统一使用小时格式
   const formatTime = (minutes: number) => {
@@ -313,8 +274,12 @@ export default function Home() {
     '十二月',
   ]
 
-  if (!isMounted) {
-    return null
+  if (isLoading) {
+    return (
+      <div className="h-screen bg-slate-900 text-white flex items-center justify-center">
+        <div className="text-slate-400">加载中...</div>
+      </div>
+    )
   }
 
   return (
@@ -565,9 +530,9 @@ export default function Home() {
                                 )}
                               </h3>
                             </div>
-                            {item.duration && (
+                            {item.durationMinutes > 0 && (
                               <span className="text-slate-400 text-xs bg-slate-700/80 backdrop-blur-sm px-2 py-1 rounded-md ml-2">
-                                {item.duration}
+                                {formatDuration(item.durationMinutes)}
                               </span>
                             )}
                           </div>
@@ -618,10 +583,13 @@ export default function Home() {
                       </h3>
                       <div className="text-slate-400 text-sm">
                         <span>计划 {selectedItem.time}</span>
-                        {selectedItem.duration && (
+                        {selectedItem.durationMinutes > 0 && (
                           <>
                             <span className="mx-2">|</span>
-                            <span>时长 {selectedItem.duration}</span>
+                            <span>
+                              时长{' '}
+                              {formatDuration(selectedItem.durationMinutes)}
+                            </span>
                           </>
                         )}
                         {selectedItem.category !== 'habit' && (
