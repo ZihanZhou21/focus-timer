@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const userId = searchParams.get('userId') || 'user_001'
+    const isTemplate = searchParams.get('isTemplate')
+    const recurringTemplateId = searchParams.get('recurringTemplateId')
 
     const projects = await readProjectsData()
 
@@ -48,6 +50,24 @@ export async function GET(request: NextRequest) {
     let filteredProjects = projects.filter(
       (project) => project.userId === userId
     )
+
+    // 根据模板状态过滤
+    if (isTemplate === 'true') {
+      filteredProjects = filteredProjects.filter(
+        (project) => project.isTemplate === true
+      )
+    } else if (isTemplate === 'false') {
+      filteredProjects = filteredProjects.filter(
+        (project) => project.isTemplate !== true
+      )
+    }
+
+    // 根据重复任务模板ID过滤
+    if (recurringTemplateId) {
+      filteredProjects = filteredProjects.filter(
+        (project) => project.recurringTemplateId === recurringTemplateId
+      )
+    }
 
     // 按日期过滤
     if (date) {
@@ -108,6 +128,15 @@ export async function POST(request: NextRequest) {
       category: projectData.category,
       completed: projectData.completed || false,
       details: projectData.details,
+      tags: projectData.tags,
+      // 重复任务相关字段
+      isRecurring: projectData.isRecurring,
+      recurringDays: projectData.recurringDays,
+      recurringWeeks: projectData.recurringWeeks,
+      recurringParentId: projectData.recurringParentId,
+      recurringEndDate: projectData.recurringEndDate,
+      isTemplate: projectData.isTemplate,
+      recurringTemplateId: projectData.recurringTemplateId,
     }
 
     projects.push(newProject)

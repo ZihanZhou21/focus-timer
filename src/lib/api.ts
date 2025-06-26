@@ -14,6 +14,15 @@ export interface ProjectItem {
   category: 'habit' | 'task' | 'focus' | 'exercise'
   completed: boolean
   details?: string[]
+  tags?: string[]
+  // 重复任务信息
+  isRecurring?: boolean
+  recurringDays?: number[] // 0-6 表示周日到周六
+  recurringWeeks?: number
+  recurringParentId?: string // 重复任务的父ID，用于关联
+  recurringEndDate?: string // 重复任务结束日期
+  isTemplate?: boolean // 是否为重复任务模板
+  recurringTemplateId?: string // 重复任务实例关联的模板ID
 }
 
 export interface TimelineItem {
@@ -26,6 +35,15 @@ export interface TimelineItem {
   iconColor: string
   completed: boolean
   category: 'habit' | 'task' | 'focus' | 'exercise'
+  tags?: string[]
+  // 重复任务信息
+  isRecurring?: boolean
+  recurringDays?: number[]
+  recurringWeeks?: number
+  recurringParentId?: string
+  recurringEndDate?: string
+  isTemplate?: boolean
+  recurringTemplateId?: string
 }
 
 export interface WeeklyData {
@@ -80,6 +98,94 @@ export const dataUtils = {
     }, 0)
     return `${maxId + 1}-${Date.now()}`
   },
+
+  // 生成重复任务实例
+  async generateRecurringTasksForDate(
+    targetDate: string,
+    userId: string = 'user_001'
+  ): Promise<ProjectItem[]> {
+    try {
+      // 获取所有重复任务模板
+      const response = await fetch(
+        `/api/projects?userId=${userId}&isTemplate=true`
+      )
+      if (!response.ok) return []
+
+      const templates: ProjectItem[] = await response.json()
+      const generatedTasks: ProjectItem[] = []
+      const targetDateObj = new Date(targetDate)
+      const targetDayOfWeek = targetDateObj.getDay()
+
+      for (const template of templates) {
+        if (
+          !template.isTemplate ||
+          !template.isRecurring ||
+          !template.recurringDays
+        )
+          continue
+
+        // 检查今天是否在重复天数中
+        if (!template.recurringDays.includes(targetDayOfWeek)) continue
+
+        // 检查是否在有效期内
+        const startDate = new Date(template.date)
+        const endDate = template.recurringEndDate
+          ? new Date(template.recurringEndDate)
+          : null
+
+        if (targetDateObj < startDate) continue
+        if (endDate && targetDateObj > endDate) continue
+
+        // 检查今天是否已经有这个重复任务的实例
+        const existingResponse = await fetch(
+          `/api/projects?date=${targetDate}&userId=${userId}&recurringTemplateId=${template.id}`
+        )
+
+        if (existingResponse.ok) {
+          const existingTasks: ProjectItem[] = await existingResponse.json()
+          if (existingTasks.length > 0) continue // 已存在，跳过
+        }
+
+        // 创建今天的实例
+        const todayInstance = {
+          title: template.title,
+          time: template.time,
+          durationMinutes: template.durationMinutes,
+          category: template.category,
+          icon: template.icon,
+          iconColor: template.iconColor,
+          details: template.details,
+          tags: template.tags,
+          date: targetDate,
+          userId: template.userId,
+          completed: false,
+          isRecurring: true,
+          recurringDays: template.recurringDays,
+          recurringWeeks: template.recurringWeeks,
+          recurringParentId: template.recurringParentId,
+          recurringEndDate: template.recurringEndDate,
+          isTemplate: false,
+          recurringTemplateId: template.id,
+        }
+
+        const createResponse = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(todayInstance),
+        })
+
+        if (createResponse.ok) {
+          const newTask = await createResponse.json()
+          generatedTasks.push(newTask)
+        }
+      }
+
+      return generatedTasks
+    } catch (error) {
+      console.error('生成重复任务失败:', error)
+      return []
+    }
+  },
 }
 
 // 工具函数 - 统一使用小时格式显示
@@ -106,6 +212,15 @@ export function projectToTimelineItem(project: ProjectItem): TimelineItem {
     iconColor: project.iconColor,
     completed: project.completed,
     category: project.category,
+    tags: project.tags,
+    // 重复任务信息
+    isRecurring: project.isRecurring,
+    recurringDays: project.recurringDays,
+    recurringWeeks: project.recurringWeeks,
+    recurringParentId: project.recurringParentId,
+    recurringEndDate: project.recurringEndDate,
+    isTemplate: project.isTemplate,
+    recurringTemplateId: project.recurringTemplateId,
   }
 }
 

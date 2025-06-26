@@ -7,11 +7,11 @@ import { categoryConfig, DEFAULT_USER_ID } from '@/lib/constants'
 import {
   formatTimeInHours,
   formatDuration,
+  getIntensityColor,
   groupProjectsByDate,
 } from '@/lib/utils'
 import AppNavigation from '@/components/AppNavigation'
 import AddProjectModal from '@/components/AddProjectModal'
-import ActivityCalendar from '@/components/ActivityCalendar'
 
 interface DayData {
   day: string
@@ -19,11 +19,21 @@ interface DayData {
   cycles: number
 }
 
+interface DayRecord {
+  date: number
+  focusTime: number
+  cycles: number
+  isToday?: boolean
+  hasRecord?: boolean
+}
+
 export default function Home() {
   // 本地状态管理 - 统一使用ProjectItem
   const [timelineItems, setTimelineItems] = useState<ProjectItem[]>([])
   const [selectedItem, setSelectedItem] = useState<ProjectItem | null>(null)
+  const [currentDate, setCurrentDate] = useState(new Date())
   const [weeklyData, setWeeklyData] = useState<DayData[]>([])
+  const [calendarData, setCalendarData] = useState<DayRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
@@ -76,6 +86,74 @@ export default function Home() {
     return []
   }
 
+  // 更新日历数据 - 直接按数据日期填充
+  const generateCalendarData = async (
+    year: number,
+    month: number
+  ): Promise<DayRecord[]> => {
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+    const today = new Date()
+
+    const startDate = new Date(firstDay)
+    startDate.setDate(startDate.getDate() - firstDay.getDay())
+
+    const endDate = new Date(lastDay)
+    endDate.setDate(endDate.getDate() + (6 - lastDay.getDay()))
+
+    const startDateStr = startDate.toISOString().split('T')[0]
+    const endDateStr = endDate.toISOString().split('T')[0]
+
+    try {
+      // 单次请求获取整月数据
+      const response = await fetch(
+        `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=${DEFAULT_USER_ID}`
+      )
+
+      if (response.ok) {
+        const allProjects: ProjectItem[] = await response.json()
+
+        // 按日期分组
+        const projectsByDate = groupProjectsByDate(allProjects)
+
+        // 生成日历数据 - 直接按42天网格填充
+        const days: DayRecord[] = []
+
+        // 生成42天的网格（6周 x 7天）
+        for (let i = 0; i < 42; i++) {
+          const currentDate = new Date(startDate)
+          currentDate.setDate(startDate.getDate() + i)
+
+          const isCurrentMonth = currentDate.getMonth() === month
+          const isToday = currentDate.toDateString() === today.toDateString()
+          const dateStr = currentDate.toISOString().split('T')[0]
+
+          // 直接使用实际日期数据
+          const dayProjects = projectsByDate.get(dateStr) || []
+          const focusTime = dataUtils.calculateFocusTime(dayProjects)
+          const cycles = dataUtils.calculateCycles(dayProjects)
+          const hasRecord = dayProjects.some(
+            (p) => p.completed && p.durationMinutes > 0
+          )
+
+          days.push({
+            date: currentDate.getDate(),
+            focusTime,
+            cycles,
+            isToday,
+            hasRecord: isCurrentMonth && hasRecord,
+          })
+        }
+
+        return days
+      }
+    } catch (error) {
+      console.error('Failed to load calendar data:', error)
+    }
+
+    return []
+  }
+
   // 处理新项目添加
   const handleProjectAdded = (newProject: ProjectItem) => {
     const today = new Date().toISOString().split('T')[0]
@@ -84,6 +162,10 @@ export default function Home() {
     }
     // 重新生成统计数据
     generateLast7DaysData().then(setWeeklyData)
+    generateCalendarData(
+      currentDate.getFullYear(),
+      currentDate.getMonth()
+    ).then(setCalendarData)
   }
 
   // 初始化数据
@@ -93,9 +175,10 @@ export default function Home() {
         const today = new Date().toISOString().split('T')[0]
 
         // 并行加载所有初始数据
-        const [projectsResponse, weekData] = await Promise.all([
+        const [projectsResponse, weekData, calData] = await Promise.all([
           fetch(`/api/projects?date=${today}&userId=${DEFAULT_USER_ID}`),
           generateLast7DaysData(),
+          generateCalendarData(new Date().getFullYear(), new Date().getMonth()),
         ])
 
         if (projectsResponse.ok) {
@@ -104,6 +187,7 @@ export default function Home() {
         }
 
         setWeeklyData(weekData)
+        setCalendarData(calData)
       } catch (error) {
         console.error('Failed to initialize app:', error)
       } finally {
@@ -113,6 +197,24 @@ export default function Home() {
 
     initializeApp()
   }, [])
+
+  // 当月份改变时更新日历数据
+  useEffect(() => {
+    if (!isLoading) {
+      const updateCalendarData = async () => {
+        try {
+          const newCalendarData = await generateCalendarData(
+            currentDate.getFullYear(),
+            currentDate.getMonth()
+          )
+          setCalendarData(newCalendarData)
+        } catch (error) {
+          console.error('Failed to update calendar data:', error)
+        }
+      }
+      updateCalendarData()
+    }
+  }, [currentDate, isLoading])
 
   const maxFocus =
     weeklyData.length > 0
@@ -137,6 +239,33 @@ export default function Home() {
 
     return result
   }
+
+  const prevMonth = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1)
+    )
+  }
+
+  const nextMonth = () => {
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1)
+    )
+  }
+
+  const months = [
+    '一月',
+    '二月',
+    '三月',
+    '四月',
+    '五月',
+    '六月',
+    '七月',
+    '八月',
+    '九月',
+    '十月',
+    '十一月',
+    '十二月',
+  ]
 
   if (isLoading) {
     return (
@@ -226,8 +355,99 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Activity 区域 - 使用独立的ActivityCalendar组件 */}
-          <ActivityCalendar />
+          {/* Activity 区域 - 专注日历 */}
+          <div className="flex-shrink-0">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-light text-slate-200">Activity</h3>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={prevMonth}
+                  className="p-1 rounded hover:bg-slate-800 transition-colors">
+                  <svg
+                    className="w-4 h-4 text-slate-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
+                <span className="text-sm text-slate-400 min-w-[4rem] text-center">
+                  {months[currentDate.getMonth()]}
+                </span>
+                <button
+                  onClick={nextMonth}
+                  className="p-1 rounded hover:bg-slate-800 transition-colors">
+                  <svg
+                    className="w-4 h-4 text-slate-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-slate-800 rounded-3xl p-3">
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+                  <div
+                    key={index}
+                    className="text-center text-md text-slate-500 py-1">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {calendarData.map((day, index) => (
+                  <div
+                    key={index}
+                    className={`aspect-square rounded-full text-xs flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 ${
+                      day.isToday ? 'ring-1 ring-amber-400' : ''
+                    } ${getIntensityColor(day.focusTime)}`}
+                    title={
+                      day.hasRecord
+                        ? `${formatTimeInHours(day.focusTime)}, ${
+                            day.cycles
+                          }循环`
+                        : '无专注记录'
+                    }>
+                    <span
+                      className={`${
+                        day.isToday
+                          ? 'text-amber-200 font-medium'
+                          : day.hasRecord
+                          ? 'text-slate-200'
+                          : 'text-slate-500'
+                      }`}>
+                      {day.date}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-center space-x-1 mt-3">
+                <span className="text-xs text-slate-500">Less</span>
+                <div className="w-2 h-2 rounded bg-slate-700"></div>
+                <div className="w-2 h-2 rounded bg-amber-900/30"></div>
+                <div className="w-2 h-2 rounded bg-amber-800/50"></div>
+                <div className="w-2 h-2 rounded bg-amber-700/70"></div>
+                <div className="w-2 h-2 rounded bg-amber-600"></div>
+                <span className="text-xs text-slate-500">More</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 中间面板 - 工作时间流程 */}
