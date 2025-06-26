@@ -1,0 +1,331 @@
+[
+  {
+    "_id": "task_1719399600000_abcdef123",
+    "userId": "user_001",
+    "type": "check-in",
+    "title": "每日起床",
+    "content": [
+      "起床后立即整理床铺",
+      "喝一杯温开水",
+      "做5分钟伸展运动",
+      "记录昨晚睡眠质量"
+    ],
+    "status": "completed",
+    "priority": "medium",
+    "tags": [
+      "健康",
+      "习惯"
+    ],
+    "createdAt": "2024-06-25T10:00:00.000Z",
+    "updatedAt": "2025-06-26T08:10:25.256Z",
+    "completedAt": "2025-06-26T08:10:25.107Z",
+    "plannedTime": "07:00",
+    "checkInHistory": [
+      {
+        "date": "2024-06-24",
+        "note": "今天起床比较及时",
+        "duration": 300,
+        "rating": 4
+      },
+      {
+        "date": "2024-06-25",
+        "note": "起床后感觉很好",
+        "duration": 240,
+        "rating": 5
+      }
+    ],
+    "recurrence": {
+      "frequency": "daily",
+      "daysOfWeek": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    "details": [
+      "起床后立即整理床铺",
+      "喝一杯温开水",
+      "做5分钟伸展运动",
+      "记录昨晚睡眠质量"
+    ]
+  },
+  {
+    "_id": "task_1719399600001_ghijkl456",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "代码开发",
+    "content": [
+      "完成用户认证模块的开发",
+      "编写单元测试用例",
+      "更新API文档",
+      "代码review和优化"
+    ],
+    "status": "in_progress",
+    "priority": "high",
+    "tags": [
+      "工作",
+      "编程"
+    ],
+    "createdAt": "2024-06-25T09:00:00.000Z",
+    "updatedAt": "2025-06-26T07:30:11.977Z",
+    "completedAt": null,
+    "plannedTime": "09:00",
+    "dueDate": "2024-06-26T18:00:00.000Z",
+    "estimatedDuration": 14400,
+    "timeLog": [
+      {
+        "startTime": "2024-06-25T09:00:00.000Z",
+        "endTime": "2024-06-25T12:00:00.000Z",
+        "duration": 10800
+      },
+      {
+        "startTime": "2024-06-25T14:00:00.000Z",
+        "endTime": "2024-06-25T16:30:00.000Z",
+        "duration": 9000
+      }
+    ],
+    "details": [
+      "完成用户认证模块的开发",
+      "编写单元测试用例",
+      "更新API文档",
+      "代码review和优化"
+    ]
+  },
+  {
+    "_id": "task_1719399600002_mnopqr789",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "深度专注",
+    "content": [
+      "阅读《原子习惯》第3-4章",
+      "整理读书笔记",
+      "思考如何应用到日常生活",
+      "制定本周习惯改进计划"
+    ],
+    "status": "pending",
+    "priority": "medium",
+    "tags": [
+      "学习",
+      "自我提升"
+    ],
+    "createdAt": "2024-06-25T08:00:00.000Z",
+    "updatedAt": "2024-06-26T08:00:00.000Z",
+    "completedAt": null,
+    "plannedTime": "20:00",
+    "dueDate": "2024-06-26T22:00:00.000Z",
+    "estimatedDuration": 7200,
+    "timeLog": []
+  },
+  {
+    "_id": "task_1719399600003_stuvwx012",
+    "userId": "user_001",
+    "type": "check-in",
+    "title": "运动时间",
+    "content": [
+      "进行30分钟有氧运动",
+      "15分钟力量训练",
+      "10分钟拉伸放松",
+      "记录运动数据和感受"
+    ],
+    "status": "in_progress",
+    "priority": "high",
+    "tags": [
+      "健康",
+      "运动"
+    ],
+    "createdAt": "2024-06-25T07:00:00.000Z",
+    "updatedAt": "2025-06-26T09:02:02.020Z",
+    "completedAt": null,
+    "plannedTime": "18:00",
+    "checkInHistory": [
+      {
+        "date": "2024-06-24",
+        "note": "今天做了跑步和俯卧撑",
+        "duration": 2700,
+        "rating": 4
+      },
+      {
+        "date": "2024-06-25",
+        "note": "增加了瑜伽练习",
+        "duration": 3300,
+        "rating": 5
+      }
+    ],
+    "recurrence": {
+      "frequency": "daily",
+      "daysOfWeek": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
+  },
+  {
+    "_id": "task_1719399600004_yzabcd345",
+    "userId": "user_001",
+    "type": "check-in",
+    "title": "晨练时光",
+    "content": [
+      "进行20分钟晨跑",
+      "5分钟呼吸练习",
+      "感受清晨的宁静",
+      "为新一天注入活力"
+    ],
+    "status": "in_progress",
+    "priority": "medium",
+    "tags": [
+      "健康",
+      "晨练"
+    ],
+    "createdAt": "2024-06-25T06:00:00.000Z",
+    "updatedAt": "2024-06-26T06:00:00.000Z",
+    "completedAt": null,
+    "plannedTime": "06:30",
+    "checkInHistory": [
+      {
+        "date": "2024-06-24",
+        "note": "今天晨跑感觉很棒",
+        "duration": 1500,
+        "rating": 5
+      }
+    ],
+    "recurrence": {
+      "frequency": "weekly",
+      "daysOfWeek": [
+        1,
+        3,
+        5
+      ]
+    }
+  },
+  {
+    "_id": "task_1750908182520_u7adf6s82",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "测试任务",
+    "content": [
+      "测试内容"
+    ],
+    "status": "pending",
+    "priority": "medium",
+    "tags": [
+      "测试"
+    ],
+    "createdAt": "2025-06-26T03:23:02.520Z",
+    "updatedAt": "2025-06-26T03:23:02.520Z",
+    "completedAt": null,
+    "plannedTime": "15:00"
+  },
+  {
+    "_id": "task_1750913516016_noelf1a60",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "123",
+    "content": [
+      "新任务: 123"
+    ],
+    "status": "pending",
+    "priority": "medium",
+    "tags": [
+      "用户创建"
+    ],
+    "createdAt": "2025-06-26T04:51:56.016Z",
+    "updatedAt": "2025-06-26T04:51:56.017Z",
+    "completedAt": null,
+    "plannedTime": "14:51",
+    "estimatedDuration": 3600
+  },
+  {
+    "_id": "task_1750914001215_l4q7iw7ng",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "完整测试任务",
+    "content": [
+      "步骤1: 准备材料",
+      "步骤2: 开始工作",
+      "步骤3: 完成验收"
+    ],
+    "status": "pending",
+    "priority": "high",
+    "tags": [
+      "测试",
+      "工作"
+    ],
+    "createdAt": "2025-06-26T05:00:01.215Z",
+    "updatedAt": "2025-06-26T05:00:01.215Z",
+    "completedAt": null,
+    "plannedTime": "14:30",
+    "dueDate": "2025-01-20",
+    "estimatedDuration": 7200,
+    "timeLog": []
+  },
+  {
+    "_id": "task_1750914015005_v2ldfg5yg",
+    "userId": "user_001",
+    "type": "check-in",
+    "title": "测试习惯打卡",
+    "content": [
+      "内容1: 做运动",
+      "内容2: 记录感受"
+    ],
+    "status": "pending",
+    "priority": "medium",
+    "tags": [
+      "健康",
+      "习惯"
+    ],
+    "createdAt": "2025-06-26T05:00:15.005Z",
+    "updatedAt": "2025-06-26T05:00:15.005Z",
+    "completedAt": null,
+    "plannedTime": "07:30",
+    "checkInHistory": [],
+    "recurrence": {
+      "frequency": "daily",
+      "daysOfWeek": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        0
+      ]
+    }
+  },
+  {
+    "_id": "task_1750914457024_x9zy2bh87",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "专注: 测试专注",
+    "content": [
+      "专注时长: 25分钟",
+      "番茄钟专注法"
+    ],
+    "status": "completed",
+    "priority": "medium",
+    "tags": [
+      "专注",
+      "番茄钟"
+    ],
+    "createdAt": "2025-06-26T05:07:37.024Z",
+    "updatedAt": "2025-06-26T05:07:37.024Z",
+    "completedAt": null,
+    "plannedTime": "15:30",
+    "estimatedDuration": 1500,
+    "timeLog": [
+      {
+        "startTime": "2025-01-16T15:05:00.000Z",
+        "endTime": "2025-01-16T15:30:00.000Z",
+        "duration": 1500
+      }
+    ]
+  }
+]

@@ -1,7 +1,13 @@
-// API服务层 - 提供前端调用后端API的方法
-import { FOCUS_TIME_WEIGHTS, MIN_CYCLE_DURATION } from './constants'
+// 客户端API服务层
+import {
+  Task,
+  TodoTask,
+  CheckInTask,
+  TimeLogEntry,
+  CheckInEntry,
+} from '@/lib/types'
 
-// API相关类型定义
+// 兼容旧系统的ProjectItem类型
 export interface ProjectItem {
   id: string
   userId: string
@@ -15,28 +21,10 @@ export interface ProjectItem {
   completed: boolean
   details?: string[]
   tags?: string[]
-  // 重复任务信息
-  isRecurring?: boolean
-  recurringDays?: number[] // 0-6 表示周日到周六
-  recurringWeeks?: number
-  recurringParentId?: string // 重复任务的父ID，用于关联
-  recurringEndDate?: string // 重复任务结束日期
-  isTemplate?: boolean // 是否为重复任务模板
-  recurringTemplateId?: string // 重复任务实例关联的模板ID
-}
-
-export interface TimelineItem {
-  id: string
-  time: string
-  title: string
-  duration?: string
-  details?: string[]
-  icon: string
-  iconColor: string
-  completed: boolean
-  category: 'habit' | 'task' | 'focus' | 'exercise'
-  tags?: string[]
-  // 重复任务信息
+  priority?: string
+  status?: string
+  type?: string
+  // 重复任务相关字段
   isRecurring?: boolean
   recurringDays?: number[]
   recurringWeeks?: number
@@ -46,383 +34,222 @@ export interface TimelineItem {
   recurringTemplateId?: string
 }
 
-export interface WeeklyData {
-  weekStart: string
-  weekEnd: string
-  days: {
-    date: string
-    dayLabel: string
-    projects: ProjectItem[]
-    stats: {
-      totalProjects: number
-      completedProjects: number
-      focusTime: number
-      cycles: number
-      hasRecord: boolean
-    }
-  }[]
-  totalStats: {
-    totalProjects: number
-    completedProjects: number
-    totalFocusTime: number
-    totalCycles: number
-    completionRate: number
-  }
-}
+// 客户端API服务 - 任务相关
+export class TaskService {
+  private baseUrl = '/api/tasks'
 
-// 共享的数据处理工具函数
-export const dataUtils = {
-  // 计算专注时间（根据项目类型加权）
-  calculateFocusTime(projects: ProjectItem[]): number {
-    return projects.reduce((total, project) => {
-      if (!project.completed) return total
+  // 获取任务列表
+  async getTasks(
+    userId = 'user_001',
+    type?: 'todo' | 'check-in',
+    status?: string
+  ): Promise<Task[]> {
+    const params = new URLSearchParams()
+    params.append('userId', userId)
+    if (type) params.append('type', type)
+    if (status) params.append('status', status)
 
-      const weight = FOCUS_TIME_WEIGHTS[project.category]
-      return total + project.durationMinutes * weight
-    }, 0)
-  },
-
-  // 计算完成周期数（已完成且≥25分钟）
-  calculateCycles(projects: ProjectItem[]): number {
-    return projects.filter(
-      (project) =>
-        project.completed && project.durationMinutes >= MIN_CYCLE_DURATION
-    ).length
-  },
-
-  // 生成新的项目ID
-  generateProjectId(projects: ProjectItem[]): string {
-    const maxId = projects.reduce((max, project) => {
-      const numId = parseInt(project.id.split('-')[0])
-      return numId > max ? numId : max
-    }, 0)
-    return `${maxId + 1}-${Date.now()}`
-  },
-
-  // 生成重复任务实例
-  async generateRecurringTasksForDate(
-    targetDate: string,
-    userId: string = 'user_001'
-  ): Promise<ProjectItem[]> {
-    try {
-      // 获取所有重复任务模板
-      const response = await fetch(
-        `/api/projects?userId=${userId}&isTemplate=true`
-      )
-      if (!response.ok) return []
-
-      const templates: ProjectItem[] = await response.json()
-      const generatedTasks: ProjectItem[] = []
-      const targetDateObj = new Date(targetDate)
-      const targetDayOfWeek = targetDateObj.getDay()
-
-      for (const template of templates) {
-        if (
-          !template.isTemplate ||
-          !template.isRecurring ||
-          !template.recurringDays
-        )
-          continue
-
-        // 检查今天是否在重复天数中
-        if (!template.recurringDays.includes(targetDayOfWeek)) continue
-
-        // 检查是否在有效期内
-        const startDate = new Date(template.date)
-        const endDate = template.recurringEndDate
-          ? new Date(template.recurringEndDate)
-          : null
-
-        if (targetDateObj < startDate) continue
-        if (endDate && targetDateObj > endDate) continue
-
-        // 检查今天是否已经有这个重复任务的实例
-        const existingResponse = await fetch(
-          `/api/projects?date=${targetDate}&userId=${userId}&recurringTemplateId=${template.id}`
-        )
-
-        if (existingResponse.ok) {
-          const existingTasks: ProjectItem[] = await existingResponse.json()
-          if (existingTasks.length > 0) continue // 已存在，跳过
-        }
-
-        // 创建今天的实例
-        const todayInstance = {
-          title: template.title,
-          time: template.time,
-          durationMinutes: template.durationMinutes,
-          category: template.category,
-          icon: template.icon,
-          iconColor: template.iconColor,
-          details: template.details,
-          tags: template.tags,
-          date: targetDate,
-          userId: template.userId,
-          completed: false,
-          isRecurring: true,
-          recurringDays: template.recurringDays,
-          recurringWeeks: template.recurringWeeks,
-          recurringParentId: template.recurringParentId,
-          recurringEndDate: template.recurringEndDate,
-          isTemplate: false,
-          recurringTemplateId: template.id,
-        }
-
-        const createResponse = await fetch('/api/projects', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(todayInstance),
-        })
-
-        if (createResponse.ok) {
-          const newTask = await createResponse.json()
-          generatedTasks.push(newTask)
-        }
-      }
-
-      return generatedTasks
-    } catch (error) {
-      console.error('生成重复任务失败:', error)
-      return []
-    }
-  },
-}
-
-// 工具函数 - 统一使用小时格式显示
-export function formatDuration(minutes: number): string {
-  if (minutes === 0) return '0h'
-  const hours = minutes / 60
-  return `${hours.toFixed(1)}h`
-}
-
-export function formatFocusTime(minutes: number): string {
-  if (minutes === 0) return '0h'
-  const hours = minutes / 60
-  return `${hours.toFixed(1)}h`
-}
-
-export function projectToTimelineItem(project: ProjectItem): TimelineItem {
-  return {
-    id: project.id,
-    time: project.time,
-    title: project.title,
-    duration: formatDuration(project.durationMinutes),
-    details: project.details,
-    icon: project.icon,
-    iconColor: project.iconColor,
-    completed: project.completed,
-    category: project.category,
-    tags: project.tags,
-    // 重复任务信息
-    isRecurring: project.isRecurring,
-    recurringDays: project.recurringDays,
-    recurringWeeks: project.recurringWeeks,
-    recurringParentId: project.recurringParentId,
-    recurringEndDate: project.recurringEndDate,
-    isTemplate: project.isTemplate,
-    recurringTemplateId: project.recurringTemplateId,
-  }
-}
-
-// API服务类
-class ApiService {
-  private baseUrl = '/api'
-
-  // 项目相关API
-  async getProjects(
-    date?: string,
-    userId = 'user_001'
-  ): Promise<TimelineItem[]> {
-    const params = new URLSearchParams({ userId })
-    if (date) params.append('date', date)
-
-    const response = await fetch(`${this.baseUrl}/projects?${params}`)
-    if (!response.ok) throw new Error('获取项目失败')
-
-    const projects: ProjectItem[] = await response.json()
-    return projects.map(projectToTimelineItem)
-  }
-
-  async getProject(id: string): Promise<TimelineItem> {
-    const response = await fetch(`${this.baseUrl}/projects/${id}`)
-    if (!response.ok) throw new Error('获取项目失败')
-
-    const project: ProjectItem = await response.json()
-    return projectToTimelineItem(project)
-  }
-
-  async saveProject(
-    projectData: Omit<ProjectItem, 'id'>
-  ): Promise<ProjectItem> {
-    const response = await fetch(`${this.baseUrl}/projects`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(projectData),
-    })
-    if (!response.ok) throw new Error('保存项目失败')
-
+    const response = await fetch(`${this.baseUrl}?${params}`)
+    if (!response.ok) throw new Error(`获取任务失败: ${response.statusText}`)
     return response.json()
   }
 
-  async updateProject(
-    id: string,
-    updates: Partial<ProjectItem>
-  ): Promise<ProjectItem> {
-    const response = await fetch(`${this.baseUrl}/projects/${id}`, {
+  // 获取单个任务
+  async getTask(id: string): Promise<Task> {
+    const response = await fetch(`${this.baseUrl}/${id}`)
+    if (!response.ok) throw new Error(`获取任务失败: ${response.statusText}`)
+    return response.json()
+  }
+
+  // 创建TODO任务
+  async createTodoTask(
+    taskData: Omit<TodoTask, '_id' | 'createdAt' | 'updatedAt'>
+  ): Promise<TodoTask> {
+    const response = await fetch(this.baseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...taskData,
+        type: 'todo',
+      }),
+    })
+
+    if (!response.ok)
+      throw new Error(`创建TODO任务失败: ${response.statusText}`)
+    return response.json()
+  }
+
+  // 创建打卡任务
+  async createCheckInTask(
+    taskData: Omit<CheckInTask, '_id' | 'createdAt' | 'updatedAt'>
+  ): Promise<CheckInTask> {
+    const response = await fetch(this.baseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...taskData,
+        type: 'check-in',
+      }),
+    })
+
+    if (!response.ok)
+      throw new Error(`创建打卡任务失败: ${response.statusText}`)
+    return response.json()
+  }
+
+  // 更新任务
+  async updateTask(id: string, updates: Partial<Task>): Promise<Task> {
+    const response = await fetch(`${this.baseUrl}/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
     })
-    if (!response.ok) throw new Error('更新项目失败')
 
+    if (!response.ok) throw new Error(`更新任务失败: ${response.statusText}`)
     return response.json()
   }
 
-  async deleteProject(id: string): Promise<boolean> {
-    const response = await fetch(`${this.baseUrl}/projects/${id}`, {
+  // 删除任务
+  async deleteTask(id: string): Promise<boolean> {
+    const response = await fetch(`${this.baseUrl}/${id}`, {
       method: 'DELETE',
     })
-    if (!response.ok) throw new Error('删除项目失败')
 
-    const result = await response.json()
-    return result.success
+    return response.ok
   }
 
-  // 本周数据计算（基于projects数据）
-  async getWeeklyData(date?: string, userId = 'user_001'): Promise<WeeklyData> {
-    const targetDate = date ? new Date(date) : new Date()
-    const weekStart = new Date(targetDate)
-    weekStart.setDate(targetDate.getDate() - targetDate.getDay())
+  // 完成TODO任务
+  async completeTodoTask(id: string): Promise<TodoTask> {
+    return this.updateTask(id, {
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+    }) as Promise<TodoTask>
+  }
 
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekStart.getDate() + 6)
+  // 添加时间记录到TODO任务
+  async addTimeLog(id: string, timeLog: TimeLogEntry): Promise<TodoTask> {
+    const task = (await this.getTask(id)) as TodoTask
+    return this.updateTask(id, {
+      timeLog: [...task.timeLog, timeLog],
+    }) as Promise<TodoTask>
+  }
 
-    const weekStartStr = weekStart.toISOString().split('T')[0]
-    const weekEndStr = weekEnd.toISOString().split('T')[0]
+  // 添加打卡记录
+  async addCheckIn(id: string, checkIn: CheckInEntry): Promise<CheckInTask> {
+    const task = (await this.getTask(id)) as CheckInTask
+    return this.updateTask(id, {
+      checkInHistory: [...task.checkInHistory, checkIn],
+    }) as Promise<CheckInTask>
+  }
 
-    // 获取本周所有项目数据
-    const allProjects: ProjectItem[] = []
-    const current = new Date(weekStart)
+  // 获取今日打卡任务
+  async getTodayCheckIns(userId = 'user_001'): Promise<CheckInTask[]> {
+    const tasks = await this.getTasks(userId, 'check-in', 'in_progress')
+    const today = new Date().getDay()
 
-    while (current <= weekEnd) {
-      const dateStr = current.toISOString().split('T')[0]
-      try {
-        const response = await fetch(
-          `${this.baseUrl}/projects?date=${dateStr}&userId=${userId}`
+    return tasks.filter((task) => {
+      const checkInTask = task as CheckInTask
+      return checkInTask.recurrence.daysOfWeek.includes(today)
+    }) as CheckInTask[]
+  }
+
+  // 获取统计数据
+  async getStats(userId = 'user_001') {
+    const tasks = await this.getTasks(userId)
+
+    const todoTasks = tasks.filter((t) => t.type === 'todo') as TodoTask[]
+    const checkInTasks = tasks.filter(
+      (t) => t.type === 'check-in'
+    ) as CheckInTask[]
+
+    return {
+      totalTodos: todoTasks.length,
+      completedTodos: todoTasks.filter((t) => t.status === 'completed').length,
+      totalCheckIns: checkInTasks.length,
+      activeCheckIns: checkInTasks.filter((t) => t.status === 'in_progress')
+        .length,
+      totalFocusTime: this.calculateTotalFocusTime(todoTasks),
+      totalCheckInTime: this.calculateTotalCheckInTime(checkInTasks),
+    }
+  }
+
+  private calculateTotalFocusTime(todoTasks: TodoTask[]): number {
+    return todoTasks.reduce((total, task) => {
+      return (
+        total +
+        task.timeLog.reduce((taskTotal, log) => taskTotal + log.duration, 0)
+      )
+    }, 0)
+  }
+
+  private calculateTotalCheckInTime(checkInTasks: CheckInTask[]): number {
+    return checkInTasks.reduce((total, task) => {
+      return (
+        total +
+        task.checkInHistory.reduce(
+          (taskTotal, entry) => taskTotal + entry.duration,
+          0
         )
-        if (response.ok) {
-          const dayProjects: ProjectItem[] = await response.json()
-          allProjects.push(...dayProjects)
-        }
-      } catch (error) {
-        console.error(`Failed to load data for ${dateStr}:`, error)
+      )
+    }, 0)
+  }
+}
+
+// 单例服务实例
+export const taskService = new TaskService()
+
+// 工具函数
+export const dataUtils = {
+  generateProjectId: (projects: ProjectItem[]): string => {
+    const existingIds = projects.map((p) => p.id)
+    let maxId = 0
+
+    existingIds.forEach((id) => {
+      const match = id.match(/^project_(\d+)$/)
+      if (match) {
+        const num = parseInt(match[1], 10)
+        if (num > maxId) maxId = num
       }
+    })
+
+    return `project_${maxId + 1}`
+  },
+
+  formatDate: (date: Date): string => {
+    return date.toISOString().split('T')[0]
+  },
+
+  formatTime: (date: Date): string => {
+    return date.toTimeString().substring(0, 5)
+  },
+
+  getDateRange: (startDate: string, endDate: string): string[] => {
+    const dates: string[] = []
+    const current = new Date(startDate)
+    const end = new Date(endDate)
+
+    while (current <= end) {
+      dates.push(dataUtils.formatDate(current))
       current.setDate(current.getDate() + 1)
     }
 
-    // 构建周数据结构
-    const days = []
-    let totalProjects = 0
-    let totalCompletedProjects = 0
-    let totalFocusTime = 0
-    let totalCycles = 0
+    return dates
+  },
 
-    for (let i = 0; i < 7; i++) {
-      const currentDate = new Date(weekStart)
-      currentDate.setDate(weekStart.getDate() + i)
-      const dateStr = currentDate.toISOString().split('T')[0]
+  calculateFocusTime: (projects: ProjectItem[]): number => {
+    return projects.reduce((total, project) => {
+      if (project.completed && project.category === 'focus') {
+        return total + project.durationMinutes
+      }
+      return total
+    }, 0)
+  },
 
-      const month = currentDate.getMonth() + 1
-      const day = currentDate.getDate()
-      const dayLabel = `${month}/${day}`
-
-      const dayProjects = allProjects.filter((p) => p.date === dateStr)
-      const completedProjects = dayProjects.filter((p) => p.completed).length
-      const focusTime = Math.round(dataUtils.calculateFocusTime(dayProjects))
-      const cycles = dataUtils.calculateCycles(dayProjects)
-
-      days.push({
-        date: dateStr,
-        dayLabel,
-        projects: dayProjects.sort((a, b) => a.time.localeCompare(b.time)),
-        stats: {
-          totalProjects: dayProjects.length,
-          completedProjects,
-          focusTime,
-          cycles,
-          hasRecord: dayProjects.length > 0,
-        },
-      })
-
-      totalProjects += dayProjects.length
-      totalCompletedProjects += completedProjects
-      totalFocusTime += focusTime
-      totalCycles += cycles
-    }
-
-    return {
-      weekStart: weekStartStr,
-      weekEnd: weekEndStr,
-      days,
-      totalStats: {
-        totalProjects,
-        completedProjects: totalCompletedProjects,
-        totalFocusTime,
-        totalCycles,
-        completionRate:
-          totalProjects > 0
-            ? Math.round((totalCompletedProjects / totalProjects) * 100)
-            : 0,
-      },
-    }
-  }
-
-  // 专注时间计算工具方法
-  calculateFocusTime(projects: ProjectItem[]): number {
-    return dataUtils.calculateFocusTime(projects)
-  }
-
-  // 循环次数计算工具方法
-  calculateCycles(projects: ProjectItem[]): number {
-    return dataUtils.calculateCycles(projects)
-  }
-
-  // 习惯操作方法（基于projects API）
-  async toggleHabit(habitId: string, completed: boolean): Promise<void> {
-    await this.updateProject(habitId, { completed })
-  }
-
-  // 获取指定日期的习惯完成状态
-  async getCompletedHabits(
-    date: string,
-    userId = 'user_001'
-  ): Promise<string[]> {
-    const projects = await this.getProjects(date, userId)
-    return projects
-      .filter((p) => p.category === 'habit' && p.completed)
-      .map((p) => p.id)
-  }
-
-  // 兼容旧版本的习惯API
-  async getHabits(date: string, userId = 'user_001'): Promise<string[]> {
-    return this.getCompletedHabits(date, userId)
-  }
-
-  async saveHabits(date: string, habitIds: string[]): Promise<void> {
-    // 批量更新习惯状态
-    const updates = habitIds.map((id) => ({ id, completed: true }))
-
-    const response = await fetch(`${this.baseUrl}/projects`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
-    })
-    if (!response.ok) throw new Error('保存习惯失败')
-  }
+  calculateCycles: (projects: ProjectItem[]): number => {
+    return projects.filter(
+      (project) =>
+        project.completed &&
+        (project.category === 'focus' || project.category === 'task')
+    ).length
+  },
 }
-
-// 导出API服务实例
-export const apiService = new ApiService()
-
-// 导出默认实例（向后兼容）
-export default apiService

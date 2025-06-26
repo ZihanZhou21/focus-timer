@@ -1,15 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { dataUtils, ProjectItem } from '@/lib/api'
+import { ProjectItem, dataUtils } from '@/lib/api'
 import { DEFAULT_USER_ID } from '@/lib/constants'
-import {
-  formatTimeInHours,
-  getIntensityColor,
-  groupProjectsByDate,
-} from '@/lib/utils'
 
-// 类型定义
 interface DayRecord {
   date: number
   focusTime: number
@@ -17,7 +11,7 @@ interface DayRecord {
   isToday?: boolean
   hasRecord?: boolean
   isCurrentMonth?: boolean
-  fullDate?: string // 添加完整日期字符串用于调试
+  fullDate?: string
 }
 
 interface ActivityCalendarProps {
@@ -25,127 +19,157 @@ interface ActivityCalendarProps {
   onDataUpdate?: (hasData: boolean) => void
 }
 
-// 月份常量
 const MONTHS = [
-  '一月',
-  '二月',
-  '三月',
-  '四月',
-  '五月',
-  '六月',
-  '七月',
-  '八月',
-  '九月',
-  '十月',
-  '十一月',
-  '十二月',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ]
 
-// 星期标题
 const WEEK_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
-// 辅助函数：获取本地日期字符串（避免时区问题）
 const getLocalDateString = (date: Date): string => {
   const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+const formatTimeInHours = (minutes: number): string => {
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  return remainingMinutes > 0 ? `${hours}h${remainingMinutes}m` : `${hours}h`
+}
+
+const getIntensityColor = (focusTime: number): string => {
+  if (focusTime === 0) return 'bg-slate-700/50'
+  if (focusTime <= 30) return 'bg-green-900/70'
+  if (focusTime <= 60) return 'bg-green-800/80'
+  if (focusTime <= 120) return 'bg-green-600/90'
+  return 'bg-green-400'
+}
+
+const groupProjectsByDate = (
+  projects: ProjectItem[]
+): Map<string, ProjectItem[]> => {
+  const grouped = new Map<string, ProjectItem[]>()
+  projects.forEach((project) => {
+    if (!grouped.has(project.date)) {
+      grouped.set(project.date, [])
+    }
+    grouped.get(project.date)!.push(project)
+  })
+  return grouped
 }
 
 export default function ActivityCalendar({
   className = '',
   onDataUpdate,
 }: ActivityCalendarProps) {
-  // 状态管理
   const [currentDate, setCurrentDate] = useState(new Date())
   const [calendarData, setCalendarData] = useState<DayRecord[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
 
-  // 生成日历数据 - 完整的日历网格
+  // 生成日历数据
   const generateCalendarData = useCallback(
     async (year: number, month: number): Promise<DayRecord[]> => {
-      const firstDay = new Date(year, month, 1)
-      const lastDay = new Date(year, month + 1, 0)
       const today = new Date()
-
-      // 计算完整日历网格的开始和结束日期
-      const startDate = new Date(firstDay)
-      startDate.setDate(startDate.getDate() - firstDay.getDay()) // 回到周日
-
-      const endDate = new Date(lastDay)
-      const daysAfterMonth = 6 - lastDay.getDay() // 到周六还需要几天
-      endDate.setDate(lastDay.getDate() + daysAfterMonth)
-
-      const startDateStr = getLocalDateString(startDate)
-      const endDateStr = getLocalDateString(endDate)
       const todayStr = getLocalDateString(today)
 
-      console.log('Calendar range:', {
-        startDateStr,
-        endDateStr,
-        currentMonth: month,
-      })
+      // 计算月份的第一天和最后一天
+      const firstDayOfMonth = new Date(year, month, 1)
+      const lastDayOfMonth = new Date(year, month + 1, 0)
+
+      // 计算需要显示的完整网格范围（包含前后月份的日期）
+      const firstDayOfWeek = firstDayOfMonth.getDay()
+      const startDate = new Date(firstDayOfMonth)
+      startDate.setDate(startDate.getDate() - firstDayOfWeek)
+
+      const endDate = new Date(lastDayOfMonth)
+      const remainingDays = 6 - endDate.getDay()
+      endDate.setDate(endDate.getDate() + remainingDays)
 
       try {
-        // 请求完整网格范围的数据
-        const response = await fetch(
-          `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=${DEFAULT_USER_ID}&isTemplate=false`
-        )
+        // 使用tasks API获取数据，遍历日期范围获取每天的任务数据
+        const allProjects: ProjectItem[] = []
+        const fetchIterDate = new Date(startDate)
 
-        if (response.ok) {
-          const allProjects: ProjectItem[] = await response.json()
-          const projectsByDate = groupProjectsByDate(allProjects)
+        while (fetchIterDate <= endDate) {
+          const dateStr = getLocalDateString(fetchIterDate)
 
-          console.log('Projects by date:', Object.fromEntries(projectsByDate))
-
-          const days: DayRecord[] = []
-          const currentIterDate = new Date(startDate)
-
-          // 生成完整的日历网格
-          while (currentIterDate <= endDate) {
-            const isCurrentMonth = currentIterDate.getMonth() === month
-            const dateStr = getLocalDateString(currentIterDate)
-            const isToday = dateStr === todayStr
-
-            const dayProjects = projectsByDate.get(dateStr) || []
-            const focusTime = dataUtils.calculateFocusTime(dayProjects)
-            const cycles = dataUtils.calculateCycles(dayProjects)
-            const hasRecord = dayProjects.some(
-              (p) => p.completed && p.durationMinutes > 0
+          try {
+            const response = await fetch(
+              `/api/tasks/today?userId=${DEFAULT_USER_ID}&date=${dateStr}&format=project-items`
             )
 
-            days.push({
-              date: currentIterDate.getDate(),
-              focusTime,
-              cycles,
-              isToday,
-              hasRecord: isCurrentMonth && hasRecord, // 只有当月的记录才算有效
-              isCurrentMonth,
-              fullDate: dateStr, // 用于调试
-            })
-
-            // 移动到下一天
-            currentIterDate.setDate(currentIterDate.getDate() + 1)
+            if (response.ok) {
+              const dayProjects: ProjectItem[] = await response.json()
+              allProjects.push(...dayProjects)
+            }
+          } catch (dayError) {
+            console.warn(`Failed to load data for ${dateStr}:`, dayError)
           }
 
-          console.log(
-            'Generated calendar days:',
-            days.map((d) => ({
-              date: d.date,
-              fullDate: d.fullDate,
-              isCurrentMonth: d.isCurrentMonth,
-              hasRecord: d.hasRecord,
-              focusTime: d.focusTime,
-            }))
+          fetchIterDate.setDate(fetchIterDate.getDate() + 1)
+        }
+
+        const projectsByDate = groupProjectsByDate(allProjects)
+        console.log('Projects by date:', Object.fromEntries(projectsByDate))
+
+        const days: DayRecord[] = []
+        const currentIterDate = new Date(startDate)
+
+        // 生成完整的日历网格
+        while (currentIterDate <= endDate) {
+          const isCurrentMonth = currentIterDate.getMonth() === month
+          const dateStr = getLocalDateString(currentIterDate)
+          const isToday = dateStr === todayStr
+
+          const dayProjects = projectsByDate.get(dateStr) || []
+          const focusTime = dataUtils.calculateFocusTime(dayProjects)
+          const cycles = dataUtils.calculateCycles(dayProjects)
+          const hasRecord = dayProjects.some(
+            (p) => p.completed && p.durationMinutes > 0
           )
 
-          return days
+          days.push({
+            date: currentIterDate.getDate(),
+            focusTime,
+            cycles,
+            isToday,
+            hasRecord: isCurrentMonth && hasRecord,
+            isCurrentMonth,
+            fullDate: dateStr,
+          })
+
+          currentIterDate.setDate(currentIterDate.getDate() + 1)
         }
+
+        console.log(
+          'Generated calendar days:',
+          days.map((d) => ({
+            date: d.date,
+            fullDate: d.fullDate,
+            isCurrentMonth: d.isCurrentMonth,
+            hasRecord: d.hasRecord,
+            focusTime: d.focusTime,
+          }))
+        )
+
+        return days
       } catch (error) {
         console.error('Failed to load calendar data:', error)
+        return []
       }
-
-      return []
     },
     []
   )
@@ -241,6 +265,34 @@ export default function ActivityCalendar({
     </div>
   )
 
+  // 单个日历日期组件
+  const CalendarDay = ({ day }: { day: DayRecord }) => {
+    return (
+      <div
+        className={`aspect-square rounded-full text-xs flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 ${
+          day.isToday ? 'ring-1 ring-amber-400' : ''
+        } ${
+          day.isCurrentMonth
+            ? getIntensityColor(day.focusTime)
+            : 'bg-slate-700/30'
+        }`}
+        title={
+          day.isCurrentMonth && day.hasRecord
+            ? `${day.fullDate}: ${formatTimeInHours(day.focusTime)}, ${
+                day.cycles
+              }循环`
+            : day.isCurrentMonth
+            ? `${day.fullDate}: 无记录`
+            : ''
+        }>
+        <span
+          className={`${day.isCurrentMonth ? 'text-white' : 'text-slate-500'}`}>
+          {day.date}
+        </span>
+      </div>
+    )
+  }
+
   // 日历网格组件
   const CalendarGrid = () => (
     <div className="bg-slate-800 rounded-3xl p-3">
@@ -253,7 +305,7 @@ export default function ActivityCalendar({
         ))}
       </div>
 
-      {/* 日历网格 - 完整的周网格 */}
+      {/* 日历网格 */}
       <div className="grid grid-cols-7 gap-1">
         {calendarData.map((day, index) => (
           <CalendarDay key={`${day.fullDate}-${index}`} day={day} />
@@ -265,71 +317,45 @@ export default function ActivityCalendar({
     </div>
   )
 
-  // 单个日历日期组件
-  const CalendarDay = ({ day }: { day: DayRecord }) => {
-    return (
-      <div
-        className={`aspect-square rounded-full text-xs flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 ${
-          day.isToday ? 'ring-1 ring-amber-400' : ''
-        } ${
-          day.isCurrentMonth
-            ? getIntensityColor(day.focusTime)
-            : 'bg-slate-700/30' // 其他月份显示淡色背景
-        }`}
-        title={
-          day.isCurrentMonth && day.hasRecord
-            ? `${day.fullDate}: ${formatTimeInHours(day.focusTime)}, ${
-                day.cycles
-              }循环`
-            : day.isCurrentMonth
-            ? `${day.fullDate}: 无专注记录`
-            : `${day.fullDate}: 其他月份`
-        }>
-        <span
-          className={`${
-            day.isToday
-              ? 'text-amber-200 font-medium'
-              : day.isCurrentMonth
-              ? day.hasRecord
-                ? 'text-slate-200'
-                : 'text-slate-500'
-              : 'text-slate-600' // 其他月份显示更淡的颜色
-          }`}>
-          {day.date}
-        </span>
-      </div>
-    )
-  }
-
   // 强度图例组件
   const IntensityLegend = () => (
-    <div className="flex items-center justify-center space-x-1 mt-3">
-      <span className="text-xs text-slate-500">Less</span>
-      <div className="w-2 h-2 rounded bg-slate-700"></div>
-      <div className="w-2 h-2 rounded bg-amber-900/30"></div>
-      <div className="w-2 h-2 rounded bg-amber-800/50"></div>
-      <div className="w-2 h-2 rounded bg-amber-700/70"></div>
-      <div className="w-2 h-2 rounded bg-amber-600"></div>
-      <span className="text-xs text-slate-500">More</span>
+    <div className="flex items-center justify-between mt-3 text-xs text-slate-500">
+      <span>Less</span>
+      <div className="flex space-x-1">
+        <div className="w-2 h-2 rounded-sm bg-slate-700/50"></div>
+        <div className="w-2 h-2 rounded-sm bg-green-900/70"></div>
+        <div className="w-2 h-2 rounded-sm bg-green-800/80"></div>
+        <div className="w-2 h-2 rounded-sm bg-green-600/90"></div>
+        <div className="w-2 h-2 rounded-sm bg-green-400"></div>
+      </div>
+      <span>More</span>
     </div>
   )
 
   // 加载状态组件
   const LoadingState = () => (
-    <div className="bg-slate-800 rounded-3xl p-3 h-48 flex items-center justify-center">
+    <div className="bg-slate-800 rounded-3xl p-6 flex items-center justify-center">
       <div className="text-slate-400 text-sm">加载中...</div>
     </div>
   )
 
+  if (isLoading && calendarData.length === 0) {
+    return (
+      <div className={`flex flex-col ${className}`}>
+        <ActivityHeader />
+        <LoadingState />
+      </div>
+    )
+  }
+
   return (
-    <div className={`flex-shrink-0 ${className}`}>
+    <div className={`flex flex-col ${className}`}>
       <ActivityHeader />
-      {isLoading ? <LoadingState /> : <CalendarGrid />}
+      <CalendarGrid />
     </div>
   )
 }
 
-// 导出组件引用接口
 export interface ActivityCalendarRef {
   refreshData: () => void
 }

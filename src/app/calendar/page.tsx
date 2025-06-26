@@ -72,20 +72,28 @@ export default function CalendarPage() {
     try {
       const { start, end } = getDateRange(currentDate, selectedPeriod)
 
-      // 格式化日期范围
-      const startDateStr = start.toISOString().split('T')[0]
-      const endDateStr = end.toISOString().split('T')[0]
+      // 使用tasks API获取数据，遍历日期范围获取每天的任务数据
+      const allProjects: ProjectItem[] = []
+      const currentIterDate = new Date(start)
 
-      // 单次请求获取整个时间段的数据
-      const response = await fetch(
-        `/api/projects?startDate=${startDateStr}&endDate=${endDateStr}&userId=${DEFAULT_USER_ID}`
-      )
+      while (currentIterDate <= end) {
+        const dateStr = currentIterDate.toISOString().split('T')[0]
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch projects data')
+        try {
+          const response = await fetch(
+            `/api/tasks/today?userId=${DEFAULT_USER_ID}&date=${dateStr}&format=project-items`
+          )
+
+          if (response.ok) {
+            const dayProjects: ProjectItem[] = await response.json()
+            allProjects.push(...dayProjects)
+          }
+        } catch (dayError) {
+          console.warn(`Failed to load data for ${dateStr}:`, dayError)
+        }
+
+        currentIterDate.setDate(currentIterDate.getDate() + 1)
       }
-
-      const allProjects: ProjectItem[] = await response.json()
 
       // 按日期分组数据
       const groupedData = groupProjectsByDate(allProjects)

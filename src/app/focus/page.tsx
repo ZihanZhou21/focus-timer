@@ -8,21 +8,28 @@ import React, {
   useRef,
 } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { apiService } from '@/lib/api'
 
 // 现代化计时器组件
 function ModernTimer({
   initialTime = 25,
+  initialProgress = 0,
+  taskId,
   onComplete,
   onTick,
 }: {
   initialTime: number
+  initialProgress?: number
+  taskId?: string
   onComplete?: () => void
   onTick?: (remaining: number) => void
 }) {
   const [timeRemaining, setTimeRemaining] = useState(initialTime * 60) // 转换为秒
   const [isRunning, setIsRunning] = useState(false)
+  const [totalElapsed, setTotalElapsed] = useState(
+    Math.round((initialProgress / 100) * initialTime * 60)
+  ) // 基于初始进度计算已用时间
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const sessionStartTime = useRef<Date | null>(null)
 
   // 格式化时间显示
   const formatTime = (seconds: number) => {
@@ -33,75 +40,88 @@ function ModernTimer({
       .padStart(2, '0')}`
   }
 
-  // 计算进度百分比
-  const progress =
-    ((initialTime * 60 - timeRemaining) / (initialTime * 60)) * 100
+  // 计算当前总进度百分比
+  const currentProgress = Math.min(
+    (totalElapsed / (initialTime * 60)) * 100,
+    100
+  )
+
+  // 更新任务进度到后端
+  const updateTaskProgress = useCallback(
+    async (elapsedSeconds: number) => {
+      if (!taskId) return
+
+      try {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'in_progress',
+            // 添加新的时间记录
+            timeLog: {
+              startTime:
+                sessionStartTime.current?.toISOString() ||
+                new Date().toISOString(),
+              endTime: new Date().toISOString(),
+              duration: elapsedSeconds,
+            },
+          }),
+        })
+
+        if (!response.ok) {
+          console.error('更新任务进度失败')
+        }
+      } catch (error) {
+        console.error('更新任务进度出错:', error)
+      }
+    },
+    [taskId]
+  )
 
   // 开始计时器
   const startTimer = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current)
 
+    sessionStartTime.current = new Date()
+
     intervalRef.current = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           setIsRunning(false)
-
-          // 保存专注记录到后端
-          const today = new Date().toISOString().split('T')[0]
-          const now = new Date()
-          const startTime = new Date(Date.now() - initialTime * 60 * 1000)
-
-          // 创建专注项目记录
-          const focusProject = {
-            userId: 'user_001',
-            date: today,
-            time: `${startTime
-              .getHours()
-              .toString()
-              .padStart(2, '0')}:${startTime
-              .getMinutes()
-              .toString()
-              .padStart(2, '0')}`,
-            title: `专注时间 ${initialTime}分钟`,
-            durationMinutes: initialTime,
-            icon: '🎯',
-            iconColor: 'bg-amber-500',
-            category: 'focus' as const,
-            completed: true,
-            details: [
-              '番茄钟专注法',
-              `完成时间: ${now.getHours().toString().padStart(2, '0')}:${now
-                .getMinutes()
-                .toString()
-                .padStart(2, '0')}`,
-            ],
-          }
-
-          apiService.saveProject(focusProject).catch((error: unknown) => {
-            console.error('Failed to save focus session:', error)
-          })
-
+          // 完成时更新总进度
+          setTotalElapsed(initialTime * 60)
+          // 更新后端进度
+          updateTaskProgress(initialTime * 60)
           onComplete?.()
           return 0
         }
         return prev - 1
       })
+
+      // 更新总用时
+      setTotalElapsed((prev) => prev + 1)
     }, 1000)
-  }, [onComplete, initialTime])
+  }, [onComplete, initialTime, updateTaskProgress])
 
   // 暂停计时器
   const pauseTimer = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
       intervalRef.current = null
+
+      // 暂停时更新进度到后端
+      if (sessionStartTime.current) {
+        updateTaskProgress(totalElapsed)
+      }
     }
-  }, [])
+  }, [totalElapsed, updateTaskProgress])
 
   // 重置计时器
   const resetTimer = useCallback(() => {
     pauseTimer()
     setTimeRemaining(initialTime * 60)
     setIsRunning(false)
+    // 保持已有的总进度，不重置
   }, [initialTime, pauseTimer])
 
   // 播放/暂停切换
@@ -170,10 +190,10 @@ function ModernTimer({
           {/* 进度文字和百分比 */}
           <div className="flex justify-between items-center mb-6">
             <div className="text-2xl font-light text-slate-200 tracking-wider">
-              专注进度
+              任务进度
             </div>
             <div className="text-2xl font-light text-green-400">
-              {Math.round(progress)}%
+              {Math.round(currentProgress)}%
             </div>
           </div>
 
@@ -188,38 +208,27 @@ function ModernTimer({
 
                 // 计算当前格子的填充进度
                 let blockFillPercentage = 0
-                if (progress > blockEnd) {
+                if (currentProgress > blockEnd) {
                   // 如果总进度超过这个格子的范围，格子完全填满
                   blockFillPercentage = 100
-                } else if (progress > blockStart) {
+                } else if (currentProgress > blockStart) {
                   // 如果总进度在这个格子范围内，计算格子内的填充百分比
-                  blockFillPercentage = ((progress - blockStart) / 5) * 100
+                  blockFillPercentage =
+                    ((currentProgress - blockStart) / 5) * 100
                 }
 
                 return (
                   <div
                     key={i}
-                    className="flex-1 h-full relative bg-gray-700 overflow-hidden"
-                    style={{ minWidth: '0', border: '2px solid #1f2937' }}>
-                    {/* 从底部开始填充的进度 */}
+                    className="relative flex-1 bg-gray-700 border border-gray-600"
+                    style={{ minHeight: '48px' }}>
+                    {/* 填充部分 */}
                     <div
-                      className="absolute bottom-0 left-0 right-0 bg-green-400 transition-all duration-500 ease-out"
+                      className="bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-200 ease-out"
                       style={{
-                        height: `${blockFillPercentage}%`,
-                        boxShadow:
-                          blockFillPercentage > 0
-                            ? '0 0 4px rgba(74, 222, 128, 0.5)'
-                            : 'none',
+                        width: `${blockFillPercentage}%`,
+                        height: '100%',
                       }}></div>
-
-                    {/* 格子内的微光效果 */}
-                    {blockFillPercentage > 0 && blockFillPercentage < 100 && (
-                      <div
-                        className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-green-300 to-transparent opacity-60 animate-pulse"
-                        style={{
-                          height: `${Math.min(blockFillPercentage + 10, 100)}%`,
-                        }}></div>
-                    )}
                   </div>
                 )
               })}
@@ -228,8 +237,8 @@ function ModernTimer({
         </div>
       </div>
 
-      {/* 下部区域 - 控制按钮 */}
-      <div className="flex items-center justify-center space-x-6 mt-8 mb-8">
+      {/* 底部区域 - 控制按钮 */}
+      <div className="flex justify-center space-x-6 mt-16">
         <button
           onClick={toggleTimer}
           className="bg-slate-800/80 backdrop-blur-xl text-white px-8 py-4 rounded-2xl font-medium text-xl hover:bg-slate-700/80 active:bg-slate-900/80 transition-all duration-200 shadow-lg border border-slate-700/50 hover:border-green-400/30">
@@ -249,6 +258,7 @@ function ModernTimer({
 function FocusContent() {
   const searchParams = useSearchParams()
   const taskId = searchParams.get('id')
+  const initialProgress = Number(searchParams.get('progress')) || 0
 
   // 定义任务信息类型
   interface TaskInfo {
@@ -258,28 +268,47 @@ function FocusContent() {
     time: string
     duration?: string
     details?: string[]
+    type?: string
   }
 
   // 使用 useState 管理任务信息，避免 hydration 错误
   const [taskInfo, setTaskInfo] = useState<TaskInfo | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // 在 useEffect 中加载任务信息
+  // 从API获取任务信息
   useEffect(() => {
-    try {
-      const savedTask = localStorage.getItem('currentTask')
-      if (savedTask) {
-        const parsed = JSON.parse(savedTask) as TaskInfo
-        // 如果URL中有taskId，验证是否匹配
-        if (taskId && parsed.id !== taskId) {
-          setTaskInfo(null)
-        } else {
-          setTaskInfo(parsed)
-        }
+    const fetchTaskInfo = async () => {
+      if (!taskId) {
+        setIsLoading(false)
+        return
       }
-    } catch (error) {
-      console.error('获取任务信息失败:', error)
-      setTaskInfo(null)
+
+      try {
+        const response = await fetch(`/api/tasks/${taskId}`)
+        if (response.ok) {
+          const task = await response.json()
+          setTaskInfo({
+            id: task._id,
+            title: task.title,
+            icon: task.type === 'check-in' ? '💪' : '📝',
+            time: task.plannedTime || '09:00',
+            duration: task.estimatedDuration
+              ? `${Math.round(task.estimatedDuration / 60)}分钟`
+              : '25分钟',
+            details: Array.isArray(task.content)
+              ? task.content
+              : [task.content],
+            type: task.type,
+          })
+        }
+      } catch (error) {
+        console.error('获取任务信息失败:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
+
+    fetchTaskInfo()
   }, [taskId])
 
   // 解析时长字符串为分钟数
@@ -297,47 +326,32 @@ function FocusContent() {
   }, [])
 
   const handleTimerComplete = () => {
-    // 可以添加完成音效或通知
     console.log('专注时段完成')
 
-    // 保存专注记录到后端
-    if (taskInfo) {
-      const today = new Date().toISOString().split('T')[0]
-      const duration = taskInfo.duration
-        ? parseDurationToMinutes(taskInfo.duration)
-        : 25
-
-      // 创建专注项目记录
-      const now = new Date()
-      const startTime = new Date(Date.now() - duration * 60 * 1000)
-
-      const focusProject = {
-        userId: 'user_001',
-        date: today,
-        time: `${startTime.getHours().toString().padStart(2, '0')}:${startTime
-          .getMinutes()
-          .toString()
-          .padStart(2, '0')}`,
-        title: taskInfo.title || `专注时间 ${duration}分钟`,
-        durationMinutes: duration,
-        icon: taskInfo.icon || '🎯',
-        iconColor: 'bg-amber-500',
-        category: 'focus' as const,
-        completed: true,
-        details: [
-          '番茄钟专注法',
-          `完成时间: ${now.getHours().toString().padStart(2, '0')}:${now
-            .getMinutes()
-            .toString()
-            .padStart(2, '0')}`,
-          ...(taskInfo.details || []),
-        ],
-      }
-
-      apiService.saveProject(focusProject).catch((error: unknown) => {
-        console.error('Failed to save focus session:', error)
+    // 如果有任务ID，完成任务
+    if (taskId && taskInfo) {
+      fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+        }),
+      }).catch((error) => {
+        console.error('完成任务失败:', error)
       })
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="h-screen bg-slate-900 text-white flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-3">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-slate-400">加载任务信息...</div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -367,8 +381,10 @@ function FocusContent() {
         {/* 右上角显示任务信息 */}
         <div className="flex items-center space-x-4">
           {taskInfo && (
-            <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium">
-              {taskInfo.icon} {taskInfo.title}
+            <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
+              <span>{taskInfo.icon}</span>
+              <span>{taskInfo.title}</span>
+              <span className="text-slate-400">({taskInfo.duration})</span>
             </div>
           )}
           <div className="w-8 h-8 bg-slate-600 rounded-full"></div>
@@ -384,6 +400,8 @@ function FocusContent() {
                 ? parseDurationToMinutes(taskInfo.duration)
                 : 25
             }
+            initialProgress={initialProgress}
+            taskId={taskId || undefined}
             onComplete={handleTimerComplete}
           />
         </div>

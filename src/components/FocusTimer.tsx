@@ -7,7 +7,6 @@ import {
   DigitalWatchFace,
   WatchFaceType,
 } from '@/components/watchfaces'
-import { apiService } from '@/lib/api'
 
 interface FocusTimerProps {
   showSettings?: boolean
@@ -185,18 +184,38 @@ export default function FocusTimer({
             // 切换模式
             if (mode === 'focus') {
               // 保存专注记录到后端
-              const today = new Date().toISOString().split('T')[0]
-              apiService
-                .saveFocusSession({
-                  date: today,
-                  startTime: Date.now() - initialFocusTime * 60 * 1000,
-                  duration: initialFocusTime,
-                  targetDuration: initialFocusTime,
-                  completed: true,
-                })
-                .catch((error) => {
-                  console.error('Failed to save focus session:', error)
-                })
+              const focusTaskData = {
+                userId: 'user_001',
+                type: 'todo' as const,
+                title: `专注时间 ${initialFocusTime}分钟`,
+                content: [
+                  `专注时长: ${initialFocusTime}分钟`,
+                  '番茄钟专注法',
+                  `完成时间: ${new Date().toLocaleTimeString()}`,
+                ],
+                status: 'completed' as const,
+                priority: 'medium' as const,
+                tags: ['专注', '番茄钟'],
+                plannedTime: new Date().toTimeString().substring(0, 5),
+                estimatedDuration: initialFocusTime * 60,
+                timeLog: [
+                  {
+                    startTime: new Date(
+                      Date.now() - initialFocusTime * 60 * 1000
+                    ).toISOString(),
+                    endTime: new Date().toISOString(),
+                    duration: initialFocusTime * 60,
+                  },
+                ],
+              }
+
+              fetch('/api/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(focusTaskData),
+              }).catch((error) => {
+                console.error('Failed to save focus session:', error)
+              })
 
               setMode('break')
               nextAlertTimeRef.current = null // 休息模式清空提示时间
