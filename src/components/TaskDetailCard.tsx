@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react'
 import { ProjectItem } from '@/lib/api'
 import { categoryConfig } from '@/lib/constants'
 import { formatDuration } from '@/lib/utils'
+import { taskProgressAPI, TaskProgressData } from '@/lib/task-progress-api'
 
 interface TaskDetailCardProps {
   selectedItem: ProjectItem | null
@@ -27,6 +28,9 @@ export default function TaskDetailCard({
   const [completedDetails, setCompletedDetails] = useState<Set<number>>(
     new Set()
   )
+  const [taskProgressData, setTaskProgressData] = useState<
+    Map<string, TaskProgressData>
+  >(new Map())
 
   const cardRef = useRef<HTMLDivElement>(null)
 
@@ -50,6 +54,23 @@ export default function TaskDetailCard({
       }
     }
   }, [selectedItem, onClose])
+
+  // 加载选中任务的进度数据
+  useEffect(() => {
+    if (selectedItem && selectedItem.type !== 'check-in') {
+      loadTaskProgress(selectedItem.id)
+    }
+  }, [selectedItem])
+
+  // 批量加载所有TODO任务的进度数据
+  useEffect(() => {
+    const todoTasks = timelineItems.filter((item) => item.type !== 'check-in')
+    todoTasks.forEach((task) => {
+      if (!taskProgressData.has(task.id)) {
+        loadTaskProgress(task.id)
+      }
+    })
+  }, [timelineItems])
 
   // 处理打卡任务的完成/撤销操作
   const handleCheckInToggle = async (task: ProjectItem) => {
@@ -79,12 +100,33 @@ export default function TaskDetailCard({
   const calculateProgress = (task: ProjectItem): number => {
     if (task.type === 'check-in' || task.completed) return 100
 
-    // 对于todo任务，基于时间记录计算进度
-    // 这里可以通过API获取实际的时间记录，暂时使用模拟数据
-    const completedTime = 0 // 实际完成时间（分钟）
-    const estimatedTime = task.durationMinutes || 25 // 预估时间
+    // 对于todo任务，从缓存的进度数据中获取
+    const progressData = taskProgressData.get(task.id)
+    if (progressData) {
+      return progressData.progressPercentage
+    }
 
-    return Math.min((completedTime / estimatedTime) * 100, 100)
+    // 如果没有进度数据，返回0
+    return 0
+  }
+
+  // 获取任务执行时间（分钟）
+  const getExecutedTime = (task: ProjectItem): number => {
+    const progressData = taskProgressData.get(task.id)
+    if (progressData) {
+      return Math.round(progressData.totalExecutedTime / 60)
+    }
+    return 0
+  }
+
+  // 加载任务进度数据
+  const loadTaskProgress = async (taskId: string) => {
+    try {
+      const progressData = await taskProgressAPI.getTaskProgress(taskId)
+      setTaskProgressData((prev) => new Map(prev.set(taskId, progressData)))
+    } catch (error) {
+      console.error(`加载任务进度失败 (${taskId}):`, error)
+    }
   }
 
   // 开始编辑清单项
@@ -337,7 +379,14 @@ export default function TaskDetailCard({
           {!isCheckInTask && (
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-slate-400 text-sm">任务进度</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 text-sm">任务进度</span>
+                  {getExecutedTime(selectedItem) > 0 && (
+                    <span className="text-slate-500 text-xs">
+                      已执行 {getExecutedTime(selectedItem)} 分钟
+                    </span>
+                  )}
+                </div>
                 <span className="text-white text-sm font-medium">
                   {Math.round(progress)}%
                 </span>

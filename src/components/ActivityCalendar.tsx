@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { ProjectItem, dataUtils } from '@/lib/api'
 import { DEFAULT_USER_ID } from '@/lib/constants'
+import { monthlyStatsAPI } from '@/lib/monthly-stats-api'
 
 interface DayRecord {
   date: number
@@ -52,23 +52,10 @@ const formatTimeInHours = (minutes: number): string => {
 
 const getIntensityColor = (focusTime: number): string => {
   if (focusTime === 0) return 'bg-slate-700/50'
-  if (focusTime <= 30) return 'bg-green-900/70'
-  if (focusTime <= 60) return 'bg-green-800/80'
-  if (focusTime <= 120) return 'bg-green-600/90'
-  return 'bg-green-400'
-}
-
-const groupProjectsByDate = (
-  projects: ProjectItem[]
-): Map<string, ProjectItem[]> => {
-  const grouped = new Map<string, ProjectItem[]>()
-  projects.forEach((project) => {
-    if (!grouped.has(project.date)) {
-      grouped.set(project.date, [])
-    }
-    grouped.get(project.date)!.push(project)
-  })
-  return grouped
+  if (focusTime <= 30) return 'bg-amber-900/70'
+  if (focusTime <= 60) return 'bg-amber-800/80'
+  if (focusTime <= 120) return 'bg-amber-600/90'
+  return 'bg-amber-400'
 }
 
 export default function ActivityCalendar({
@@ -99,31 +86,19 @@ export default function ActivityCalendar({
       endDate.setDate(endDate.getDate() + remainingDays)
 
       try {
-        // 使用tasks API获取数据，遍历日期范围获取每天的任务数据
-        const allProjects: ProjectItem[] = []
-        const fetchIterDate = new Date(startDate)
+        // ✅ 使用月度统计API一次性获取整个月的任务执行时间数据
+        console.log(`获取月度统计数据: ${year}-${month + 1}`)
+        const monthlyStats = await monthlyStatsAPI.getMonthlyStats(
+          year,
+          month + 1, // monthlyStatsAPI使用1-12月份格式
+          DEFAULT_USER_ID
+        )
 
-        while (fetchIterDate <= endDate) {
-          const dateStr = getLocalDateString(fetchIterDate)
-
-          try {
-            const response = await fetch(
-              `/api/tasks/today?userId=${DEFAULT_USER_ID}&date=${dateStr}&format=project-items`
-            )
-
-            if (response.ok) {
-              const dayProjects: ProjectItem[] = await response.json()
-              allProjects.push(...dayProjects)
-            }
-          } catch (dayError) {
-            console.warn(`Failed to load data for ${dateStr}:`, dayError)
-          }
-
-          fetchIterDate.setDate(fetchIterDate.getDate() + 1)
-        }
-
-        const projectsByDate = groupProjectsByDate(allProjects)
-        console.log('Projects by date:', Object.fromEntries(projectsByDate))
+        console.log(
+          '获取月度统计数据成功:',
+          monthlyStats.dailyStats.length,
+          '天的数据'
+        )
 
         const days: DayRecord[] = []
         const currentIterDate = new Date(startDate)
@@ -134,12 +109,13 @@ export default function ActivityCalendar({
           const dateStr = getLocalDateString(currentIterDate)
           const isToday = dateStr === todayStr
 
-          const dayProjects = projectsByDate.get(dateStr) || []
-          const focusTime = dataUtils.calculateFocusTime(dayProjects)
-          const cycles = dataUtils.calculateCycles(dayProjects)
-          const hasRecord = dayProjects.some(
-            (p) => p.completed && p.durationMinutes > 0
+          // ✅ 从月度统计数据中获取当天的执行时间和任务数据（只统计TODO任务，不包含打卡任务）
+          const dayStats = monthlyStats.dailyStats.find(
+            (day) => day.date === dateStr
           )
+          const focusTime = dayStats ? dayStats.todoTime : 0 // 只统计TODO任务时间（分钟），不包含打卡任务
+          const cycles = dayStats ? dayStats.completedCount : 0 // 使用完成任务数作为周期数
+          const hasRecord = dayStats ? dayStats.todoTime > 0 : false
 
           days.push({
             date: currentIterDate.getDate(),
@@ -162,6 +138,7 @@ export default function ActivityCalendar({
             isCurrentMonth: d.isCurrentMonth,
             hasRecord: d.hasRecord,
             focusTime: d.focusTime,
+            cycles: d.cycles,
           }))
         )
 
@@ -323,10 +300,10 @@ export default function ActivityCalendar({
       <span>Less</span>
       <div className="flex space-x-1">
         <div className="w-2 h-2 rounded-sm bg-slate-700/50"></div>
-        <div className="w-2 h-2 rounded-sm bg-green-900/70"></div>
-        <div className="w-2 h-2 rounded-sm bg-green-800/80"></div>
-        <div className="w-2 h-2 rounded-sm bg-green-600/90"></div>
-        <div className="w-2 h-2 rounded-sm bg-green-400"></div>
+        <div className="w-2 h-2 rounded-sm bg-amber-900/70"></div>
+        <div className="w-2 h-2 rounded-sm bg-amber-800/80"></div>
+        <div className="w-2 h-2 rounded-sm bg-amber-600/90"></div>
+        <div className="w-2 h-2 rounded-sm bg-amber-400"></div>
       </div>
       <span>More</span>
     </div>

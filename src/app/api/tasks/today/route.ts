@@ -49,8 +49,10 @@ function filterTasksForDate(
 
     if (task.type === 'todo') {
       // TODO任务筛选逻辑：
-      // 1. 只过滤掉archived状态的任务
-      // 2. 包含今天到期、已过期或今天完成的任务
+      // 1. 排除已归档的任务
+      // 2. 包含今天完成的任务
+      // 3. 包含今天到期的任务
+      // 4. 包含7天内过期的未完成任务（避免显示过于陈旧的过期任务）
       const todoTask = task as TodoTask
 
       // 只过滤掉已归档的任务
@@ -64,10 +66,23 @@ function filterTasksForDate(
           ? todoTask.completedAt.split('T')[0]
           : null
 
-        // 包含以下情况的任务：
-        // 1. 今天到期或已过期的未完成任务
-        // 2. 今天完成的任务（不管原本什么时候到期）
-        if (dueDate <= today || completedDate === today) {
+        // 计算合理的过期任务显示范围（最多显示7天前过期的任务）
+        const maxOverdueDays = 7
+        const earliestDate = new Date(today)
+        earliestDate.setDate(earliestDate.getDate() - maxOverdueDays)
+        const earliestDateStr = earliestDate.toISOString().split('T')[0]
+
+        // 新的筛选条件：
+        // 1. 今天完成的任务（不管原本什么时候到期）
+        // 2. 今天到期的任务
+        // 3. 合理时间范围内过期的未完成任务（限制在7天内）
+        if (
+          completedDate === today ||
+          dueDate === today ||
+          (dueDate >= earliestDateStr &&
+            dueDate < today &&
+            todoTask.status !== 'completed')
+        ) {
           todaysTasks.push(todoTask)
         }
       } else {

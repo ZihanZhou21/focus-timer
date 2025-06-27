@@ -11,9 +11,9 @@ import {
   formatTimeInHours,
   generateDateLabels,
   getDateRange,
-  groupProjectsByDate,
 } from '@/lib/utils'
 import { dataUtils } from '@/lib/api'
+import { dateRangeAPI } from '@/lib/date-range-api'
 import AppNavigation from '@/components/AppNavigation'
 import StatsCard from '@/components/StatsCard'
 
@@ -72,31 +72,28 @@ export default function CalendarPage() {
     try {
       const { start, end } = getDateRange(currentDate, selectedPeriod)
 
-      // 使用tasks API获取数据，遍历日期范围获取每天的任务数据
+      // ✅ 使用批量API一次性获取日期范围的数据
+      const startDateStr = start.toISOString().split('T')[0]
+      const endDateStr = end.toISOString().split('T')[0]
+
+      console.log(`批量获取日期范围数据: ${startDateStr} - ${endDateStr}`)
+      const dateRangeData = await dateRangeAPI.getDateRangeData(
+        startDateStr,
+        endDateStr,
+        DEFAULT_USER_ID
+      )
+
+      // 将批量数据转换为数组格式以保持兼容性
       const allProjects: ProjectItem[] = []
-      const currentIterDate = new Date(start)
+      Object.values(dateRangeData).forEach((dayProjects) => {
+        allProjects.push(...dayProjects)
+      })
 
-      while (currentIterDate <= end) {
-        const dateStr = currentIterDate.toISOString().split('T')[0]
-
-        try {
-          const response = await fetch(
-            `/api/tasks/today?userId=${DEFAULT_USER_ID}&date=${dateStr}&format=project-items`
-          )
-
-          if (response.ok) {
-            const dayProjects: ProjectItem[] = await response.json()
-            allProjects.push(...dayProjects)
-          }
-        } catch (dayError) {
-          console.warn(`Failed to load data for ${dateStr}:`, dayError)
-        }
-
-        currentIterDate.setDate(currentIterDate.getDate() + 1)
-      }
-
-      // 按日期分组数据
-      const groupedData = groupProjectsByDate(allProjects)
+      // 从批量数据创建分组数据
+      const groupedData = new Map<string, ProjectItem[]>()
+      Object.entries(dateRangeData).forEach(([dateStr, dayProjects]) => {
+        groupedData.set(dateStr, dayProjects)
+      })
 
       // 处理年视图的特殊分组（按月）
       if (selectedPeriod === 'year') {

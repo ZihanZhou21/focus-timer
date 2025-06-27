@@ -1,7 +1,7 @@
 // Week组件 - 显示过去7天的专注时间统计
 import React, { useState, useEffect } from 'react'
-import { ProjectItem, dataUtils } from '@/lib/api'
 import { formatTimeInHours } from '@/lib/utils'
+import { weeklyStatsAPI } from '@/lib/weekly-stats-api'
 
 interface DayData {
   day: string
@@ -23,48 +23,23 @@ export default function WeekChart({
 
   // 生成过去7天数据
   const generateLast7DaysData = async (): Promise<DayData[]> => {
-    const today = new Date()
-
     try {
-      // 生成7天数据，每天单独请求
-      const data: DayData[] = []
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(today)
-        date.setDate(today.getDate() - i)
-        const dateStr = date.toISOString().split('T')[0]
+      // ✅ 使用专门的周度统计API，获取真实的任务执行时间
+      console.log('获取过去7天任务执行时间统计')
+      const weeklyStats = await weeklyStatsAPI.getLast7DaysStats(userId)
 
-        // 获取这一天的任务数据
-        const response = await fetch(
-          `/api/tasks/today?userId=${userId}&date=${dateStr}&format=project-items`
-        )
-
-        const month = date.getMonth() + 1
-        const day = date.getDate()
-        const dayLabel = `${month}/${day}`
-
-        if (response.ok) {
-          const dayProjects: ProjectItem[] = await response.json()
-          data.push({
-            day: dayLabel,
-            focus: dataUtils.calculateFocusTime(dayProjects),
-            cycles: dataUtils.calculateCycles(dayProjects),
-          })
-        } else {
-          // 如果请求失败，添加空数据
-          data.push({
-            day: dayLabel,
-            focus: 0,
-            cycles: 0,
-          })
-        }
-      }
+      // 转换为组件需要的数据格式（只统计TODO任务，不包含打卡任务）
+      const data: DayData[] = weeklyStats.dailyStats.map((day) => ({
+        day: day.dayLabel,
+        focus: day.todoTime, // 只统计TODO任务执行时间（分钟），不包含打卡任务
+        cycles: day.completedCount, // 完成的任务数量
+      }))
 
       return data
     } catch (error) {
       console.error('Failed to load weekly data:', error)
+      return []
     }
-
-    return []
   }
 
   // 计算最大专注时间（用于柱状图高度）

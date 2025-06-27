@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
-import { Task } from '@/lib/types'
-import { dataUtils, mapTaskToProjectItem } from '@/lib/api'
+import { Task, TodoTask } from '@/lib/types'
+import { ProjectItem } from '@/lib/api'
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,14 +42,69 @@ export async function GET(request: NextRequest) {
       current.setDate(current.getDate() + 1)
     }
 
+    // 简单的日期过滤函数
+    const getTasksForDate = (tasks: Task[], targetDate: string): Task[] => {
+      return tasks.filter((task) => {
+        if (task.type === 'todo') {
+          const todoTask = task as TodoTask
+          const dueDate = todoTask.dueDate
+            ? todoTask.dueDate.split('T')[0]
+            : null
+          const completedDate = todoTask.completedAt
+            ? todoTask.completedAt.split('T')[0]
+            : null
+          return dueDate === targetDate || completedDate === targetDate
+        }
+        return false // 简化处理，只处理todo任务
+      })
+    }
+
+    // 转换Task到ProjectItem的函数
+    const convertTaskToProjectItem = (
+      task: Task,
+      date: string
+    ): ProjectItem => {
+      const time = task.plannedTime || '00:00'
+      let durationMinutes = 0
+
+      if (task.type === 'todo') {
+        durationMinutes = Math.round((task as TodoTask).estimatedDuration / 60)
+      }
+
+      return {
+        id: task._id,
+        userId: task.userId,
+        date: date,
+        time: time,
+        title: task.title,
+        durationMinutes: durationMinutes,
+        icon: '📝',
+        iconColor:
+          task.priority === 'high'
+            ? 'bg-red-500'
+            : task.priority === 'medium'
+            ? 'bg-yellow-500'
+            : 'bg-green-500',
+        category: 'task',
+        completed: task.status === 'completed',
+        details: Array.isArray(task.content) ? task.content : [task.content],
+        tags: task.tags,
+        priority: task.priority,
+        status: task.status,
+        type: task.type,
+      }
+    }
+
     // 按日期分组任务
-    const result: { [date: string]: any[] } = {}
+    const result: { [date: string]: Task[] | ProjectItem[] } = {}
 
     for (const date of dateRange) {
-      const dayTasks = dataUtils.getTasksForDate(allTasks, date)
+      const dayTasks = getTasksForDate(allTasks, date)
 
       if (format === 'project-items') {
-        result[date] = dayTasks.map((task) => mapTaskToProjectItem(task, date))
+        result[date] = dayTasks.map((task) =>
+          convertTaskToProjectItem(task, date)
+        )
       } else {
         result[date] = dayTasks
       }
