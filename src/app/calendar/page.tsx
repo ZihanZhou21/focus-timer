@@ -1,35 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import {
-  categoryConfig,
-  DEFAULT_USER_ID,
-  ProjectCategory,
-  TimePeriod,
-} from '@/lib/constants'
-import {
-  formatTimeInHours,
-  generateDateLabels,
-  getDateRange,
-} from '@/lib/utils'
-import { dataUtils } from '@/lib/api'
-import { dateRangeAPI } from '@/lib/date-range-api'
+import { categoryConfig, DEFAULT_USER_ID, TimePeriod } from '@/lib/constants'
+import { formatTimeInHours, getDateRange } from '@/lib/utils'
+import { weeklyStatsAPI } from '@/lib/weekly-stats-api'
+import { monthlyStatsAPI } from '@/lib/monthly-stats-api'
 import AppNavigation from '@/components/AppNavigation'
 import StatsCard from '@/components/StatsCard'
-
-interface ProjectItem {
-  id: string
-  userId: string
-  date: string
-  time: string
-  title: string
-  durationMinutes: number
-  icon: string
-  iconColor: string
-  category: ProjectCategory
-  completed: boolean
-  details?: string[]
-}
 
 interface DayData {
   date: string
@@ -66,101 +43,100 @@ export default function CalendarPage() {
   })
   const [isLoading, setIsLoading] = useState(true)
 
-  // 加载数据 - 优化为单次请求
+  // 加载数据 - 使用新的统计API
   const loadPeriodData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const { start, end } = getDateRange(currentDate, selectedPeriod)
+      let dailyData: DayData[] = []
 
-      // ✅ 使用批量API一次性获取日期范围的数据
-      const startDateStr = start.toISOString().split('T')[0]
-      const endDateStr = end.toISOString().split('T')[0]
+      if (selectedPeriod === 'week') {
+        // 使用周度统计API
+        console.log('使用周度统计API获取数据')
+        const weeklyStats = await weeklyStatsAPI.getLast7DaysStats(
+          DEFAULT_USER_ID
+        )
 
-      console.log(`批量获取日期范围数据: ${startDateStr} - ${endDateStr}`)
-      const dateRangeData = await dateRangeAPI.getDateRangeData(
-        startDateStr,
-        endDateStr,
-        DEFAULT_USER_ID
-      )
+        dailyData = weeklyStats.dailyStats.map((day) => ({
+          date: day.date,
+          day: day.dayLabel,
+          totalFocusTime: day.todoTime, // 只统计TODO任务时间
+          completedCycles: day.completedCount,
+          totalProjects: day.taskCount,
+          completedProjects: day.completedCount,
+          categoryBreakdown: {
+            habit: 0, // 新API不区分类别，统一为TODO时间
+            task: day.todoTime,
+            focus: 0,
+            exercise: 0,
+          },
+        }))
+      } else if (selectedPeriod === 'month') {
+        // 使用月度统计API
+        console.log('使用月度统计API获取数据')
+        const monthlyStats = await monthlyStatsAPI.getMonthlyStats(
+          currentDate.getFullYear(),
+          currentDate.getMonth() + 1,
+          DEFAULT_USER_ID
+        )
 
-      // 将批量数据转换为数组格式以保持兼容性
-      const allProjects: ProjectItem[] = []
-      Object.values(dateRangeData).forEach((dayProjects) => {
-        allProjects.push(...dayProjects)
-      })
+        dailyData = monthlyStats.dailyStats.map((day) => ({
+          date: day.date,
+          day: new Date(day.date).getDate().toString(),
+          totalFocusTime: day.todoTime, // 只统计TODO任务时间
+          completedCycles: day.completedCount,
+          totalProjects: day.taskCount,
+          completedProjects: day.completedCount,
+          categoryBreakdown: {
+            habit: 0, // 新API不区分类别，统一为TODO时间
+            task: day.todoTime,
+            focus: 0,
+            exercise: 0,
+          },
+        }))
+      } else {
+        // 年视图：使用多个月度API
+        console.log('使用多个月度API获取年度数据')
+        const year = currentDate.getFullYear()
+        const monthlyPromises = []
 
-      // 从批量数据创建分组数据
-      const groupedData = new Map<string, ProjectItem[]>()
-      Object.entries(dateRangeData).forEach(([dateStr, dayProjects]) => {
-        groupedData.set(dateStr, dayProjects)
-      })
+        for (let month = 1; month <= 12; month++) {
+          monthlyPromises.push(
+            monthlyStatsAPI.getMonthlyStats(year, month, DEFAULT_USER_ID)
+          )
+        }
 
-      // 处理年视图的特殊分组（按月）
-      if (selectedPeriod === 'year') {
-        const monthlyGrouped = new Map<string, ProjectItem[]>()
-        allProjects.forEach((project) => {
-          const monthKey = project.date.substring(0, 7) // YYYY-MM
-          if (!monthlyGrouped.has(monthKey)) {
-            monthlyGrouped.set(monthKey, [])
+        const monthlyResults = await Promise.all(monthlyPromises)
+
+        dailyData = monthlyResults.map((monthlyStats, index) => {
+          const monthTotalTime = monthlyStats.dailyStats.reduce(
+            (sum, day) => sum + day.todoTime,
+            0
+          )
+          const monthCompletedCount = monthlyStats.dailyStats.reduce(
+            (sum, day) => sum + day.completedCount,
+            0
+          )
+          const monthTaskCount = monthlyStats.dailyStats.reduce(
+            (sum, day) => sum + day.taskCount,
+            0
+          )
+
+          return {
+            date: `${year}-${(index + 1).toString().padStart(2, '0')}`,
+            day: `${index + 1}月`,
+            totalFocusTime: monthTotalTime,
+            completedCycles: monthCompletedCount,
+            totalProjects: monthTaskCount,
+            completedProjects: monthCompletedCount,
+            categoryBreakdown: {
+              habit: 0,
+              task: monthTotalTime,
+              focus: 0,
+              exercise: 0,
+            },
           }
-          monthlyGrouped.get(monthKey)!.push(project)
-        })
-        groupedData.clear()
-        monthlyGrouped.forEach((projects, key) => {
-          groupedData.set(key, projects)
         })
       }
-
-      // 生成每日数据
-      const dailyData: DayData[] = []
-      const labels = generateDateLabels(start, end, selectedPeriod)
-
-      labels.forEach((label, index) => {
-        let dateKey: string
-        const tempDate = new Date(start)
-
-        if (selectedPeriod === 'year') {
-          tempDate.setMonth(index)
-          dateKey = `${tempDate.getFullYear()}-${(tempDate.getMonth() + 1)
-            .toString()
-            .padStart(2, '0')}`
-        } else if (selectedPeriod === 'month') {
-          tempDate.setDate(index + 1)
-          dateKey = tempDate.toISOString().split('T')[0]
-        } else {
-          tempDate.setDate(tempDate.getDate() + index)
-          dateKey = tempDate.toISOString().split('T')[0]
-        }
-
-        const dayProjects = groupedData.get(dateKey) || []
-        const totalFocusTime = dataUtils.calculateFocusTime(dayProjects)
-        const completedCycles = dataUtils.calculateCycles(dayProjects)
-
-        const categoryBreakdown = {
-          habit: dataUtils.calculateFocusTime(
-            dayProjects.filter((p) => p.category === 'habit')
-          ),
-          task: dataUtils.calculateFocusTime(
-            dayProjects.filter((p) => p.category === 'task')
-          ),
-          focus: dataUtils.calculateFocusTime(
-            dayProjects.filter((p) => p.category === 'focus')
-          ),
-          exercise: dataUtils.calculateFocusTime(
-            dayProjects.filter((p) => p.category === 'exercise')
-          ),
-        }
-
-        dailyData.push({
-          date: dateKey,
-          day: label,
-          totalFocusTime,
-          completedCycles,
-          totalProjects: dayProjects.length,
-          completedProjects: dayProjects.filter((p) => p.completed).length,
-          categoryBreakdown,
-        })
-      })
 
       // 计算总体统计
       const totalFocusTime = dailyData.reduce(

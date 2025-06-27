@@ -198,7 +198,7 @@ export class TaskService {
 // 单例服务实例
 export const taskService = new TaskService()
 
-// 工具函数
+// 保留必要的工具函数
 export const dataUtils = {
   generateProjectId: (projects: ProjectItem[]): string => {
     const existingIds = projects.map((p) => p.id)
@@ -221,35 +221,5 @@ export const dataUtils = {
 
   formatTime: (date: Date): string => {
     return date.toTimeString().substring(0, 5)
-  },
-
-  getDateRange: (startDate: string, endDate: string): string[] => {
-    const dates: string[] = []
-    const current = new Date(startDate)
-    const end = new Date(endDate)
-
-    while (current <= end) {
-      dates.push(dataUtils.formatDate(current))
-      current.setDate(current.getDate() + 1)
-    }
-
-    return dates
-  },
-
-  calculateFocusTime: (projects: ProjectItem[]): number => {
-    return projects.reduce((total, project) => {
-      if (project.completed && project.category === 'focus') {
-        return total + project.durationMinutes
-      }
-      return total
-    }, 0)
-  },
-
-  calculateCycles: (projects: ProjectItem[]): number => {
-    return projects.filter(
-      (project) =>
-        project.completed &&
-        (project.category === 'focus' || project.category === 'task')
-    ).length
   },
 }

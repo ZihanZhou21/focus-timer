@@ -144,8 +144,8 @@
       "运动"
     ],
     "createdAt": "2024-06-25T07:00:00.000Z",
-    "updatedAt": "2025-06-27T01:38:34.615Z",
-    "completedAt": "2025-06-27T01:38:34.549Z",
+    "updatedAt": "2025-06-27T01:56:43.530Z",
+    "completedAt": "2025-06-27T01:56:43.484Z",
     "plannedTime": "18:00",
     "checkInHistory": [
       {
@@ -232,7 +232,7 @@
       "用户创建"
     ],
     "createdAt": "2025-06-26T04:51:56.016Z",
-    "updatedAt": "2025-06-27T01:39:02.735Z",
+    "updatedAt": "2025-06-27T02:11:57.466Z",
     "completedAt": null,
     "plannedTime": "14:51",
     "estimatedDuration": 3600,
@@ -240,7 +240,10 @@
       "startTime": "2025-06-27T01:39:00.525Z",
       "endTime": "2025-06-27T01:39:02.689Z",
       "duration": 1802
-    }
+    },
+    "details": [
+      "新任务: 123"
+    ]
   },
   {
     "_id": "task_1750914001215_l4q7iw7ng",
@@ -420,6 +423,29 @@
         6,
         0
       ]
+    }
+  },
+  {
+    "_id": "task_1750990862383_lv8fwgp6y",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "test",
+    "content": [],
+    "status": "in_progress",
+    "priority": "medium",
+    "tags": [
+      "学习"
+    ],
+    "createdAt": "2025-06-27T02:21:02.383Z",
+    "updatedAt": "2025-06-27T02:23:08.747Z",
+    "completedAt": null,
+    "plannedTime": "12:20",
+    "dueDate": null,
+    "estimatedDuration": 300,
+    "timeLog": {
+      "startTime": "2025-06-27T02:23:06.487Z",
+      "endTime": "2025-06-27T02:23:08.705Z",
+      "duration": 101
     }
   }
 ]
