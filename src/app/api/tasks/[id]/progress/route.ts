@@ -36,10 +36,10 @@ interface TaskProgressResponse {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const taskId = params.id
+    const { id: taskId } = await params
 
     if (!taskId) {
       return NextResponse.json({ error: '请提供任务ID' }, { status: 400 })
