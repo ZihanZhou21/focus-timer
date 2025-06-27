@@ -43,6 +43,12 @@ export default function Home() {
     }
   }
 
+  // 处理任务删除
+  const handleTaskDelete = (taskId: string) => {
+    setTimelineItems((prev) => prev.filter((item) => item.id !== taskId))
+    setSelectedItem(null) // 关闭详情面板
+  }
+
   // 关闭任务详情
   const handleCloseTaskDetail = () => {
     setSelectedItem(null)
@@ -242,6 +248,7 @@ export default function Home() {
                 timelineItems={timelineItems}
                 onSelectItem={setSelectedItem}
                 onTaskUpdate={handleTaskUpdate}
+                onTaskDelete={handleTaskDelete}
                 onClose={handleCloseTaskDetail}
               />
             </div>

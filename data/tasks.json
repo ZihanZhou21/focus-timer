@@ -219,33 +219,6 @@
     }
   },
   {
-    "_id": "task_1750913516016_noelf1a60",
-    "userId": "user_001",
-    "type": "todo",
-    "title": "123",
-    "content": [
-      "新任务: 123"
-    ],
-    "status": "in_progress",
-    "priority": "medium",
-    "tags": [
-      "用户创建"
-    ],
-    "createdAt": "2025-06-26T04:51:56.016Z",
-    "updatedAt": "2025-06-27T02:11:57.466Z",
-    "completedAt": null,
-    "plannedTime": "14:51",
-    "estimatedDuration": 3600,
-    "timeLog": {
-      "startTime": "2025-06-27T01:39:00.525Z",
-      "endTime": "2025-06-27T01:39:02.689Z",
-      "duration": 1802
-    },
-    "details": [
-      "新任务: 123"
-    ]
-  },
-  {
     "_id": "task_1750914001215_l4q7iw7ng",
     "userId": "user_001",
     "type": "todo",
@@ -437,15 +410,52 @@
       "学习"
     ],
     "createdAt": "2025-06-27T02:21:02.383Z",
-    "updatedAt": "2025-06-27T02:23:08.747Z",
+    "updatedAt": "2025-06-27T09:07:42.722Z",
     "completedAt": null,
     "plannedTime": "12:20",
     "dueDate": null,
     "estimatedDuration": 300,
-    "timeLog": {
-      "startTime": "2025-06-27T02:23:06.487Z",
-      "endTime": "2025-06-27T02:23:08.705Z",
-      "duration": 101
-    }
+    "timeLog": [
+      {
+        "startTime": "2025-06-27T08:50:18.825Z",
+        "endTime": "2025-06-27T08:50:31.378Z",
+        "duration": 12
+      },
+      {
+        "startTime": "2025-06-27T08:54:02.096Z",
+        "endTime": "2025-06-27T08:54:05.523Z",
+        "duration": 3
+      },
+      {
+        "startTime": "2025-06-27T09:07:36.010Z",
+        "endTime": "2025-06-27T09:07:42.655Z",
+        "duration": 6
+      }
+    ],
+    "lastActivityAt": "2025-06-27T09:07:42.655Z"
+  },
+  {
+    "_id": "task_1751014489275_mrjohsqb8",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "123123",
+    "content": [],
+    "status": "paused",
+    "priority": "medium",
+    "tags": [],
+    "createdAt": "2025-06-27T08:54:49.275Z",
+    "updatedAt": "2025-06-27T09:04:05.060Z",
+    "completedAt": null,
+    "plannedTime": "18:54",
+    "dueDate": null,
+    "estimatedDuration": 300,
+    "timeLog": [
+      {
+        "startTime": "2025-06-27T08:55:04.115Z",
+        "endTime": "2025-06-27T08:55:11.460Z",
+        "duration": 7
+      }
+    ],
+    "lastActivityAt": "2025-06-27T09:04:01.593Z"
   }
 ]

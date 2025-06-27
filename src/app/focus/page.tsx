@@ -1,174 +1,426 @@
 'use client'
 
-import React, {
-  Suspense,
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-} from 'react'
+import React, { Suspense, useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-// 现代化计时器组件
 function ModernTimer({
   initialTime = 25,
-  initialProgress = 0,
+  originalRemaining = 0,
+  originalElapsed = 0,
   taskId,
   onComplete,
-  onTick,
 }: {
   initialTime: number
-  initialProgress?: number
-  taskId?: string
+  originalRemaining?: number
+  originalElapsed?: number
+  taskId?: string | null
   onComplete?: () => void
-  onTick?: (remaining: number) => void
 }) {
-  const [timeRemaining, setTimeRemaining] = useState(initialTime * 60) // 转换为秒
-  const [isRunning, setIsRunning] = useState(false)
+  // 计算真实的总预估时间和已用时间
+  const calculateInitialValues = () => {
+    if (originalRemaining > 0 && originalElapsed > 0) {
+      // 从任务详情跳转：使用真实的剩余时间和已用时间
+      return {
+        timeRemaining: originalRemaining * 60, // 剩余时间（秒）
+        totalElapsed: originalElapsed * 60, // 已用时间（秒）
+        totalEstimated: (originalRemaining + originalElapsed) * 60, // 总预估时间（秒）
+      }
+    } else {
+      // 新任务：使用完整时间
+      return {
+        timeRemaining: initialTime * 60,
+        totalElapsed: 0,
+        totalEstimated: initialTime * 60,
+      }
+    }
+  }
+
+  // localStorage存储键
+  const getStorageKey = () =>
+    taskId ? `focus-timer-${taskId}` : 'focus-timer-practice'
+
+  // 从localStorage恢复状态
+  const restoreFromStorage = () => {
+    if (typeof window === 'undefined') return null
+
+    try {
+      const storageKey = getStorageKey()
+      const savedState = localStorage.getItem(storageKey)
+
+      if (savedState) {
+        const parsed = JSON.parse(savedState)
+        console.log('从localStorage恢复状态:', parsed)
+
+        // 验证数据完整性
+        if (
+          parsed.timeRemaining !== undefined &&
+          parsed.totalElapsed !== undefined &&
+          parsed.totalEstimated !== undefined &&
+          parsed.lastSaveTime
+        ) {
+          // 检查数据是否过期（超过24小时）
+          const hoursSinceLastSave =
+            (Date.now() - parsed.lastSaveTime) / (1000 * 60 * 60)
+          if (hoursSinceLastSave < 24) {
+            return {
+              timeRemaining: parsed.timeRemaining,
+              totalElapsed: parsed.totalElapsed,
+              totalEstimated: parsed.totalEstimated,
+              isRunning: false, // 恢复时总是暂停状态
+            }
+          } else {
+            console.log('localStorage数据已过期，清除')
+            localStorage.removeItem(storageKey)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('恢复localStorage状态失败:', error)
+    }
+
+    return null
+  }
+
+  // 保存状态到localStorage
+  const saveToStorage = (
+    timeRemaining: number,
+    totalElapsed: number,
+    totalEstimated: number
+  ) => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const storageKey = getStorageKey()
+      const stateToSave = {
+        timeRemaining,
+        totalElapsed,
+        totalEstimated,
+        taskId,
+        lastSaveTime: Date.now(),
+      }
+
+      localStorage.setItem(storageKey, JSON.stringify(stateToSave))
+      console.log('状态已保存到localStorage:', stateToSave)
+    } catch (error) {
+      console.error('保存状态到localStorage失败:', error)
+    }
+  }
+
+  // 清除localStorage状态
+  const clearStorage = () => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const storageKey = getStorageKey()
+      localStorage.removeItem(storageKey)
+      console.log('已清除localStorage状态')
+    } catch (error) {
+      console.error('清除localStorage状态失败:', error)
+    }
+  }
+
+  // 优先从localStorage恢复，否则使用计算的初始值
+  const getInitialState = () => {
+    const restoredState = restoreFromStorage()
+    if (restoredState) {
+      return restoredState
+    }
+    return {
+      ...calculateInitialValues(),
+      isRunning: false,
+    }
+  }
+
+  const initialState = getInitialState()
+
+  const [timeRemaining, setTimeRemaining] = useState(
+    Math.floor(initialState.timeRemaining)
+  )
+  const [isRunning, setIsRunning] = useState(initialState.isRunning)
   const [totalElapsed, setTotalElapsed] = useState(
-    Math.round((initialProgress / 100) * initialTime * 60)
-  ) // 基于初始进度计算已用时间
+    Math.floor(initialState.totalElapsed)
+  )
+  const totalEstimated = Math.floor(initialState.totalEstimated)
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const sessionStartTime = useRef<Date | null>(null)
 
   // 格式化时间显示
   const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = seconds % 60
+    const totalSeconds = Math.floor(seconds)
+    const minutes = Math.floor(totalSeconds / 60)
+    const remainingSeconds = totalSeconds % 60
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds
       .toString()
       .padStart(2, '0')}`
   }
 
   // 计算当前总进度百分比
-  const currentProgress = Math.min(
-    (totalElapsed / (initialTime * 60)) * 100,
-    100
-  )
+  const currentProgress = Math.min((totalElapsed / totalEstimated) * 100, 100)
 
-  // 更新任务进度到后端
-  const updateTaskProgress = useCallback(
-    async (elapsedSeconds: number) => {
-      if (!taskId) return
+  // 保存当前会话数据到后端
+  const saveSessionData = async () => {
+    if (!taskId || !sessionStartTime.current) return
 
-      try {
+    try {
+      const sessionDuration = Math.floor(
+        (Date.now() - sessionStartTime.current.getTime()) / 1000
+      )
+
+      // 只有当会话时间大于3秒时才更新后端
+      if (sessionDuration >= 3) {
+        const timeLogEntry = {
+          startTime: sessionStartTime.current.toISOString(),
+          endTime: new Date().toISOString(),
+          duration: sessionDuration,
+        }
+
         const response = await fetch(`/api/tasks/${taskId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             status: 'in_progress',
-            // 添加新的时间记录
-            timeLog: {
-              startTime:
-                sessionStartTime.current?.toISOString() ||
-                new Date().toISOString(),
-              endTime: new Date().toISOString(),
-              duration: elapsedSeconds,
-            },
+            timeLog: timeLogEntry,
+            lastActivityAt: new Date().toISOString(),
           }),
         })
 
         if (!response.ok) {
-          console.error('更新任务进度失败')
+          console.error('保存会话数据失败:', response.statusText)
+        } else {
+          console.log(`已保存工作会话: ${sessionDuration}秒`)
         }
-      } catch (error) {
-        console.error('更新任务进度出错:', error)
       }
-    },
-    [taskId]
-  )
+    } catch (error) {
+      console.error('保存会话数据出错:', error)
+    }
+  }
+
+  // 保存任务状态到后端
+  const saveTaskStatus = async () => {
+    if (!taskId) {
+      console.log('没有taskId，跳过保存任务状态')
+      return
+    }
+
+    try {
+      // 计算当前剩余时间（分钟）
+      const remainingMinutes = Math.floor(timeRemaining / 60)
+      const elapsedMinutes = Math.floor(totalElapsed / 60)
+
+      // 根据剩余时间确定任务状态
+      const taskStatus = remainingMinutes <= 0 ? 'completed' : 'paused'
+
+      console.log('准备保存任务状态:', {
+        taskId,
+        remainingMinutes,
+        elapsedMinutes,
+        taskStatus,
+      })
+
+      const updateData: {
+        status: string
+        lastActivityAt: string
+        completedAt?: string
+      } = {
+        status: taskStatus,
+        lastActivityAt: new Date().toISOString(),
+      }
+
+      // 如果任务完成，添加完成时间
+      if (taskStatus === 'completed') {
+        updateData.completedAt = new Date().toISOString()
+      }
+
+      console.log(`调用API: PUT /api/tasks/${taskId}`, updateData)
+
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      })
+
+      console.log(`API响应状态: ${response.status} ${response.statusText}`)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('保存任务状态失败:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+        })
+      } else {
+        const result = await response.json()
+        console.log(`已保存任务状态: ${taskStatus}`, result)
+      }
+    } catch (error) {
+      console.error('保存任务状态出错:', error)
+    }
+  }
 
   // 开始计时器
-  const startTimer = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current)
+  const startTimer = () => {
+    console.log('Starting timer')
+
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+    }
 
     sessionStartTime.current = new Date()
+    setIsRunning(true)
 
     intervalRef.current = setInterval(() => {
       setTimeRemaining((prev) => {
-        if (prev <= 1) {
+        const newTimeRemaining = Math.max(0, prev - 1)
+
+        if (newTimeRemaining <= 0) {
           setIsRunning(false)
-          // 完成时更新总进度
-          setTotalElapsed(initialTime * 60)
-          // 更新后端进度
-          updateTaskProgress(initialTime * 60)
+          setTotalElapsed(totalEstimated)
+
+          // 任务完成时清除localStorage状态
+          clearStorage()
+
+          // 任务完成时保存会话数据和任务状态
+          Promise.all([saveSessionData(), saveTaskStatus()])
           onComplete?.()
           return 0
         }
-        return prev - 1
+        return newTimeRemaining
       })
 
-      // 更新总用时
       setTotalElapsed((prev) => prev + 1)
     }, 1000)
-  }, [onComplete, initialTime, updateTaskProgress])
+  }
 
-  // 暂停计时器
-  const pauseTimer = useCallback(() => {
+  // 暂停计时器 - 手动暂停时保存数据
+  const pauseTimer = async () => {
+    console.log('Pausing timer')
+
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
       intervalRef.current = null
+      setIsRunning(false)
 
-      // 暂停时更新进度到后端
-      if (sessionStartTime.current) {
-        updateTaskProgress(totalElapsed)
-      }
+      // 保存当前状态到localStorage
+      saveToStorage(timeRemaining, totalElapsed, totalEstimated)
+
+      // 手动暂停时保存会话数据和任务状态
+      await Promise.all([saveSessionData(), saveTaskStatus()])
     }
-  }, [totalElapsed, updateTaskProgress])
-
-  // 重置计时器
-  const resetTimer = useCallback(() => {
-    pauseTimer()
-    setTimeRemaining(initialTime * 60)
-    setIsRunning(false)
-    // 保持已有的总进度，不重置
-  }, [initialTime, pauseTimer])
+  }
 
   // 播放/暂停切换
-  const toggleTimer = useCallback(() => {
+  const toggleTimer = () => {
+    console.log('Toggle timer, current state:', isRunning)
+
     if (isRunning) {
       pauseTimer()
-      setIsRunning(false)
     } else {
       startTimer()
-      setIsRunning(true)
     }
-  }, [isRunning, startTimer, pauseTimer])
+  }
 
-  // 键盘快捷键
+  // 页面离开确认
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isRunning) {
+        // 保存当前状态到localStorage
+        saveToStorage(timeRemaining, totalElapsed, totalEstimated)
+
+        // 页面刷新/关闭时保存会话数据和任务状态
+        Promise.all([saveSessionData(), saveTaskStatus()])
+        e.preventDefault()
+        e.returnValue = '计时器正在运行，确定要离开吗？'
+        return '计时器正在运行，确定要离开吗？'
+      }
+    }
+
+    const handlePopState = async () => {
+      if (isRunning) {
+        const confirmed = window.confirm('计时器正在运行，确定要离开吗？')
+        if (confirmed) {
+          // 保存当前状态到localStorage
+          saveToStorage(timeRemaining, totalElapsed, totalEstimated)
+
+          // 页面切换时保存会话数据和任务状态并暂停
+          await Promise.all([saveSessionData(), saveTaskStatus()])
+          setIsRunning(false)
+        } else {
+          // 阻止导航，恢复当前URL
+          window.history.pushState(null, '', window.location.href)
+        }
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('popstate', handlePopState)
+
+    // 防止浏览器后退
+    if (isRunning) {
+      window.history.pushState(null, '', window.location.href)
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [isRunning])
+
+  // 监听键盘快捷键
+  useEffect(() => {
+    const handleKeyPress = async (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         e.preventDefault()
         toggleTimer()
-      } else if (e.code === 'KeyR') {
+      } else if (e.code === 'Escape') {
         e.preventDefault()
-        resetTimer()
+        // ESC键安全退出
+        if (isRunning) {
+          const confirmed = window.confirm(
+            '计时器正在运行，确定要退出吗？退出后将暂停计时。'
+          )
+          if (confirmed) {
+            // 保存当前状态到localStorage
+            saveToStorage(timeRemaining, totalElapsed, totalEstimated)
+
+            // ESC退出时保存会话数据和剩余时间
+            await Promise.all([saveSessionData(), saveTaskStatus()])
+            setIsRunning(false)
+            window.history.back()
+          }
+        } else {
+          window.history.back()
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [toggleTimer, resetTimer])
+  })
 
-  // 当初始时间改变时更新剩余时间
-  useEffect(() => {
-    setTimeRemaining(initialTime * 60)
-  }, [initialTime])
-
-  // 处理onTick回调，避免在渲染期间调用
-  useEffect(() => {
-    if (onTick) {
-      onTick(timeRemaining)
-    }
-  }, [timeRemaining, onTick])
-
-  // 清理定时器
+  // 清理定时器 - 组件卸载时保存数据
   useEffect(() => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
       }
+
+      // 组件卸载时如果正在运行，保存状态和数据
+      if (isRunning && sessionStartTime.current) {
+        // 保存当前状态到localStorage
+        saveToStorage(timeRemaining, totalElapsed, totalEstimated)
+
+        // 保存会话数据和剩余时间
+        Promise.all([saveSessionData(), saveTaskStatus()])
+      }
+    }
+  }, [])
+
+  // 在组件挂载时检查是否有恢复的状态
+  useEffect(() => {
+    const restoredState = restoreFromStorage()
+    if (restoredState) {
+      console.log('已从localStorage恢复计时器状态')
     }
   }, [])
 
@@ -177,10 +429,17 @@ function ModernTimer({
       {/* 上部区域 - 倒计时显示 */}
       <div className="flex flex-col items-center space-y-8 mb-16">
         {/* 时间显示框 */}
-        <div className="bg-slate-800/80 backdrop-blur-xl text-white p-8 rounded-3xl border border-slate-700/50 shadow-2xl">
+        <div className="bg-slate-800/80 backdrop-blur-xl text-white p-8 rounded-3xl border border-slate-700/50 shadow-2xl relative">
           <div className="text-8xl font-light tracking-wider text-center">
             {formatTime(timeRemaining)}
           </div>
+
+          {/* 显示进度信息 */}
+          {(originalRemaining > 0 || originalElapsed > 0) && (
+            <div className="absolute -top-2 -right-2 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+              继续任务
+            </div>
+          )}
         </div>
       </div>
 
@@ -244,12 +503,6 @@ function ModernTimer({
           className="bg-slate-800/80 backdrop-blur-xl text-white px-8 py-4 rounded-2xl font-medium text-xl hover:bg-slate-700/80 active:bg-slate-900/80 transition-all duration-200 shadow-lg border border-slate-700/50 hover:border-green-400/30">
           {isRunning ? '暂停' : '开始'}
         </button>
-
-        <button
-          onClick={resetTimer}
-          className="bg-slate-800/80 backdrop-blur-xl text-slate-300 px-8 py-4 rounded-2xl font-medium text-xl hover:bg-slate-700/80 active:bg-slate-900/80 transition-all duration-200 shadow-lg border border-slate-700/50 hover:border-red-400/30">
-          重置
-        </button>
       </div>
     </div>
   )
@@ -258,21 +511,21 @@ function ModernTimer({
 function FocusContent() {
   const searchParams = useSearchParams()
   const taskId = searchParams.get('id')
-  const initialProgress = Number(searchParams.get('progress')) || 0
+  const remainingMinutes = Number(searchParams.get('remaining')) || 0
+  const elapsedMinutes = Number(searchParams.get('elapsed')) || 0
 
-  // 定义任务信息类型
-  interface TaskInfo {
-    id: string
+  // 调试信息
+  console.log('Focus页面参数:', {
+    taskId,
+    remainingMinutes,
+    elapsedMinutes,
+  })
+
+  // 任务信息状态
+  const [taskInfo, setTaskInfo] = useState<{
     title: string
-    icon: string
-    time: string
-    duration?: string
-    details?: string[]
-    type?: string
-  }
-
-  // 使用 useState 管理任务信息，避免 hydration 错误
-  const [taskInfo, setTaskInfo] = useState<TaskInfo | null>(null)
+    duration: string
+  } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   // 从API获取任务信息
@@ -288,17 +541,10 @@ function FocusContent() {
         if (response.ok) {
           const task = await response.json()
           setTaskInfo({
-            id: task._id,
             title: task.title,
-            icon: task.type === 'check-in' ? '💪' : '📝',
-            time: task.plannedTime || '09:00',
             duration: task.estimatedDuration
               ? `${Math.round(task.estimatedDuration / 60)}分钟`
               : '25分钟',
-            details: Array.isArray(task.content)
-              ? task.content
-              : [task.content],
-            type: task.type,
           })
         }
       } catch (error) {
@@ -312,35 +558,20 @@ function FocusContent() {
   }, [taskId])
 
   // 解析时长字符串为分钟数
-  const parseDurationToMinutes = useCallback((durationStr: string): number => {
-    let totalMinutes = 0
-    const hourMatch = durationStr.match(/(\d+)小时/)
-    if (hourMatch) {
-      totalMinutes += parseInt(hourMatch[1]) * 60
-    }
-    const minuteMatch = durationStr.match(/(\d+)分钟/)
-    if (minuteMatch) {
-      totalMinutes += parseInt(minuteMatch[1])
-    }
-    return totalMinutes || 25
-  }, [])
+  const parseDurationToMinutes = (durationStr: string): number => {
+    const match = durationStr.match(/(\d+)分钟/)
+    return match ? parseInt(match[1]) : 25
+  }
 
   const handleTimerComplete = () => {
     console.log('专注时段完成')
+  }
 
-    // 如果有任务ID，完成任务
-    if (taskId && taskInfo) {
-      fetch(`/api/tasks/${taskId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'completed',
-          completedAt: new Date().toISOString(),
-        }),
-      }).catch((error) => {
-        console.error('完成任务失败:', error)
-      })
-    }
+  // 处理导航点击，添加确认逻辑
+  const handleNavigation = (url: string) => {
+    // 这里可以检查计时器状态，但由于计时器在子组件中，
+    // 我们依赖子组件的页面离开确认逻辑
+    window.location.href = url
   }
 
   if (isLoading) {
@@ -356,14 +587,14 @@ function FocusContent() {
 
   return (
     <div className="h-screen bg-slate-900 text-white flex flex-col overflow-hidden">
-      {/* 顶部导航栏 - 与主页面风格一致 */}
+      {/* 顶部导航栏 */}
       <header className="flex items-center justify-between px-8 pt-6 flex-shrink-0">
         <div className="text-xl font-bold text-slate-300">FOCUS</div>
 
         <nav className="bg-slate-800 rounded-2xl p-1.5">
           <div className="flex space-x-2">
             <button
-              onClick={() => (window.location.href = '/')}
+              onClick={() => handleNavigation('/')}
               className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
               Dashboard
             </button>
@@ -371,7 +602,7 @@ function FocusContent() {
               Focus
             </div>
             <button
-              onClick={() => (window.location.href = '/calendar')}
+              onClick={() => handleNavigation('/calendar')}
               className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
               History
             </button>
@@ -382,11 +613,31 @@ function FocusContent() {
         <div className="flex items-center space-x-4">
           {taskInfo && (
             <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
-              <span>{taskInfo.icon}</span>
+              <span>📝</span>
               <span>{taskInfo.title}</span>
               <span className="text-slate-400">({taskInfo.duration})</span>
             </div>
           )}
+
+          {!taskId && (
+            <div className="bg-amber-500/20 text-amber-300 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
+              <span>🧘</span>
+              <span>练习模式</span>
+              <span className="text-amber-400">(不会保存进度)</span>
+            </div>
+          )}
+
+          {/* 显示进度信息 */}
+          {(remainingMinutes > 0 || elapsedMinutes > 0) && (
+            <div className="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-lg text-xs border border-blue-500/30">
+              继续进度:{' '}
+              {Math.round(
+                (elapsedMinutes / (remainingMinutes + elapsedMinutes)) * 100
+              )}
+              %
+            </div>
+          )}
+
           <div className="w-8 h-8 bg-slate-600 rounded-full"></div>
         </div>
       </header>
@@ -396,12 +647,15 @@ function FocusContent() {
         <div className="w-full max-w-4xl">
           <ModernTimer
             initialTime={
-              taskInfo?.duration
+              remainingMinutes > 0
+                ? remainingMinutes
+                : taskInfo
                 ? parseDurationToMinutes(taskInfo.duration)
                 : 25
             }
-            initialProgress={initialProgress}
-            taskId={taskId || undefined}
+            originalRemaining={remainingMinutes}
+            originalElapsed={elapsedMinutes}
+            taskId={taskId}
             onComplete={handleTimerComplete}
           />
         </div>
@@ -418,9 +672,9 @@ function FocusContent() {
           </div>
           <div className="flex items-center space-x-3">
             <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700">
-              R
+              ESC
             </div>
-            <span className="text-slate-400 text-sm">重置</span>
+            <span className="text-slate-400 text-sm">安全退出</span>
           </div>
         </div>
       </footer>

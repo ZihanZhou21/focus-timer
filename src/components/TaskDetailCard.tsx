@@ -6,12 +6,14 @@ import { ProjectItem } from '@/lib/api'
 import { categoryConfig } from '@/lib/constants'
 import { formatDuration } from '@/lib/utils'
 import { taskProgressAPI, TaskProgressData } from '@/lib/task-progress-api'
+import { taskRemainingAPI, TaskRemainingData } from '@/lib/task-remaining-api'
 
 interface TaskDetailCardProps {
   selectedItem: ProjectItem | null
   timelineItems: ProjectItem[]
   onSelectItem: (item: ProjectItem) => void
   onTaskUpdate?: (task: ProjectItem) => void
+  onTaskDelete?: (taskId: string) => void
   onClose?: () => void
 }
 
@@ -20,9 +22,12 @@ export default function TaskDetailCard({
   timelineItems,
   onSelectItem,
   onTaskUpdate,
+  onTaskDelete,
   onClose,
 }: TaskDetailCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [editingDetail, setEditingDetail] = useState<number | null>(null)
   const [editingText, setEditingText] = useState('')
   const [completedDetails, setCompletedDetails] = useState<Set<number>>(
@@ -30,6 +35,9 @@ export default function TaskDetailCard({
   )
   const [taskProgressData, setTaskProgressData] = useState<
     Map<string, TaskProgressData>
+  >(new Map())
+  const [taskRemainingData, setTaskRemainingData] = useState<
+    Map<string, TaskRemainingData>
   >(new Map())
 
   const cardRef = useRef<HTMLDivElement>(null)
@@ -55,19 +63,23 @@ export default function TaskDetailCard({
     }
   }, [selectedItem, onClose])
 
-  // 加载选中任务的进度数据
+  // 加载选中任务的数据
   useEffect(() => {
     if (selectedItem && selectedItem.type !== 'check-in') {
       loadTaskProgress(selectedItem.id)
+      loadTaskRemaining(selectedItem.id)
     }
   }, [selectedItem])
 
-  // 批量加载所有TODO任务的进度数据
+  // 批量加载所有TODO任务的数据
   useEffect(() => {
     const todoTasks = timelineItems.filter((item) => item.type !== 'check-in')
     todoTasks.forEach((task) => {
       if (!taskProgressData.has(task.id)) {
         loadTaskProgress(task.id)
+      }
+      if (!taskRemainingData.has(task.id)) {
+        loadTaskRemaining(task.id)
       }
     })
   }, [timelineItems])
@@ -110,13 +122,39 @@ export default function TaskDetailCard({
     return 0
   }
 
-  // 获取任务执行时间（分钟）
+  // 获取任务执行时间（分钟）- 使用新的剩余时间API
   const getExecutedTime = (task: ProjectItem): number => {
+    // 对于打卡任务，返回0
+    if (task.type === 'check-in') return 0
+
+    // 从剩余时间数据中获取已执行时间
+    const remainingData = taskRemainingData.get(task.id)
+    if (remainingData) {
+      return remainingData.executedMinutes
+    }
+
+    // 降级到进度数据
     const progressData = taskProgressData.get(task.id)
     if (progressData) {
-      return Math.round(progressData.totalExecutedTime / 60)
+      return Math.floor(progressData.totalExecutedTime / 60)
     }
+
     return 0
+  }
+
+  // 计算任务剩余时间（分钟）- 使用新的剩余时间API，避免小数点问题
+  const getRemainingTime = (task: ProjectItem): number => {
+    // 对于打卡任务，没有剩余时间概念
+    if (task.type === 'check-in') return 0
+
+    // 从剩余时间数据中直接获取剩余时间（整数分钟）
+    const remainingData = taskRemainingData.get(task.id)
+    if (remainingData) {
+      return remainingData.remainingMinutes
+    }
+
+    // 如果没有剩余时间数据，使用任务的durationMinutes或默认25分钟
+    return task.durationMinutes || 25
   }
 
   // 加载任务进度数据
@@ -126,6 +164,16 @@ export default function TaskDetailCard({
       setTaskProgressData((prev) => new Map(prev.set(taskId, progressData)))
     } catch (error) {
       console.error(`加载任务进度失败 (${taskId}):`, error)
+    }
+  }
+
+  // 加载任务剩余时间数据
+  const loadTaskRemaining = async (taskId: string) => {
+    try {
+      const remainingData = await taskRemainingAPI.getTaskRemaining(taskId)
+      setTaskRemainingData((prev) => new Map(prev.set(taskId, remainingData)))
+    } catch (error) {
+      console.error(`加载任务剩余时间失败 (${taskId}):`, error)
     }
   }
 
@@ -255,6 +303,40 @@ export default function TaskDetailCard({
     })
   }
 
+  // 删除任务
+  const handleDeleteTask = async () => {
+    if (!selectedItem || !onTaskDelete) return
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/tasks/${selectedItem.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        onTaskDelete(selectedItem.id)
+        onClose?.() // 关闭详情面板
+      } else {
+        console.error('删除任务失败')
+      }
+    } catch (error) {
+      console.error('删除任务出错:', error)
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
+
+  // 确认删除对话框
+  const confirmDelete = () => {
+    setShowDeleteConfirm(true)
+  }
+
+  // 取消删除
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false)
+  }
+
   if (selectedItem) {
     const isCheckInTask = selectedItem.type === 'check-in'
     const progress = calculateProgress(selectedItem)
@@ -301,8 +383,9 @@ export default function TaskDetailCard({
               </div>
             </div>
 
-            {/* 操作按钮 */}
-            <div className="">
+            {/* 操作按钮组 */}
+            <div className="flex items-center gap-3">
+              {/* 主要操作按钮 */}
               {isCheckInTask ? (
                 <button
                   onClick={() => handleCheckInToggle(selectedItem)}
@@ -342,7 +425,11 @@ export default function TaskDetailCard({
                 </button>
               ) : (
                 <Link
-                  href={`/focus?id=${selectedItem.id}&progress=${progress}`}
+                  href={`/focus?id=${
+                    selectedItem.id
+                  }&remaining=${getRemainingTime(
+                    selectedItem
+                  )}&elapsed=${getExecutedTime(selectedItem)}`}
                   className="inline-flex items-center justify-center w-16 h-16 border-2 border-slate-600 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500 hover:text-white rounded-full transition-all duration-200">
                   <svg
                     className="w-7 h-7"
@@ -356,6 +443,25 @@ export default function TaskDetailCard({
                   </svg>
                 </Link>
               )}
+
+              {/* 删除按钮 */}
+              <button
+                onClick={confirmDelete}
+                disabled={isUpdating || isDeleting}
+                className="w-12 h-12 rounded-full border-2 border-red-600/50 bg-red-600/10 text-red-400 hover:bg-red-600/20 hover:border-red-500/50 transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -540,6 +646,67 @@ export default function TaskDetailCard({
             </button>
           </div>
         </div>
+
+        {/* 删除确认模态框 */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md mx-4 shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-600/20 flex items-center justify-center">
+                  <svg
+                    className="w-5 h-5 text-red-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-white">
+                  确认删除任务
+                </h3>
+              </div>
+
+              <p className="text-slate-300 mb-6">
+                您确定要删除任务{' '}
+                <span className="font-medium text-white">
+                  &ldquo;{selectedItem.title}&rdquo;
+                </span>{' '}
+                吗？
+                <br />
+                <span className="text-slate-400 text-sm">
+                  此操作无法撤销，所有相关数据将被永久删除。
+                </span>
+              </p>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={cancelDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-colors disabled:opacity-50">
+                  取消
+                </button>
+                <button
+                  onClick={handleDeleteTask}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2">
+                  {isDeleting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      删除中...
+                    </>
+                  ) : (
+                    '确认删除'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
