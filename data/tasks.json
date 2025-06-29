@@ -91,42 +91,6 @@
     ]
   },
   {
-    "_id": "task_1719399600002_mnopqr789",
-    "userId": "user_001",
-    "type": "todo",
-    "title": "深度专注",
-    "content": [
-      "阅读《原子习惯》第3-4章",
-      "整理读书笔记",
-      "思考如何应用到日常生活",
-      "制定本周习惯改进计划"
-    ],
-    "status": "in_progress",
-    "priority": "medium",
-    "tags": [
-      "学习",
-      "自我提升"
-    ],
-    "createdAt": "2024-06-25T08:00:00.000Z",
-    "updatedAt": "2025-06-26T10:30:00.000Z",
-    "completedAt": null,
-    "plannedTime": "20:00",
-    "dueDate": "2024-06-26T22:00:00.000Z",
-    "estimatedDuration": 7200,
-    "timeLog": [
-      {
-        "startTime": "2025-06-26T10:00:00.000Z",
-        "endTime": "2025-06-26T10:30:00.000Z",
-        "duration": 1800
-      },
-      {
-        "startTime": "2025-06-26T10:00:00.000Z",
-        "endTime": "2025-06-26T10:30:00.000Z",
-        "duration": 1800
-      }
-    ]
-  },
-  {
     "_id": "task_1719399600003_stuvwx012",
     "userId": "user_001",
     "type": "check-in",
@@ -137,15 +101,15 @@
       "10分钟拉伸放松",
       "记录运动数据和感受"
     ],
-    "status": "completed",
+    "status": "in_progress",
     "priority": "high",
     "tags": [
       "健康",
       "运动"
     ],
     "createdAt": "2024-06-25T07:00:00.000Z",
-    "updatedAt": "2025-06-27T01:56:43.530Z",
-    "completedAt": "2025-06-27T01:56:43.484Z",
+    "updatedAt": "2025-06-29T07:29:39.786Z",
+    "completedAt": null,
     "plannedTime": "18:00",
     "checkInHistory": [
       {
@@ -198,8 +162,8 @@
       "晨练"
     ],
     "createdAt": "2024-06-25T06:00:00.000Z",
-    "updatedAt": "2025-06-27T00:43:55.318Z",
-    "completedAt": "2025-06-27T00:43:55.244Z",
+    "updatedAt": "2025-06-29T07:27:49.696Z",
+    "completedAt": "2025-06-29T07:27:49.661Z",
     "plannedTime": "06:30",
     "checkInHistory": [
       {
@@ -404,14 +368,14 @@
     "type": "todo",
     "title": "test",
     "content": [],
-    "status": "in_progress",
+    "status": "completed",
     "priority": "medium",
     "tags": [
       "学习"
     ],
     "createdAt": "2025-06-27T02:21:02.383Z",
-    "updatedAt": "2025-06-27T09:07:42.722Z",
-    "completedAt": null,
+    "updatedAt": "2025-06-27T10:51:23.156Z",
+    "completedAt": "2025-06-27T10:51:23.156Z",
     "plannedTime": "12:20",
     "dueDate": null,
     "estimatedDuration": 300,
@@ -430,9 +394,19 @@
         "startTime": "2025-06-27T09:07:36.010Z",
         "endTime": "2025-06-27T09:07:42.655Z",
         "duration": 6
+      },
+      {
+        "startTime": "2025-06-27T10:34:42.057Z",
+        "endTime": "2025-06-27T10:37:44.201Z",
+        "duration": 182
+      },
+      {
+        "startTime": "2025-06-27T10:49:23.323Z",
+        "endTime": "2025-06-27T10:51:21.331Z",
+        "duration": 118
       }
     ],
-    "lastActivityAt": "2025-06-27T09:07:42.655Z"
+    "lastActivityAt": "2025-06-27T10:37:45.858Z"
   },
   {
     "_id": "task_1751014489275_mrjohsqb8",
@@ -440,12 +414,12 @@
     "type": "todo",
     "title": "123123",
     "content": [],
-    "status": "paused",
+    "status": "completed",
     "priority": "medium",
     "tags": [],
     "createdAt": "2025-06-27T08:54:49.275Z",
-    "updatedAt": "2025-06-27T09:04:05.060Z",
-    "completedAt": null,
+    "updatedAt": "2025-06-28T08:40:54.175Z",
+    "completedAt": "2025-06-28T08:40:54.175Z",
     "plannedTime": "18:54",
     "dueDate": null,
     "estimatedDuration": 300,
@@ -454,8 +428,59 @@
         "startTime": "2025-06-27T08:55:04.115Z",
         "endTime": "2025-06-27T08:55:11.460Z",
         "duration": 7
+      },
+      {
+        "startTime": "2025-06-28T08:35:52.929Z",
+        "endTime": "2025-06-28T08:40:52.925Z",
+        "duration": 299
       }
     ],
     "lastActivityAt": "2025-06-27T09:04:01.593Z"
+  },
+  {
+    "_id": "task_1751100349217_ncjpvtmva",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "123123",
+    "content": [],
+    "status": "completed",
+    "priority": "medium",
+    "tags": [],
+    "createdAt": "2025-06-28T08:45:49.217Z",
+    "updatedAt": "2025-06-28T08:51:38.086Z",
+    "completedAt": "2025-06-28T08:51:38.086Z",
+    "plannedTime": "18:45",
+    "dueDate": null,
+    "estimatedDuration": 300,
+    "timeLog": [
+      {
+        "startTime": "2025-06-28T08:46:37.921Z",
+        "endTime": "2025-06-28T08:51:37.919Z",
+        "duration": 299
+      }
+    ]
+  },
+  {
+    "_id": "task_1751165917016_ps6bm5j93",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "d d d d s",
+    "content": [],
+    "status": "completed",
+    "priority": "medium",
+    "tags": [],
+    "createdAt": "2025-06-29T02:58:37.016Z",
+    "updatedAt": "2025-06-29T03:03:43.279Z",
+    "completedAt": "2025-06-29T03:03:43.279Z",
+    "plannedTime": "09:00",
+    "dueDate": null,
+    "estimatedDuration": 300,
+    "timeLog": [
+      {
+        "startTime": "2025-06-29T02:58:41.151Z",
+        "endTime": "2025-06-29T03:03:41.128Z",
+        "duration": 299
+      }
+    ]
   }
 ]

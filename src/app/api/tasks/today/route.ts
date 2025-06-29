@@ -33,100 +33,29 @@ function getDayOfWeek(date?: string): number {
   return new Date().getDay()
 }
 
-// 筛选指定日期的任务的核心逻辑
-function filterTasksForDate(
-  tasks: Task[],
-  userId: string,
-  targetDate?: string
-): Task[] {
-  const today = getDateString(targetDate)
-  const todayDayOfWeek = getDayOfWeek(targetDate)
-  const todaysTasks: Task[] = []
+// 获取指定用户的所有任务（不进行日期筛选）
+function getAllUserTasks(tasks: Task[], userId: string): Task[] {
+  const userTasks: Task[] = []
+
+  console.log(`🔍 获取用户 ${userId} 的所有任务`)
 
   for (const task of tasks) {
     // 只处理指定用户的任务
     if (task.userId !== userId) continue
 
-    if (task.type === 'todo') {
-      // TODO任务筛选逻辑：
-      // 1. 排除已归档的任务
-      // 2. 包含今天完成的任务
-      // 3. 包含今天到期的任务
-      // 4. 包含7天内过期的未完成任务（避免显示过于陈旧的过期任务）
-      const todoTask = task as TodoTask
-
-      // 只过滤掉已归档的任务
-      if (todoTask.status === 'archived') {
-        continue
-      }
-
-      if (todoTask.dueDate) {
-        const dueDate = todoTask.dueDate.split('T')[0] // 提取日期部分
-        const completedDate = todoTask.completedAt
-          ? todoTask.completedAt.split('T')[0]
-          : null
-
-        // 计算合理的过期任务显示范围（最多显示7天前过期的任务）
-        const maxOverdueDays = 7
-        const earliestDate = new Date(today)
-        earliestDate.setDate(earliestDate.getDate() - maxOverdueDays)
-        const earliestDateStr = earliestDate.toISOString().split('T')[0]
-
-        // 新的筛选条件：
-        // 1. 今天完成的任务（不管原本什么时候到期）
-        // 2. 今天到期的任务
-        // 3. 合理时间范围内过期的未完成任务（限制在7天内）
-        if (
-          completedDate === today ||
-          dueDate === today ||
-          (dueDate >= earliestDateStr &&
-            dueDate < today &&
-            todoTask.status !== 'completed')
-        ) {
-          todaysTasks.push(todoTask)
-        }
-      } else {
-        // 没有截止日期的任务：如果是今天完成的或者状态不是completed，都算作今天的任务
-        const completedDate = todoTask.completedAt
-          ? todoTask.completedAt.split('T')[0]
-          : null
-        if (completedDate === today || todoTask.status !== 'completed') {
-          todaysTasks.push(todoTask)
-        }
-      }
-    } else if (task.type === 'check-in') {
-      // CHECK-IN任务筛选逻辑：
-      // 1. 包含状态为 in_progress 的任务
-      // 2. 包含今天完成的任务（completedAt 为今天）
-      // 3. 根据重复规则判断今天是否应该执行
-      const checkInTask = task as CheckInTask
-
-      // 检查是否今天完成的任务
-      const completedDate = checkInTask.completedAt
-        ? checkInTask.completedAt.split('T')[0]
-        : null
-      const isCompletedToday = completedDate === today
-
-      // 如果不是进行中状态，且也不是今天完成的，则跳过
-      if (checkInTask.status !== 'in_progress' && !isCompletedToday) {
-        continue
-      }
-
-      const { frequency, daysOfWeek } = checkInTask.recurrence
-
-      if (frequency === 'daily') {
-        // 每日任务：肯定是今天的任务
-        todaysTasks.push(checkInTask)
-      } else if (frequency === 'weekly') {
-        // 每周任务：检查今天是否在指定的星期中
-        if (daysOfWeek.includes(todayDayOfWeek)) {
-          todaysTasks.push(checkInTask)
-        }
-      }
+    // 只过滤掉已归档的任务，其他所有任务都显示
+    if (task.status === 'archived') {
+      continue
     }
+
+    console.log(
+      `✅ 包含任务: ${task.title} (类型: ${task.type}, 状态: ${task.status})`
+    )
+    userTasks.push(task)
   }
 
-  return todaysTasks
+  console.log(`📊 结果: 共 ${userTasks.length} 个任务`)
+  return userTasks
 }
 
 // 按计划时间排序任务
@@ -237,18 +166,12 @@ export async function GET(request: NextRequest) {
     const allTasks = await readTasksData()
     console.log(`共读取到 ${allTasks.length} 个任务`)
 
-    // 第二步：使用智能筛选逻辑过滤出指定日期的任务
-    const todaysTasks = filterTasksForDate(
-      allTasks,
-      userId,
-      targetDate || undefined
-    )
-    console.log(
-      `筛选出 ${todaysTasks.length} 个${targetDate ? targetDate : '今天'}的任务`
-    )
+    // 第二步：获取用户的所有任务（不进行日期筛选）
+    const userTasks = getAllUserTasks(allTasks, userId)
+    console.log(`获取到 ${userTasks.length} 个用户任务`)
 
     // 第三步：对任务进行排序
-    const sortedTasks = sortTasks(todaysTasks)
+    const sortedTasks = sortTasks(userTasks)
 
     // 第四步：检查是否需要转换为ProjectItem格式
     const format = searchParams.get('format')

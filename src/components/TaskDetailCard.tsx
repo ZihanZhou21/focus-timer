@@ -423,7 +423,23 @@ export default function TaskDetailCard({
                     </svg>
                   )}
                 </button>
+              ) : selectedItem.completed ||
+                selectedItem.status === 'completed' ? (
+                // 任务已完成，显示完成状态
+                <div className="inline-flex items-center justify-center w-16 h-16 border-2 border-green-500/50 bg-green-500/10 text-green-400 rounded-full">
+                  <svg
+                    className="w-7 h-7"
+                    fill="currentColor"
+                    viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
               ) : (
+                // 任务未完成，显示开始按钮
                 <Link
                   href={`/focus?id=${
                     selectedItem.id
@@ -443,25 +459,6 @@ export default function TaskDetailCard({
                   </svg>
                 </Link>
               )}
-
-              {/* 删除按钮 */}
-              <button
-                onClick={confirmDelete}
-                disabled={isUpdating || isDeleting}
-                className="w-12 h-12 rounded-full border-2 border-red-600/50 bg-red-600/10 text-red-400 hover:bg-red-600/20 hover:border-red-500/50 transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </button>
             </div>
           </div>
 
@@ -499,7 +496,7 @@ export default function TaskDetailCard({
               </div>
               <div className="w-full bg-slate-700/50 rounded-full h-2">
                 <div
-                  className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-300"
+                  className="bg-amber-500 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}></div>
               </div>
             </div>
@@ -727,115 +724,117 @@ export default function TaskDetailCard({
       </div>
 
       {timelineItems.length > 0 ? (
-        <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-4 relative">
-            {/* 渐变分隔线 */}
-            <div className="absolute left-1/2 top-0 bottom-0 w-px transform -translate-x-1/2 bg-gradient-to-b from-transparent via-slate-500/60 to-transparent"></div>
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-2 gap-4 relative">
+              {/* 渐变分隔线 */}
+              <div className="absolute left-1/2 top-0 bottom-0 w-px transform -translate-x-1/2 bg-gradient-to-b from-transparent via-slate-500/60 to-transparent"></div>
 
-            {/* 已完成项目 */}
-            <div className="space-y-2 pr-2">
-              <h4 className="text-xs text-slate-400 font-medium mb-2">
-                已完成
-              </h4>
-              {timelineItems
-                .filter((item) => item.completed)
-                .map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => onSelectItem(item)}
-                    className="group relative bg-slate-500/30 hover:bg-slate-400/50 rounded-3xl px-4 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1">
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            categoryConfig[item.category].color
-                          }`}></span>
-                        <h5 className="text-slate-100 text-sm truncate flex-1">
-                          {item.title}
-                        </h5>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {item.type === 'check-in' && (
-                          <span className="text-xs text-slate-400">打卡</span>
-                        )}
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center bg-green-500/20 ml-2">
-                          <svg
-                            className="w-3 h-3 text-green-400"
-                            fill="currentColor"
-                            viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
+              {/* 已完成项目 */}
+              <div className="space-y-2 pr-2">
+                <h4 className="text-xs text-slate-400 font-medium mb-2">
+                  已完成
+                </h4>
+                {timelineItems
+                  .filter((item) => item.completed)
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => onSelectItem(item)}
+                      className="group relative bg-slate-500/30 hover:bg-slate-400/50 rounded-3xl px-4 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-1">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              categoryConfig[item.category].color
+                            }`}></span>
+                          <h5 className="text-slate-100 text-sm truncate flex-1">
+                            {item.title}
+                          </h5>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {item.type === 'check-in' && (
+                            <span className="text-xs text-slate-400">打卡</span>
+                          )}
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center bg-green-500/20 ml-2">
+                            <svg
+                              className="w-3 h-3 text-green-400"
+                              fill="currentColor"
+                              viewBox="0 0 20 20">
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </div>
                         </div>
                       </div>
+                      {/* 进度条预览 */}
+                      {item.type !== 'check-in' && (
+                        <div className="mt-2">
+                          <div className="w-full bg-slate-600 rounded-full h-1">
+                            <div
+                              className="bg-green-400 h-1 rounded-full"
+                              style={{
+                                width: `${calculateProgress(item)}%`,
+                              }}></div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {/* 进度条预览 */}
-                    {item.type !== 'check-in' && (
-                      <div className="mt-2">
-                        <div className="w-full bg-slate-600 rounded-full h-1">
-                          <div
-                            className="bg-green-400 h-1 rounded-full"
-                            style={{
-                              width: `${calculateProgress(item)}%`,
-                            }}></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-            </div>
+                  ))}
+              </div>
 
-            {/* 未完成项目 */}
-            <div className="space-y-2 pl-2">
-              <h4 className="text-xs text-slate-400 font-medium mb-2">
-                未完成
-              </h4>
-              {timelineItems
-                .filter((item) => !item.completed)
-                .map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => onSelectItem(item)}
-                    className="group relative bg-slate-600/70 hover:bg-slate-400/50 rounded-3xl px-4 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1">
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            categoryConfig[item.category].color
-                          }`}></span>
-                        <h5 className="text-slate-200 text-sm truncate flex-1">
-                          {item.title}
-                        </h5>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {item.type === 'check-in' && (
-                          <span className="text-xs text-slate-400">打卡</span>
-                        )}
-                        <div className="w-4 h-4 rounded-full border-2 border-amber-400"></div>
-                      </div>
-                    </div>
-                    {/* 进度条预览 */}
-                    {item.type !== 'check-in' && (
-                      <div className="mt-2">
-                        <div className="w-full bg-slate-600 rounded-full h-1">
-                          <div
-                            className="bg-amber-400 h-1 rounded-full"
-                            style={{
-                              width: `${calculateProgress(item)}%`,
-                            }}></div>
+              {/* 未完成项目 */}
+              <div className="space-y-2 pl-2">
+                <h4 className="text-xs text-slate-400 font-medium mb-2">
+                  未完成
+                </h4>
+                {timelineItems
+                  .filter((item) => !item.completed)
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => onSelectItem(item)}
+                      className="group relative bg-slate-600/70 hover:bg-slate-400/50 rounded-3xl px-4 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-1">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              categoryConfig[item.category].color
+                            }`}></span>
+                          <h5 className="text-slate-200 text-sm truncate flex-1">
+                            {item.title}
+                          </h5>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {item.type === 'check-in' && (
+                            <span className="text-xs text-slate-400">打卡</span>
+                          )}
+                          <div className="w-4 h-4 rounded-full border-2 border-amber-400"></div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                ))}
+                      {/* 进度条预览 */}
+                      {item.type !== 'check-in' && (
+                        <div className="mt-2">
+                          <div className="w-full bg-slate-600 rounded-full h-1">
+                            <div
+                              className="bg-amber-400 h-1 rounded-full"
+                              style={{
+                                width: `${calculateProgress(item)}%`,
+                              }}></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
             </div>
           </div>
 
-          {/* 底部统计 */}
-          <div className="mt-6 pt-4 border-t border-slate-700/30">
+          {/* 底部统计 - 置底 */}
+          <div className="mt-6 pt-4 border-t border-slate-700/30 flex-shrink-0">
             <div className="flex justify-between text-xs text-slate-500">
               <span>
                 打卡{' '}
