@@ -33,6 +33,16 @@ export default function TaskDetailCard({
   const [completedDetails, setCompletedDetails] = useState<Set<number>>(
     new Set()
   )
+
+  // 任务基本信息编辑状态
+  const [isEditingTask, setIsEditingTask] = useState(false)
+  const [editingTaskData, setEditingTaskData] = useState({
+    title: '',
+    time: '',
+    tags: [] as string[],
+    category: '',
+    durationMinutes: 0,
+  })
   const [taskProgressData, setTaskProgressData] = useState<
     Map<string, TaskProgressData>
   >(new Map())
@@ -303,6 +313,87 @@ export default function TaskDetailCard({
     })
   }
 
+  // 开始编辑任务基本信息
+  const startEditingTask = () => {
+    if (!selectedItem) return
+
+    setEditingTaskData({
+      title: selectedItem.title,
+      time: selectedItem.time,
+      tags: selectedItem.tags || [],
+      category: selectedItem.category,
+      durationMinutes: selectedItem.durationMinutes || 0,
+    })
+    setIsEditingTask(true)
+  }
+
+  // 保存任务基本信息编辑
+  const saveTaskEdit = async () => {
+    if (!selectedItem) return
+
+    setIsUpdating(true)
+    try {
+      const response = await fetch(`/api/tasks/${selectedItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editingTaskData.title,
+          plannedTime: editingTaskData.time,
+          tags: editingTaskData.tags,
+          estimatedDuration: editingTaskData.durationMinutes * 60, // 转换为秒
+        }),
+      })
+
+      if (response.ok) {
+        const updatedTask = {
+          ...selectedItem,
+          title: editingTaskData.title,
+          time: editingTaskData.time,
+          tags: editingTaskData.tags,
+          durationMinutes: editingTaskData.durationMinutes,
+        }
+        onTaskUpdate?.(updatedTask)
+        setIsEditingTask(false)
+      } else {
+        console.error('更新任务失败')
+      }
+    } catch (error) {
+      console.error('更新任务出错:', error)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  // 取消编辑任务基本信息
+  const cancelTaskEdit = () => {
+    setIsEditingTask(false)
+    setEditingTaskData({
+      title: '',
+      time: '',
+      tags: [],
+      category: '',
+      durationMinutes: 0,
+    })
+  }
+
+  // 添加标签
+  const addTag = (tag: string) => {
+    if (tag && !editingTaskData.tags.includes(tag)) {
+      setEditingTaskData((prev) => ({
+        ...prev,
+        tags: [...prev.tags, tag],
+      }))
+    }
+  }
+
+  // 删除标签
+  const removeTag = (index: number) => {
+    setEditingTaskData((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((_, i) => i !== index),
+    }))
+  }
+
   // 删除任务
   const handleDeleteTask = async () => {
     if (!selectedItem || !onTaskDelete) return
@@ -347,57 +438,223 @@ export default function TaskDetailCard({
           {/* 任务标题和操作按钮 */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex-1">
-              {/* 任务类型标识和标题 */}
-              <div className="flex items-center gap-3 mb-1">
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    categoryConfig[selectedItem.category].color
-                  }`}></div>
-                <h1 className="text-white text-3xl font-bold leading-tight">
-                  {selectedItem.title}
-                </h1>
-              </div>
-              {/* 类型和标签在同一行 */}
-              <div className="flex items-center gap-3 flex-wrap">
-                {selectedItem.category !== 'habit' && (
-                  <div className="text-slate-400 text-sm">
-                    {categoryConfig[selectedItem.category].name}
+              {isEditingTask ? (
+                // 编辑模式
+                <div className="space-y-4">
+                  {/* 编辑标题 */}
+                  <div>
+                    <label className="block text-slate-400 text-xs mb-2">
+                      任务标题
+                    </label>
+                    <input
+                      type="text"
+                      value={editingTaskData.title}
+                      onChange={(e) =>
+                        setEditingTaskData((prev) => ({
+                          ...prev,
+                          title: e.target.value,
+                        }))
+                      }
+                      className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white text-2xl font-bold focus:outline-none focus:border-amber-500"
+                      placeholder="输入任务标题"
+                    />
                   </div>
-                )}
-                {selectedItem.tags && selectedItem.tags.length > 0 && (
-                  <>
-                    {selectedItem.category !== 'habit' && (
-                      <div className="text-slate-600">|</div>
+
+                  {/* 编辑计划时间 */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-slate-400 text-xs mb-2">
+                        计划时间
+                      </label>
+                      <input
+                        type="time"
+                        value={editingTaskData.time}
+                        onChange={(e) =>
+                          setEditingTaskData((prev) => ({
+                            ...prev,
+                            time: e.target.value,
+                          }))
+                        }
+                        className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                    {!isCheckInTask && (
+                      <div>
+                        <label className="block text-slate-400 text-xs mb-2">
+                          预估时长(分钟)
+                        </label>
+                        <input
+                          type="number"
+                          min="5"
+                          max="480"
+                          step="5"
+                          value={editingTaskData.durationMinutes}
+                          onChange={(e) =>
+                            setEditingTaskData((prev) => ({
+                              ...prev,
+                              durationMinutes: Number(e.target.value),
+                            }))
+                          }
+                          className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
                     )}
-                    <div className="flex flex-wrap gap-2">
-                      {selectedItem.tags.map((tag: string, index: number) => (
+                  </div>
+
+                  {/* 编辑标签 */}
+                  <div>
+                    <label className="block text-slate-400 text-xs mb-2">
+                      标签
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {editingTaskData.tags.map((tag, index) => (
                         <span
                           key={index}
-                          className="px-2 py-1 bg-slate-700/30 rounded-md text-slate-400 text-xs">
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-slate-600/50 rounded-md text-slate-300 text-xs">
                           #{tag}
+                          <button
+                            onClick={() => removeTag(index)}
+                            className="text-red-400 hover:text-red-300 ml-1">
+                            ×
+                          </button>
                         </span>
                       ))}
                     </div>
-                  </>
-                )}
-              </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="添加标签"
+                        className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const input = e.target as HTMLInputElement
+                            addTag(input.value.trim())
+                            input.value = ''
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 编辑操作按钮 */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveTaskEdit}
+                      disabled={isUpdating || !editingTaskData.title.trim()}
+                      className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg text-sm transition-colors">
+                      {isUpdating ? '保存中...' : '保存'}
+                    </button>
+                    <button
+                      onClick={cancelTaskEdit}
+                      className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm transition-colors">
+                      取消
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // 显示模式
+                <div>
+                  {/* 任务类型标识和标题 */}
+                  <div className="flex items-center gap-3 mb-1">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        categoryConfig[selectedItem.category].color
+                      }`}></div>
+                    <h1 className="text-white text-3xl font-bold leading-tight">
+                      {selectedItem.title}
+                    </h1>
+                    <button
+                      onClick={startEditingTask}
+                      className="text-slate-400 hover:text-amber-400 transition-colors ml-2">
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                  {/* 类型和标签在同一行 */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {selectedItem.category !== 'habit' && (
+                      <div className="text-slate-400 text-sm">
+                        {categoryConfig[selectedItem.category].name}
+                      </div>
+                    )}
+                    {selectedItem.tags && selectedItem.tags.length > 0 && (
+                      <>
+                        {selectedItem.category !== 'habit' && (
+                          <div className="text-slate-600">|</div>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {selectedItem.tags.map(
+                            (tag: string, index: number) => (
+                              <span
+                                key={index}
+                                className="px-2 py-1 bg-slate-700/30 rounded-md text-slate-400 text-xs">
+                                #{tag}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 操作按钮组 */}
-            <div className="flex items-center gap-3">
-              {/* 主要操作按钮 */}
-              {isCheckInTask ? (
-                <button
-                  onClick={() => handleCheckInToggle(selectedItem)}
-                  disabled={isUpdating}
-                  className={`w-16 h-16 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
-                    selectedItem.completed
-                      ? 'border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20'
-                      : 'border-slate-600 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500'
-                  } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  {isUpdating ? (
-                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                  ) : selectedItem.completed ? (
+            {!isEditingTask && (
+              <div className="flex items-center gap-3">
+                {/* 主要操作按钮 */}
+                {isCheckInTask ? (
+                  <button
+                    onClick={() => handleCheckInToggle(selectedItem)}
+                    disabled={isUpdating}
+                    className={`w-16 h-16 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
+                      selectedItem.completed
+                        ? 'border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                        : 'border-slate-600 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500'
+                    } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {isUpdating ? (
+                      <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                    ) : selectedItem.completed ? (
+                      <svg
+                        className="w-7 h-7"
+                        fill="currentColor"
+                        viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-7 h-7"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                ) : selectedItem.completed ||
+                  selectedItem.status === 'completed' ? (
+                  // 任务已完成，显示完成状态
+                  <div className="inline-flex items-center justify-center w-16 h-16 border-2 border-green-500/50 bg-green-500/10 text-green-400 rounded-full">
                     <svg
                       className="w-7 h-7"
                       fill="currentColor"
@@ -408,58 +665,30 @@ export default function TaskDetailCard({
                         clipRule="evenodd"
                       />
                     </svg>
-                  ) : (
+                  </div>
+                ) : (
+                  // 任务未完成，显示开始按钮
+                  <Link
+                    href={`/focus?id=${
+                      selectedItem.id
+                    }&remaining=${getRemainingTime(
+                      selectedItem
+                    )}&elapsed=${getExecutedTime(selectedItem)}`}
+                    className="inline-flex items-center justify-center w-16 h-16 border-2 border-slate-600 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500 hover:text-white rounded-full transition-all duration-200">
                     <svg
                       className="w-7 h-7"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24">
+                      fill="currentColor"
+                      viewBox="0 0 20 20">
                       <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                        clipRule="evenodd"
                       />
                     </svg>
-                  )}
-                </button>
-              ) : selectedItem.completed ||
-                selectedItem.status === 'completed' ? (
-                // 任务已完成，显示完成状态
-                <div className="inline-flex items-center justify-center w-16 h-16 border-2 border-green-500/50 bg-green-500/10 text-green-400 rounded-full">
-                  <svg
-                    className="w-7 h-7"
-                    fill="currentColor"
-                    viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-              ) : (
-                // 任务未完成，显示开始按钮
-                <Link
-                  href={`/focus?id=${
-                    selectedItem.id
-                  }&remaining=${getRemainingTime(
-                    selectedItem
-                  )}&elapsed=${getExecutedTime(selectedItem)}`}
-                  className="inline-flex items-center justify-center w-16 h-16 border-2 border-slate-600 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500 hover:text-white rounded-full transition-all duration-200">
-                  <svg
-                    className="w-7 h-7"
-                    fill="currentColor"
-                    viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </Link>
-              )}
-            </div>
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 总时长信息 - 仅非打卡任务显示 */}

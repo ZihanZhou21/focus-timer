@@ -44,9 +44,26 @@ export default function Home() {
   }
 
   // 处理任务删除
-  const handleTaskDelete = (taskId: string) => {
-    setTimelineItems((prev) => prev.filter((item) => item.id !== taskId))
-    setSelectedItem(null) // 关闭详情面板
+  const handleTaskDelete = async (taskId: string) => {
+    try {
+      // 先调用后端API删除任务
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        // API删除成功后，从本地状态中移除任务
+        setTimelineItems((prev) => prev.filter((item) => item.id !== taskId))
+        setSelectedItem(null) // 关闭详情面板
+        console.log(`任务 ${taskId} 已成功删除`)
+      } else {
+        console.error('删除任务失败:', response.status)
+        // 可以在这里添加用户提示
+      }
+    } catch (error) {
+      console.error('删除任务出错:', error)
+      // 可以在这里添加用户提示
+    }
   }
 
   // 关闭任务详情
@@ -214,9 +231,9 @@ export default function Home() {
                             {/* 删除按钮 */}
                             <div className="opacity-0 group-hover/delete:opacity-100 transition-opacity duration-200 absolute top-1/2 right-3 transform -translate-y-1/2">
                               <button
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.stopPropagation()
-                                  handleTaskDelete(item.id)
+                                  await handleTaskDelete(item.id)
                                 }}
                                 className="w-8 h-8 rounded-full bg-red-600/20 hover:bg-red-600/40 border border-red-500/40 hover:border-red-400/60 text-red-400 hover:text-red-300 transition-all duration-200 flex items-center justify-center">
                                 <svg
