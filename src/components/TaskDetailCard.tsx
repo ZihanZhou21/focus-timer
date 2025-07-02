@@ -25,6 +25,8 @@ export default function TaskDetailCard({
   onTaskDelete,
   onClose,
 }: TaskDetailCardProps) {
+  // 调试信息
+  console.log('TaskDetailCard 接收到的 selectedItem:', selectedItem)
   const [isUpdating, setIsUpdating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)

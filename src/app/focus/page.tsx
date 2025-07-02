@@ -342,26 +342,7 @@ function ModernTimer({
           const totalMinutes = Math.floor(totalEstimated / 60)
           console.log(`⏰ 总专注时间: ${totalMinutes}分钟`)
 
-          // 显示完成通知
-          try {
-            if (typeof window !== 'undefined' && 'Notification' in window) {
-              // 请求通知权限
-              if (Notification.permission === 'default') {
-                await Notification.requestPermission()
-              }
-
-              if (Notification.permission === 'granted') {
-                new Notification('🎉 任务完成！', {
-                  body: `${
-                    result.title || '任务'
-                  }已完成，专注时间: ${totalMinutes}分钟`,
-                  icon: '/favicon.ico',
-                })
-              }
-            }
-          } catch (notificationError) {
-            console.warn('⚠️ 通知显示失败:', notificationError)
-          }
+          // 浏览器通知功能已删除
 
           success = true
           break
@@ -627,11 +608,7 @@ function ModernTimer({
           </div>
 
           {/* 显示进度信息 */}
-          {(originalRemaining > 0 || originalElapsed > 0) && (
-            <div className="absolute -top-2 -right-2 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-              继续任务
-            </div>
-          )}
+          {/* 继续任务角标已删除 */}
         </div>
       </div>
 
@@ -722,7 +699,14 @@ function FocusContent() {
   } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // 从API获取任务信息
+  // 每日更新的任务进度和剩余时间状态
+  const [taskProgress, setTaskProgress] = useState<{
+    remainingMinutes: number
+    executedMinutes: number
+    progressPercentage: number
+  } | null>(null)
+
+  // 从API获取任务信息和每日更新的进度数据
   useEffect(() => {
     const fetchTaskInfo = async () => {
       if (!taskId) {
@@ -731,9 +715,17 @@ function FocusContent() {
       }
 
       try {
-        const response = await fetch(`/api/tasks/${taskId}`)
-        if (response.ok) {
-          const task = await response.json()
+        // 并行获取任务基本信息和每日更新的进度数据
+        const [taskResponse, remainingResponse, progressResponse] =
+          await Promise.allSettled([
+            fetch(`/api/tasks/${taskId}`),
+            fetch(`/api/tasks/${taskId}/remaining`),
+            fetch(`/api/tasks/${taskId}/progress`),
+          ])
+
+        // 处理任务基本信息
+        if (taskResponse.status === 'fulfilled' && taskResponse.value.ok) {
+          const task = await taskResponse.value.json()
           console.log('📋 获取到任务信息:', task)
 
           setTaskInfo({
@@ -748,16 +740,115 @@ function FocusContent() {
           console.warn('⚠️ 任务不存在或已被删除')
           setTaskInfo(null)
         }
+
+        // 处理每日更新的剩余时间数据
+        if (
+          remainingResponse.status === 'fulfilled' &&
+          remainingResponse.value.ok
+        ) {
+          const remainingData = await remainingResponse.value.json()
+          console.log('⏰ 获取到每日更新的剩余时间:', remainingData)
+
+          setTaskProgress((prev) => ({
+            remainingMinutes: remainingData.remainingMinutes,
+            executedMinutes: remainingData.executedMinutes,
+            progressPercentage: prev?.progressPercentage ?? 0,
+          }))
+        } else {
+          console.warn('⚠️ 获取剩余时间失败，使用URL参数')
+          setTaskProgress((prev) => ({
+            remainingMinutes: remainingMinutes,
+            executedMinutes: elapsedMinutes,
+            progressPercentage: prev?.progressPercentage ?? 0,
+          }))
+        }
+
+        // 处理每日更新的进度数据
+        if (
+          progressResponse.status === 'fulfilled' &&
+          progressResponse.value.ok
+        ) {
+          const progressData = await progressResponse.value.json()
+          console.log('📊 获取到每日更新的进度:', progressData)
+
+          setTaskProgress((prev) => ({
+            remainingMinutes: prev?.remainingMinutes ?? remainingMinutes,
+            executedMinutes: prev?.executedMinutes ?? elapsedMinutes,
+            progressPercentage: progressData.progressPercentage,
+          }))
+        } else {
+          console.warn('⚠️ 获取进度失败，使用默认值')
+          setTaskProgress((prev) => ({
+            remainingMinutes: prev?.remainingMinutes ?? remainingMinutes,
+            executedMinutes: prev?.executedMinutes ?? elapsedMinutes,
+            progressPercentage: 0,
+          }))
+        }
       } catch (error) {
         console.error('获取任务信息失败:', error)
         setTaskInfo(null)
+        // 使用URL参数作为fallback
+        setTaskProgress({
+          remainingMinutes: remainingMinutes,
+          executedMinutes: elapsedMinutes,
+          progressPercentage: 0,
+        })
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchTaskInfo()
-  }, [taskId])
+
+    // 设置定时刷新，每30秒更新一次任务进度数据
+    const refreshInterval = setInterval(() => {
+      if (taskId) {
+        const refreshTaskProgress = async () => {
+          try {
+            const [remainingResponse, progressResponse] =
+              await Promise.allSettled([
+                fetch(`/api/tasks/${taskId}/remaining`),
+                fetch(`/api/tasks/${taskId}/progress`),
+              ])
+
+            // 更新剩余时间
+            if (
+              remainingResponse.status === 'fulfilled' &&
+              remainingResponse.value.ok
+            ) {
+              const remainingData = await remainingResponse.value.json()
+              setTaskProgress((prev) => ({
+                remainingMinutes: remainingData.remainingMinutes,
+                executedMinutes: remainingData.executedMinutes,
+                progressPercentage: prev?.progressPercentage ?? 0,
+              }))
+            }
+
+            // 更新进度
+            if (
+              progressResponse.status === 'fulfilled' &&
+              progressResponse.value.ok
+            ) {
+              const progressData = await progressResponse.value.json()
+              setTaskProgress((prev) => ({
+                remainingMinutes: prev?.remainingMinutes ?? remainingMinutes,
+                executedMinutes: prev?.executedMinutes ?? elapsedMinutes,
+                progressPercentage: progressData.progressPercentage,
+              }))
+            }
+          } catch (error) {
+            console.warn('定时刷新任务进度失败:', error)
+          }
+        }
+        refreshTaskProgress()
+      }
+    }, 30000) // 30秒刷新一次
+
+    // 清理定时器
+    return () => {
+      clearInterval(refreshInterval)
+    }
+  }, [taskId, remainingMinutes, elapsedMinutes])
 
   // 解析时长字符串为分钟数，最短30秒
   const parseDurationToMinutes = (durationStr: string): number => {
@@ -772,12 +863,19 @@ function FocusContent() {
     // 任务完成后刷新任务信息，显示最新状态
     if (taskId) {
       setTimeout(() => {
-        // 重新获取任务信息以显示完成状态
+        // 重新获取任务信息和进度数据
         const fetchUpdatedTaskInfo = async () => {
           try {
-            const response = await fetch(`/api/tasks/${taskId}`)
-            if (response.ok) {
-              const task = await response.json()
+            const [taskResponse, remainingResponse, progressResponse] =
+              await Promise.allSettled([
+                fetch(`/api/tasks/${taskId}`),
+                fetch(`/api/tasks/${taskId}/remaining`),
+                fetch(`/api/tasks/${taskId}/progress`),
+              ])
+
+            // 更新任务基本信息
+            if (taskResponse.status === 'fulfilled' && taskResponse.value.ok) {
+              const task = await taskResponse.value.json()
               setTaskInfo({
                 title: task.title,
                 duration: task.estimatedDuration
@@ -787,6 +885,32 @@ function FocusContent() {
                 completed:
                   task.status === 'completed' || task.completed === true,
               })
+            }
+
+            // 更新剩余时间
+            if (
+              remainingResponse.status === 'fulfilled' &&
+              remainingResponse.value.ok
+            ) {
+              const remainingData = await remainingResponse.value.json()
+              setTaskProgress((prev) => ({
+                remainingMinutes: remainingData.remainingMinutes,
+                executedMinutes: remainingData.executedMinutes,
+                progressPercentage: prev?.progressPercentage ?? 0,
+              }))
+            }
+
+            // 更新进度
+            if (
+              progressResponse.status === 'fulfilled' &&
+              progressResponse.value.ok
+            ) {
+              const progressData = await progressResponse.value.json()
+              setTaskProgress((prev) => ({
+                remainingMinutes: prev?.remainingMinutes ?? remainingMinutes,
+                executedMinutes: prev?.executedMinutes ?? elapsedMinutes,
+                progressPercentage: progressData.progressPercentage,
+              }))
             }
           } catch (error) {
             console.error('刷新任务状态失败:', error)
@@ -851,6 +975,11 @@ function FocusContent() {
               <span>📝</span>
               <span>{taskInfo.title}</span>
               <span className="text-slate-400">({taskInfo.duration})</span>
+              {taskProgress && (
+                <span className="text-blue-400 ml-2">
+                  📊 {taskProgress.progressPercentage.toFixed(1)}%
+                </span>
+              )}
             </div>
           )}
 
@@ -918,14 +1047,18 @@ function FocusContent() {
             // 正常的计时器显示
             <ModernTimer
               initialTime={
-                remainingMinutes > 0
+                (taskProgress?.remainingMinutes ?? 0) > 0
+                  ? taskProgress?.remainingMinutes ?? 0
+                  : remainingMinutes > 0
                   ? remainingMinutes
                   : taskInfo
                   ? parseDurationToMinutes(taskInfo.duration)
                   : 25
               }
-              originalRemaining={remainingMinutes}
-              originalElapsed={elapsedMinutes}
+              originalRemaining={
+                taskProgress?.remainingMinutes ?? remainingMinutes
+              }
+              originalElapsed={taskProgress?.executedMinutes ?? elapsedMinutes}
               taskId={taskId}
               onComplete={handleTimerComplete}
             />

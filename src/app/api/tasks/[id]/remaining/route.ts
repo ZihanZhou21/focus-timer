@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
+import { isToday } from '@/lib/timestamp-reset'
 
 // 任务类型定义
 interface TimeLog {
@@ -79,15 +80,18 @@ function calculateTaskRemaining(task: TodoTask): TaskRemainingResponse {
   // 1. 预估时间（分钟）- 直接从estimatedDuration计算，避免多次转换
   const estimatedMinutes = Math.floor((task.estimatedDuration || 1500) / 60)
 
-  // 2. 已执行时间（分钟）- 累加所有timeLog，使用Math.floor避免向上舍入
-  let totalExecutedSeconds = 0
+  // 2. 已执行时间（分钟）- 只累加今日的timeLog，使用Math.floor避免向上舍入
+  let todayExecutedSeconds = 0
   if (task.timeLog) {
     const timeLogs = Array.isArray(task.timeLog) ? task.timeLog : [task.timeLog]
     for (const timeLog of timeLogs) {
-      totalExecutedSeconds += timeLog.duration
+      // 只处理今天的时间记录
+      if (isToday(timeLog.startTime)) {
+        todayExecutedSeconds += timeLog.duration
+      }
     }
   }
-  const executedMinutes = Math.floor(totalExecutedSeconds / 60)
+  const executedMinutes = Math.floor(todayExecutedSeconds / 60)
 
   // 3. 剩余时间（分钟）- 确保不小于0
   const remainingMinutes = Math.max(0, estimatedMinutes - executedMinutes)

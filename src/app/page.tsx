@@ -44,6 +44,9 @@ export default function Home() {
     }
   }
 
+  // 调试信息
+  console.log('主页面 selectedItem:', selectedItem)
+
   // 处理任务删除
   const handleTaskDelete = async (taskId: string) => {
     try {
@@ -213,6 +216,10 @@ export default function Home() {
 
                       <div className="flex-1 min-w-0">
                         <div
+                          onClick={() => {
+                            console.log('直接点击卡片:', item.title, item.id)
+                            setSelectedItem(item)
+                          }}
                           className={`relative rounded-3xl p-4 mr-4 transition-all duration-200 cursor-pointer group ${
                             item.completed
                               ? 'bg-slate-700/50 border-slate-600/50 opacity-80'
@@ -222,20 +229,18 @@ export default function Home() {
                               ? 'border border-amber-500 bg-slate-700'
                               : 'border hover:bg-slate-700'
                           }`}>
-                          {/* 可点击的主要区域 */}
-                          <div
-                            onClick={() => setSelectedItem(item)}
-                            className="absolute inset-0 z-10"
-                            style={{ right: '20%' }}></div>
+                          {/* 可点击的主要区域 - 已移除，改为直接在卡片上点击 */}
 
                           {/* hover删除区域 - 右边1/5 */}
                           <div
                             className="absolute top-0 right-0 w-1/5 h-full z-20 group/delete"
-                            onMouseEnter={(e) => e.stopPropagation()}>
+                            onMouseEnter={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}>
                             {/* 删除按钮 */}
                             <div className="opacity-0 group-hover/delete:opacity-100 transition-opacity duration-200 absolute top-1/2 right-3 transform -translate-y-1/2">
                               <button
                                 onClick={async (e) => {
+                                  e.preventDefault()
                                   e.stopPropagation()
                                   await handleTaskDelete(item.id)
                                 }}

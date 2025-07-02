@@ -71,7 +71,7 @@
       "编程"
     ],
     "createdAt": "2024-06-25T09:00:00.000Z",
-    "updatedAt": "2025-07-02T01:40:46.430Z",
+    "updatedAt": "2025-07-02T02:59:02.977Z",
     "completedAt": "2025-06-26T10:55:00.000Z",
     "plannedTime": "09:00",
     "dueDate": "2024-06-26T18:00:00.000Z",
@@ -80,12 +80,22 @@
       {
         "startTime": "2024-06-25T09:00:00.000Z",
         "endTime": "2024-06-25T12:00:00.000Z",
-        "duration": 10800
+        "duration": 3600
       },
       {
-        "startTime": "2025-07-02T00:57:41.957Z",
-        "endTime": "2025-07-02T01:40:43.940Z",
-        "duration": 2581
+        "startTime": "2025-07-02T02:11:10.444Z",
+        "endTime": "2025-07-02T02:11:14.051Z",
+        "duration": 3
+      },
+      {
+        "startTime": "2025-07-02T02:58:43.062Z",
+        "endTime": "2025-07-02T02:58:59.833Z",
+        "duration": 16
+      },
+      {
+        "startTime": "2025-07-02T02:58:43.062Z",
+        "endTime": "2025-07-02T02:59:02.915Z",
+        "duration": 19
       }
     ],
     "details": [
@@ -132,7 +142,7 @@
       {
         "date": "2024-06-27",
         "note": "增加了瑜伽练习",
-        "duration": 3300,
+        "duration": 1200,
         "rating": 5
       }
     ],
@@ -189,36 +199,6 @@
     "estimatedDuration": 1500
   },
   {
-    "_id": "task_1750914001215_l4q7iw7ng",
-    "userId": "user_001",
-    "type": "todo",
-    "title": "完整测试任务",
-    "content": [
-      "步骤1: 准备材料",
-      "步骤2: 开始工作",
-      "步骤3: 完成验收"
-    ],
-    "status": "in_progress",
-    "priority": "high",
-    "tags": [
-      "测试",
-      "工作"
-    ],
-    "createdAt": "2025-06-26T05:00:01.215Z",
-    "updatedAt": "2025-06-26T09:45:00.000Z",
-    "completedAt": null,
-    "plannedTime": "14:30",
-    "dueDate": "2025-01-20",
-    "estimatedDuration": 7200,
-    "timeLog": [
-      {
-        "startTime": "2025-06-26T09:00:00.000Z",
-        "endTime": "2025-06-26T09:45:00.000Z",
-        "duration": 2700
-      }
-    ]
-  },
-  {
     "_id": "task_1750920000001_deepfocus27",
     "userId": "user_001",
     "type": "todo",
@@ -267,8 +247,8 @@
       "冥想"
     ],
     "createdAt": "2025-06-29T11:16:07.372Z",
-    "updatedAt": "2025-06-30T02:03:14.477Z",
-    "completedAt": "2025-06-30T02:03:14.035Z",
+    "updatedAt": "2025-07-02T07:06:48.388Z",
+    "completedAt": "2025-07-02T07:06:48.313Z",
     "plannedTime": "09:15",
     "checkInHistory": [],
     "recurrence": {
@@ -283,5 +263,45 @@
         0
       ]
     }
+  },
+  {
+    "_id": "task_1751425168374_o42upkz7z",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "123123",
+    "content": [
+      "123123"
+    ],
+    "status": "completed",
+    "priority": "medium",
+    "tags": [],
+    "createdAt": "2025-07-02T02:59:28.374Z",
+    "updatedAt": "2025-07-02T03:05:05.924Z",
+    "completedAt": "2025-07-02T03:05:05.924Z",
+    "plannedTime": "09:00",
+    "dueDate": null,
+    "estimatedDuration": 300,
+    "timeLog": [
+      {
+        "startTime": "2025-07-02T02:59:36.759Z",
+        "endTime": "2025-07-02T02:59:44.733Z",
+        "duration": 7
+      },
+      {
+        "startTime": "2025-07-02T02:59:36.759Z",
+        "endTime": "2025-07-02T03:00:06.853Z",
+        "duration": 30
+      },
+      {
+        "startTime": "2025-07-02T03:00:30.481Z",
+        "endTime": "2025-07-02T03:02:05.072Z",
+        "duration": 94
+      },
+      {
+        "startTime": "2025-07-02T03:00:30.481Z",
+        "endTime": "2025-07-02T03:05:04.480Z",
+        "duration": 273
+      }
+    ]
   }
 ]
