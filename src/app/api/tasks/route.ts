@@ -3,10 +3,12 @@ import { promises as fs } from 'fs'
 import * as path from 'path'
 import { Task } from '@/lib/types'
 
+// 获取数据文件路径
 const getDataFilePath = () => {
   return path.join(process.cwd(), 'data', 'tasks.json')
 }
 
+// 读取任务数据
 async function readTasksData(): Promise<Task[]> {
   try {
     const filePath = getDataFilePath()
@@ -18,60 +20,41 @@ async function readTasksData(): Promise<Task[]> {
   }
 }
 
+// 写入任务数据
 async function writeTasksData(tasks: Task[]): Promise<void> {
   try {
     const filePath = getDataFilePath()
     await fs.writeFile(filePath, JSON.stringify(tasks, null, 2), 'utf-8')
   } catch (error) {
     console.error('写入任务数据失败:', error)
-    throw error
+    throw new Error('写入任务数据失败')
   }
 }
 
-function generateTaskId(): string {
-  return `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-}
-
-// GET - 获取任务列表
+// 获取用户任务
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId') || 'user_001'
-    const type = searchParams.get('type') as 'todo' | 'check-in' | null
-    const status = searchParams.get('status')
 
-    const tasks = await readTasksData()
-    let filteredTasks = tasks.filter((task) => task.userId === userId)
+    const allTasks = await readTasksData()
+    const userTasks = allTasks.filter((task) => task.userId === userId)
 
-    if (type) {
-      filteredTasks = filteredTasks.filter((task) => task.type === type)
-    }
-
-    if (status) {
-      filteredTasks = filteredTasks.filter((task) => task.status === status)
-    }
-
-    // 按更新时间排序
-    filteredTasks.sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    )
-
-    return NextResponse.json(filteredTasks)
+    return NextResponse.json(userTasks)
   } catch (error) {
-    console.error('获取任务列表失败:', error)
-    return NextResponse.json({ error: '获取任务列表失败' }, { status: 500 })
+    console.error('获取任务失败:', error)
+    return NextResponse.json({ error: '获取任务失败' }, { status: 500 })
   }
 }
 
-// POST - 创建新任务
+// 创建新任务
 export async function POST(request: NextRequest) {
   try {
     const taskData = await request.json()
     const tasks = await readTasksData()
 
     const newTask: Task = {
-      _id: generateTaskId(),
+      _id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       userId: taskData.userId || 'user_001',
       type: taskData.type,
       title: taskData.title,
@@ -81,14 +64,15 @@ export async function POST(request: NextRequest) {
       tags: taskData.tags || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      completedAt: null,
+      completedAt: taskData.completedAt || null,
+      plannedTime: taskData.plannedTime || null,
       ...taskData,
     }
 
     tasks.push(newTask)
     await writeTasksData(tasks)
 
-    return NextResponse.json(newTask)
+    return NextResponse.json({ id: newTask._id })
   } catch (error) {
     console.error('创建任务失败:', error)
     return NextResponse.json({ error: '创建任务失败' }, { status: 500 })

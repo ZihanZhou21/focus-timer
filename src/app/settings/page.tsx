@@ -14,10 +14,6 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto')
 
   // 每日重置相关状态
-  const [schedulerStatus, setSchedulerStatus] = useState({
-    isRunning: false,
-    nextRun: null as string | null,
-  })
   const [resetStatus, setResetStatus] = useState({
     totalTasks: 0,
     completedCheckIns: 0,
@@ -28,24 +24,10 @@ export default function SettingsPage() {
   const [isResetting, setIsResetting] = useState(false)
   const [lastResetTime, setLastResetTime] = useState<string | null>(null)
 
-  // 加载定时任务状态和重置状态
+  // 加载重置状态
   useEffect(() => {
-    loadSchedulerStatus()
     loadResetStatus()
   }, [])
-
-  // 获取定时任务状态
-  const loadSchedulerStatus = async () => {
-    try {
-      const response = await fetch('/api/scheduler')
-      if (response.ok) {
-        const status = await response.json()
-        setSchedulerStatus(status)
-      }
-    } catch (error) {
-      console.error('获取定时任务状态失败:', error)
-    }
-  }
 
   // 获取重置状态
   const loadResetStatus = async () => {
@@ -64,17 +46,16 @@ export default function SettingsPage() {
   const handleManualReset = async () => {
     setIsResetting(true)
     try {
-      const response = await fetch('/api/scheduler', {
+      const response = await fetch('/api/tasks/reset-daily', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reset-now' }),
       })
 
       if (response.ok) {
         const result = await response.json()
         setLastResetTime(new Date().toISOString())
         await loadResetStatus() // 重新加载状态
-        alert(result.message)
+        alert(result.message || '重置完成')
       } else {
         alert('重置失败，请稍后重试')
       }
@@ -83,28 +64,6 @@ export default function SettingsPage() {
       alert('重置失败，请稍后重试')
     } finally {
       setIsResetting(false)
-    }
-  }
-
-  // 控制定时任务
-  const handleSchedulerControl = async (action: 'start' | 'stop') => {
-    try {
-      const response = await fetch('/api/scheduler', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setSchedulerStatus(result.status)
-        alert(result.message)
-      } else {
-        alert('操作失败，请稍后重试')
-      }
-    } catch (error) {
-      console.error('控制定时任务失败:', error)
-      alert('操作失败，请稍后重试')
     }
   }
 
@@ -357,42 +316,29 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* 定时任务状态 */}
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-light text-stone-700 dark:text-slate-200">
-                  自动每日重置
+            {/* 自动重置状态 */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <div className="text-blue-600 dark:text-blue-400 mt-0.5">
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
                 </div>
-                <div className="text-xs text-stone-500 dark:text-slate-400">
-                  {schedulerStatus.isRunning
-                    ? `每日00:05自动重置 ${
-                        schedulerStatus.nextRun
-                          ? `(下次: ${new Date(
-                              schedulerStatus.nextRun
-                            ).toLocaleString()})`
-                          : ''
-                      }`
-                    : '当前未启用自动重置'}
+                <div>
+                  <div className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
+                    智能重置系统
+                  </div>
+                  <div className="text-xs text-blue-700 dark:text-blue-400">
+                    基于时间戳的逻辑重置，每日自动生效，无需配置定时任务
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    schedulerStatus.isRunning ? 'bg-green-500' : 'bg-stone-400'
-                  }`}></div>
-                <button
-                  onClick={() =>
-                    handleSchedulerControl(
-                      schedulerStatus.isRunning ? 'stop' : 'start'
-                    )
-                  }
-                  className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                    schedulerStatus.isRunning
-                      ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
-                      : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50'
-                  }`}>
-                  {schedulerStatus.isRunning ? '停止' : '启动'}
-                </button>
               </div>
             </div>
 
@@ -449,11 +395,11 @@ export default function SettingsPage() {
                     重置说明
                   </div>
                   <div className="text-xs text-amber-700 dark:text-amber-400 space-y-1">
-                    <p>• 打卡任务: 重置完成状态，保留历史记录</p>
-                    <p>• TODO任务: 重置完成状态和进度，清空时间记录</p>
+                    <p>• 智能重置: 基于时间戳逻辑，新的一天自动显示重置状态</p>
                     <p>
-                      • 自动重置: 每日凌晨00:05执行，确保新一天的任务从零开始
+                      • 数据保护: 不删除历史数据，保留所有时间记录和完成历史
                     </p>
+                    <p>• 零配置: 无需设置定时任务，开箱即用的重置机制</p>
                   </div>
                 </div>
               </div>

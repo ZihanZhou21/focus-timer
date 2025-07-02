@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import path from 'path'
 import { Task, TodoTask, CheckInTask } from '@/lib/types'
@@ -31,7 +31,7 @@ async function writeTasksData(tasks: Task[]): Promise<void> {
 }
 
 // POST - 执行每日重置
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     console.log('🌅 开始执行每日重置...')
 

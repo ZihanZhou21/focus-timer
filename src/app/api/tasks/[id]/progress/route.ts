@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
+import { isToday } from '@/lib/timestamp-reset'
 
 // 任务类型定义
 interface TimeLog {
@@ -80,46 +81,53 @@ export async function GET(
   }
 }
 
-// 计算任务执行进度
+// 计算任务执行进度（基于时间戳的逻辑重置）
 function calculateTaskProgress(task: TodoTask): TaskProgressResponse {
-  let totalExecutedTime = 0 // 总执行时间（秒）
+  let todayExecutedTime = 0 // 今天的执行时间（秒）
   const executionSessions: TaskProgressResponse['executionSessions'] = []
 
-  // 处理timeLog（可能是数组或单个对象）
+  // 处理timeLog（可能是数组或单个对象）- 只考虑今天的记录
   if (task.timeLog) {
     const timeLogs = Array.isArray(task.timeLog) ? task.timeLog : [task.timeLog]
 
     for (const timeLog of timeLogs) {
-      totalExecutedTime += timeLog.duration
+      // 只处理今天的时间记录
+      if (isToday(timeLog.startTime)) {
+        todayExecutedTime += timeLog.duration
 
-      // 记录执行会话
-      executionSessions.push({
-        date: timeLog.startTime.split('T')[0],
-        duration: timeLog.duration,
-        startTime: timeLog.startTime,
-        endTime: timeLog.endTime,
-      })
+        // 记录今天的执行会话
+        executionSessions.push({
+          date: timeLog.startTime.split('T')[0],
+          duration: timeLog.duration,
+          startTime: timeLog.startTime,
+          endTime: timeLog.endTime,
+        })
+      }
     }
   }
 
   // 获取预估时间（默认25分钟 = 1500秒）
   const estimatedDuration = task.estimatedDuration || 1500
 
-  // 计算进度百分比
+  // 计算今天的进度百分比
   const progressPercentage = Math.min(
-    (totalExecutedTime / estimatedDuration) * 100,
+    (todayExecutedTime / estimatedDuration) * 100,
     100
   )
 
-  // 检查是否已完成
-  const isCompleted = task.status === 'completed' || !!task.completedAt
+  // 检查是否已完成（只考虑今天的完成状态）
+  const isCompletedToday =
+    (task.status === 'completed' &&
+      task.completedAt &&
+      isToday(task.completedAt)) ||
+    (task.status === 'completed' && executionSessions.length > 0)
 
   return {
     taskId: task._id,
-    totalExecutedTime,
+    totalExecutedTime: todayExecutedTime, // 只返回今天的执行时间
     estimatedDuration,
     progressPercentage: Math.round(progressPercentage * 10) / 10, // 保留1位小数
-    isCompleted,
+    isCompleted: isCompletedToday,
     executionSessions: executionSessions.sort(
       (a, b) =>
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()

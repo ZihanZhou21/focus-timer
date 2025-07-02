@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import * as path from 'path'
 import { Task, TodoTask, CheckInTask } from '@/lib/types'
+import { applyLogicalResetToTasks } from '@/lib/timestamp-reset'
 
 // 获取数据文件路径
 const getDataFilePath = () => {
@@ -170,10 +171,14 @@ export async function GET(request: NextRequest) {
     const userTasks = getAllUserTasks(allTasks, userId)
     console.log(`获取到 ${userTasks.length} 个用户任务`)
 
-    // 第三步：对任务进行排序
-    const sortedTasks = sortTasks(userTasks)
+    // 第三步：应用逻辑重置（基于时间戳）
+    const resetTasks = applyLogicalResetToTasks(userTasks)
+    console.log(`应用逻辑重置后的任务数量: ${resetTasks.length}`)
 
-    // 第四步：检查是否需要转换为ProjectItem格式
+    // 第四步：对任务进行排序
+    const sortedTasks = sortTasks(resetTasks)
+
+    // 第五步：检查是否需要转换为ProjectItem格式
     const format = searchParams.get('format')
     if (format === 'project-items') {
       const projectItems = convertToProjectItems(sortedTasks)

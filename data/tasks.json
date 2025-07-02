@@ -71,7 +71,7 @@
       "编程"
     ],
     "createdAt": "2024-06-25T09:00:00.000Z",
-    "updatedAt": "2025-06-27T00:14:01.097Z",
+    "updatedAt": "2025-07-02T01:40:46.430Z",
     "completedAt": "2025-06-26T10:55:00.000Z",
     "plannedTime": "09:00",
     "dueDate": "2024-06-26T18:00:00.000Z",
@@ -81,6 +81,11 @@
         "startTime": "2024-06-25T09:00:00.000Z",
         "endTime": "2024-06-25T12:00:00.000Z",
         "duration": 10800
+      },
+      {
+        "startTime": "2025-07-02T00:57:41.957Z",
+        "endTime": "2025-07-02T01:40:43.940Z",
+        "duration": 2581
       }
     ],
     "details": [
@@ -162,7 +167,7 @@
       "晨练"
     ],
     "createdAt": "2024-06-25T06:00:00.000Z",
-    "updatedAt": "2025-06-30T02:28:17.417Z",
+    "updatedAt": "2025-07-02T01:43:19.457Z",
     "completedAt": null,
     "plannedTime": "07:30",
     "checkInHistory": [

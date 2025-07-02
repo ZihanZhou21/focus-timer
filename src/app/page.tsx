@@ -5,6 +5,7 @@ import { ProjectItem } from '@/lib/api'
 import { todayTasksService } from '@/lib/today-api'
 import { categoryConfig, DEFAULT_USER_ID } from '@/lib/constants'
 import { formatDuration } from '@/lib/utils'
+import { taskProgressAPI } from '@/lib/task-progress-api'
 import AppNavigation from '@/components/AppNavigation'
 import SimpleTaskModal from '@/components/SimpleTaskModal'
 import ActivityCalendar from '@/components/ActivityCalendar'
@@ -75,6 +76,9 @@ export default function Home() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // 清除过期缓存（包括跨日的缓存）
+        taskProgressAPI.clearExpiredCache()
+
         // 加载今日任务数据
         const projectItems =
           await todayTasksService.getTodaysTasksAsProjectItems(DEFAULT_USER_ID)

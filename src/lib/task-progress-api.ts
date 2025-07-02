@@ -1,4 +1,6 @@
 // 任务进度API服务
+import { isNewDay } from '@/lib/timestamp-reset'
+
 interface TaskProgressData {
   taskId: string
   totalExecutedTime: number // 总执行时间（秒）
@@ -31,11 +33,22 @@ class TaskProgressAPI {
    * @returns 任务进度数据
    */
   async getTaskProgress(taskId: string): Promise<TaskProgressData> {
-    // 检查缓存
+    // 检查缓存 - 如果是新的一天，缓存自动失效
     const cached = this.cache.get(taskId)
-    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+    const cacheValid =
+      cached &&
+      Date.now() - cached.timestamp < this.CACHE_DURATION &&
+      !isNewDay(new Date(cached.timestamp).toISOString())
+
+    if (cacheValid) {
       console.log(`使用缓存的任务进度数据: ${taskId}`)
       return cached.data
+    }
+
+    // 如果是新的一天，清除该任务的缓存
+    if (cached && isNewDay(new Date(cached.timestamp).toISOString())) {
+      this.cache.delete(taskId)
+      console.log(`新的一天，清除任务缓存: ${taskId}`)
     }
 
     try {
@@ -109,6 +122,32 @@ class TaskProgressAPI {
   clearAllCache(): void {
     this.cache.clear()
     console.log('清除所有任务进度缓存')
+  }
+
+  /**
+   * 清除过期的缓存（包括跨日的缓存）
+   */
+  clearExpiredCache(): void {
+    const now = Date.now()
+    const entriesToDelete: string[] = []
+
+    for (const [taskId, cached] of this.cache.entries()) {
+      const isExpired = now - cached.timestamp >= this.CACHE_DURATION
+      const isNewDayCache = isNewDay(new Date(cached.timestamp).toISOString())
+
+      if (isExpired || isNewDayCache) {
+        entriesToDelete.push(taskId)
+      }
+    }
+
+    entriesToDelete.forEach((taskId) => {
+      this.cache.delete(taskId)
+      console.log(`清除过期缓存: ${taskId}`)
+    })
+
+    if (entriesToDelete.length > 0) {
+      console.log(`共清除 ${entriesToDelete.length} 个过期缓存`)
+    }
   }
 
   /**
