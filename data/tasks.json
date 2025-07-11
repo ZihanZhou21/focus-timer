@@ -3,33 +3,33 @@
     "_id": "task_1719399600000_abcdef123",
     "userId": "user_001",
     "type": "check-in",
-    "title": "每日起床",
+    "title": "Get Up Every Day",
     "content": [
-      "起床后立即整理床铺",
-      "喝一杯温开水",
-      "做5分钟伸展运动",
-      "记录昨晚睡眠质量"
+      "Make the bed immediately after getting up",
+      "Drink a glass of warm water",
+      "Do 5 minutes of stretching",
+      "Record last night's sleep quality"
     ],
     "status": "completed",
     "priority": "medium",
     "tags": [
-      "健康",
-      "习惯"
+      "Health",
+      "Habit"
     ],
-    "createdAt": "2024-06-25T10:00:00.000Z",
-    "updatedAt": "2025-06-30T02:41:34.574Z",
-    "completedAt": "2025-06-30T02:41:34.359Z",
+    "createdAt": "2025-06-25T10:00:00.000Z",
+    "updatedAt": "2025-07-11T06:37:04.927Z",
+    "completedAt": "2025-07-11T06:37:03.764Z",
     "plannedTime": "07:00",
     "checkInHistory": [
       {
-        "date": "2024-06-24",
-        "note": "今天起床比较及时",
+        "date": "2025-06-24",
+        "note": "Got up on time today",
         "duration": 300,
         "rating": 4
       },
       {
-        "date": "2024-06-25",
-        "note": "起床后感觉很好",
+        "date": "2025-06-25",
+        "note": "Felt great after getting up",
         "duration": 240,
         "rating": 5
       }
@@ -47,39 +47,39 @@
       ]
     },
     "details": [
-      "起床后立即整理床铺",
-      "喝一杯温开水",
-      "做5分钟伸展运动",
-      "记录昨晚睡眠质量"
+      "Make the bed immediately after getting up",
+      "Drink a glass of warm water",
+      "Do 5 minutes of stretching",
+      "Record last night's sleep quality"
     ]
   },
   {
     "_id": "task_1719399600001_ghijkl456",
     "userId": "user_001",
     "type": "todo",
-    "title": "代码开发",
+    "title": "Code Development",
     "content": [
-      "完成用户认证模块的开发",
-      "编写单元测试用例",
-      "更新API文档",
-      "代码review和优化"
+      "Complete the development of the user authentication module",
+      "Write unit test cases",
+      "Update API documentation",
+      "Code review and optimization"
     ],
     "status": "in_progress",
     "priority": "high",
     "tags": [
-      "工作",
-      "编程"
+      "Work",
+      "Programming"
     ],
-    "createdAt": "2024-06-25T09:00:00.000Z",
-    "updatedAt": "2025-07-02T02:59:02.977Z",
+    "createdAt": "2025-06-25T09:00:00.000Z",
+    "updatedAt": "2025-07-07T05:36:10.903Z",
     "completedAt": "2025-06-26T10:55:00.000Z",
     "plannedTime": "09:00",
-    "dueDate": "2024-06-26T18:00:00.000Z",
+    "dueDate": "2025-06-26T18:00:00.000Z",
     "estimatedDuration": 14400,
     "timeLog": [
       {
-        "startTime": "2024-06-25T09:00:00.000Z",
-        "endTime": "2024-06-25T12:00:00.000Z",
+        "startTime": "2025-06-25T09:00:00.000Z",
+        "endTime": "2025-06-25T12:00:00.000Z",
         "duration": 3600
       },
       {
@@ -96,94 +96,95 @@
         "startTime": "2025-07-02T02:58:43.062Z",
         "endTime": "2025-07-02T02:59:02.915Z",
         "duration": 19
+      },
+      {
+        "startTime": "2025-07-03T00:59:25.622Z",
+        "endTime": "2025-07-03T00:59:38.902Z",
+        "duration": 13
+      },
+      {
+        "startTime": "2025-07-03T02:41:25.846Z",
+        "endTime": "2025-07-03T03:47:47.090Z",
+        "duration": 3981
+      },
+      {
+        "startTime": "2025-07-03T06:29:33.343Z",
+        "endTime": "2025-07-03T06:29:38.876Z",
+        "duration": 5
+      },
+      {
+        "startTime": "2025-07-03T06:29:33.343Z",
+        "endTime": "2025-07-03T06:29:41.517Z",
+        "duration": 8
+      },
+      {
+        "startTime": "2025-07-03T06:58:42.304Z",
+        "endTime": "2025-07-03T06:58:45.772Z",
+        "duration": 3
+      },
+      {
+        "startTime": "2025-07-03T06:58:47.386Z",
+        "endTime": "2025-07-03T06:58:55.110Z",
+        "duration": 7
+      },
+      {
+        "startTime": "2025-07-03T07:45:55.151Z",
+        "endTime": "2025-07-03T07:46:01.782Z",
+        "duration": 6
+      },
+      {
+        "startTime": "2025-07-03T07:45:55.151Z",
+        "endTime": "2025-07-03T07:46:01.777Z",
+        "duration": 6
+      },
+      {
+        "startTime": "2025-07-03T07:45:55.151Z",
+        "endTime": "2025-07-03T07:46:05.591Z",
+        "duration": 10
+      },
+      {
+        "startTime": "2025-07-03T07:45:55.151Z",
+        "endTime": "2025-07-03T07:46:05.595Z",
+        "duration": 10
+      },
+      {
+        "startTime": "2025-07-07T05:36:06.078Z",
+        "endTime": "2025-07-07T05:36:10.827Z",
+        "duration": 4
       }
     ],
     "details": [
-      "完成用户认证模块的开发",
-      "编写单元测试用例",
-      "更新API文档",
-      "代码review和优化"
+      "Complete the development of the user authentication module",
+      "Write unit test cases",
+      "Update API documentation",
+      "Code review and optimization"
     ]
-  },
-  {
-    "_id": "task_1719399600003_stuvwx012",
-    "userId": "user_001",
-    "type": "check-in",
-    "title": "运动时间",
-    "content": [
-      "进行30分钟有氧运动",
-      "15分钟力量训练",
-      "10分钟拉伸放松",
-      "记录运动数据和感受"
-    ],
-    "status": "in_progress",
-    "priority": "high",
-    "tags": [
-      "健康",
-      "运动"
-    ],
-    "createdAt": "2024-06-25T07:00:00.000Z",
-    "updatedAt": "2025-06-29T07:29:39.786Z",
-    "completedAt": null,
-    "plannedTime": "18:00",
-    "checkInHistory": [
-      {
-        "date": "2024-06-24",
-        "note": "今天做了跑步和俯卧撑",
-        "duration": 2700,
-        "rating": 4
-      },
-      {
-        "date": "2024-06-25",
-        "note": "增加了瑜伽练习",
-        "duration": 3300,
-        "rating": 5
-      },
-      {
-        "date": "2024-06-27",
-        "note": "增加了瑜伽练习",
-        "duration": 1200,
-        "rating": 5
-      }
-    ],
-    "recurrence": {
-      "frequency": "daily",
-      "daysOfWeek": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7
-      ]
-    }
   },
   {
     "_id": "task_1719399600004_yzabcd345",
     "userId": "user_001",
     "type": "check-in",
-    "title": "晨练时光",
+    "title": "Morning Exercise",
     "content": [
-      "进行20分钟晨跑",
-      "5分钟呼吸练习",
-      "感受清晨的宁静",
-      "为新一天注入活力"
+      "20 minutes morning run",
+      "5 minutes breathing practice",
+      "Feel the tranquility of the morning",
+      "Energize for the new day"
     ],
-    "status": "in_progress",
+    "status": "completed",
     "priority": "medium",
     "tags": [
-      "健康",
-      "晨练"
+      "Health",
+      "Morning Exercise"
     ],
-    "createdAt": "2024-06-25T06:00:00.000Z",
-    "updatedAt": "2025-07-02T01:43:19.457Z",
-    "completedAt": null,
+    "createdAt": "2025-06-25T06:00:00.000Z",
+    "updatedAt": "2025-07-11T06:50:49.973Z",
+    "completedAt": "2025-07-11T06:50:48.722Z",
     "plannedTime": "07:30",
     "checkInHistory": [
       {
-        "date": "2024-06-24",
-        "note": "今天晨跑感觉很棒",
+        "date": "2025-06-24",
+        "note": "Felt great during the morning run today",
         "duration": 1500,
         "rating": 5
       }
@@ -196,55 +197,25 @@
         5
       ]
     },
-    "estimatedDuration": 1500
-  },
-  {
-    "_id": "task_1750920000001_deepfocus27",
-    "userId": "user_001",
-    "type": "todo",
-    "title": "深度专注",
-    "content": [
-      "阅读《原子习惯》第5-6章",
-      "整理读书笔记",
-      "思考如何应用到日常生活",
-      "制定本周习惯改进计划"
-    ],
-    "status": "in_progress",
-    "priority": "medium",
-    "tags": [
-      "学习",
-      "自我提升"
-    ],
-    "createdAt": "2025-06-27T08:00:00.000Z",
-    "updatedAt": "2025-06-27T10:45:00.000Z",
-    "completedAt": "2025-06-27T10:45:00.000Z",
-    "plannedTime": "20:00",
-    "dueDate": "2025-06-27T22:00:00.000Z",
-    "estimatedDuration": 7200,
-    "timeLog": [
-      {
-        "startTime": "2025-06-27T10:00:00.000Z",
-        "endTime": "2025-06-27T10:45:00.000Z",
-        "duration": 2700
-      },
-      {
-        "startTime": "2025-06-27T11:00:00.000Z",
-        "endTime": "2025-06-27T11:45:00.000Z",
-        "duration": 2700
-      }
+    "estimatedDuration": 1500,
+    "details": [
+      "20 minutes morning run",
+      "5 minutes breathing practice",
+      "Feel the tranquility of the morning",
+      "Energize for the new day"
     ]
   },
   {
     "_id": "task_1751195767372_a14qylkki",
     "userId": "user_001",
     "type": "check-in",
-    "title": "晨间冥想",
+    "title": "Morning Meditation",
     "content": [],
     "status": "completed",
     "priority": "medium",
     "tags": [
-      "习惯",
-      "冥想"
+      "Habit",
+      "Meditation"
     ],
     "createdAt": "2025-06-29T11:16:07.372Z",
     "updatedAt": "2025-07-02T07:06:48.388Z",
@@ -268,7 +239,7 @@
     "_id": "task_1751425168374_o42upkz7z",
     "userId": "user_001",
     "type": "todo",
-    "title": "123123",
+    "title": "test task",
     "content": [
       "123123"
     ],
@@ -276,7 +247,7 @@
     "priority": "medium",
     "tags": [],
     "createdAt": "2025-07-02T02:59:28.374Z",
-    "updatedAt": "2025-07-02T03:05:05.924Z",
+    "updatedAt": "2025-07-07T03:40:10.647Z",
     "completedAt": "2025-07-02T03:05:05.924Z",
     "plannedTime": "09:00",
     "dueDate": null,
@@ -301,6 +272,122 @@
         "startTime": "2025-07-02T03:00:30.481Z",
         "endTime": "2025-07-02T03:05:04.480Z",
         "duration": 273
+      }
+    ]
+  },
+  {
+    "_id": "task_1751526480054_l0grtzhmo",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "task2",
+    "content": [],
+    "status": "completed",
+    "priority": "medium",
+    "tags": [],
+    "createdAt": "2025-07-03T07:08:00.054Z",
+    "updatedAt": "2025-07-07T03:40:20.487Z",
+    "completedAt": "2025-07-04T02:37:27.309Z",
+    "plannedTime": "09:00",
+    "dueDate": null,
+    "estimatedDuration": 300,
+    "timeLog": [
+      {
+        "startTime": "2025-07-03T07:08:05.752Z",
+        "endTime": "2025-07-03T07:08:14.758Z",
+        "duration": 9
+      },
+      {
+        "startTime": "2025-07-03T07:08:27.022Z",
+        "endTime": "2025-07-03T07:08:31.289Z",
+        "duration": 4
+      },
+      {
+        "startTime": "2025-07-03T07:08:35.782Z",
+        "endTime": "2025-07-03T07:08:39.899Z",
+        "duration": 4
+      },
+      {
+        "startTime": "2025-07-03T07:11:00.427Z",
+        "endTime": "2025-07-03T07:11:17.724Z",
+        "duration": 17
+      },
+      {
+        "startTime": "2025-07-03T07:13:28.596Z",
+        "endTime": "2025-07-03T07:13:47.912Z",
+        "duration": 19
+      },
+      {
+        "startTime": "2025-07-03T07:46:09.569Z",
+        "endTime": "2025-07-03T07:46:12.871Z",
+        "duration": 3
+      },
+      {
+        "startTime": "2025-07-03T07:46:09.569Z",
+        "endTime": "2025-07-03T07:46:12.878Z",
+        "duration": 3
+      },
+      {
+        "startTime": "2025-07-03T07:46:09.569Z",
+        "endTime": "2025-07-03T07:46:15.204Z",
+        "duration": 5
+      },
+      {
+        "startTime": "2025-07-03T07:46:09.569Z",
+        "endTime": "2025-07-03T07:46:15.210Z",
+        "duration": 5
+      },
+      {
+        "startTime": "2025-07-03T07:46:09.569Z",
+        "endTime": "2025-07-03T07:47:17.341Z",
+        "duration": 67
+      },
+      {
+        "startTime": "2025-07-03T07:46:09.569Z",
+        "endTime": "2025-07-03T07:47:17.336Z",
+        "duration": 67
+      },
+      {
+        "startTime": "2025-07-03T07:48:49.336Z",
+        "endTime": "2025-07-03T07:48:54.085Z",
+        "duration": 4
+      },
+      {
+        "startTime": "2025-07-04T02:32:23.703Z",
+        "endTime": "2025-07-04T02:32:58.382Z",
+        "duration": 34
+      },
+      {
+        "startTime": "2025-07-04T02:32:23.703Z",
+        "endTime": "2025-07-04T02:37:26.701Z",
+        "duration": 302
+      }
+    ]
+  },
+  {
+    "_id": "task_1751625917907_gfylihz0h",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "task1",
+    "content": [],
+    "status": "in_progress",
+    "priority": "medium",
+    "tags": [],
+    "createdAt": "2025-07-04T10:45:17.907Z",
+    "updatedAt": "2025-07-11T06:51:20.888Z",
+    "completedAt": null,
+    "plannedTime": "09:00",
+    "dueDate": null,
+    "estimatedDuration": 300,
+    "timeLog": [
+      {
+        "startTime": "2025-07-10T07:25:55.537Z",
+        "endTime": "2025-07-10T07:25:59.013Z",
+        "duration": 3
+      },
+      {
+        "startTime": "2025-07-11T06:51:15.827Z",
+        "endTime": "2025-07-11T06:51:20.848Z",
+        "duration": 5
       }
     ]
   }

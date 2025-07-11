@@ -89,7 +89,6 @@ interface ProjectItem {
   durationMinutes: number
   icon: string
   iconColor: string
-  category: 'habit' | 'task' | 'focus' | 'exercise'
   completed: boolean
   details?: string[]
   tags?: string[]
@@ -105,6 +104,8 @@ function convertToProjectItems(tasks: Task[]): ProjectItem[] {
     const time = task.plannedTime || '00:00'
 
     // 估算持续时间（分钟）
+    // category 字段已废弃，不再赋值
+    // 其余逻辑保持不变
     let durationMinutes = 0
     if (task.type === 'todo') {
       durationMinutes = Math.round((task as TodoTask).estimatedDuration / 60)
@@ -121,8 +122,6 @@ function convertToProjectItems(tasks: Task[]): ProjectItem[] {
     }
 
     // 确定分类和图标
-    const category: 'task' | 'habit' | 'focus' | 'exercise' =
-      task.type === 'todo' ? 'task' : 'habit'
     const icon = task.type === 'todo' ? '📝' : '💪'
 
     return {
@@ -139,7 +138,6 @@ function convertToProjectItems(tasks: Task[]): ProjectItem[] {
           : task.priority === 'medium'
           ? 'bg-yellow-500'
           : 'bg-green-500',
-      category: category,
       completed: task.status === 'completed',
       details: Array.isArray(task.content) ? task.content : [task.content],
       tags: task.tags,

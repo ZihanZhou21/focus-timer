@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { categoryConfig, DEFAULT_USER_ID, TimePeriod } from '@/lib/constants'
+import { taskTypeConfig, DEFAULT_USER_ID, TimePeriod } from '@/lib/constants'
 import { formatTimeInHours, getDateRange } from '@/lib/utils'
 import { weeklyStatsAPI } from '@/lib/weekly-stats-api'
 import { monthlyStatsAPI } from '@/lib/monthly-stats-api'
@@ -16,10 +16,8 @@ interface DayData {
   totalProjects: number
   completedProjects: number
   categoryBreakdown: {
-    habit: number
-    task: number
-    focus: number
-    exercise: number
+    todo: number
+    'check-in': number
   }
 }
 
@@ -51,7 +49,7 @@ export default function CalendarPage() {
 
       if (selectedPeriod === 'week') {
         // 使用周度统计API
-        console.log('使用周度统计API获取数据')
+        console.log('Using weekly stats API to get data')
         const weeklyStats = await weeklyStatsAPI.getLast7DaysStats(
           DEFAULT_USER_ID
         )
@@ -64,15 +62,13 @@ export default function CalendarPage() {
           totalProjects: day.taskCount,
           completedProjects: day.completedCount,
           categoryBreakdown: {
-            habit: 0, // 新API不区分类别，统一为TODO时间
-            task: day.todoTime,
-            focus: 0,
-            exercise: 0,
+            todo: day.todoTime,
+            'check-in': 0,
           },
         }))
       } else if (selectedPeriod === 'month') {
         // 使用月度统计API
-        console.log('使用月度统计API获取数据')
+        console.log('Using monthly stats API to get data')
         const monthlyStats = await monthlyStatsAPI.getMonthlyStats(
           currentDate.getFullYear(),
           currentDate.getMonth() + 1,
@@ -87,15 +83,13 @@ export default function CalendarPage() {
           totalProjects: day.taskCount,
           completedProjects: day.completedCount,
           categoryBreakdown: {
-            habit: 0, // 新API不区分类别，统一为TODO时间
-            task: day.todoTime,
-            focus: 0,
-            exercise: 0,
+            todo: day.todoTime,
+            'check-in': 0,
           },
         }))
       } else {
         // 年视图：使用多个月度API
-        console.log('使用多个月度API获取年度数据')
+        console.log('Using multiple monthly APIs to get yearly data')
         const year = currentDate.getFullYear()
         const monthlyPromises = []
 
@@ -123,16 +117,14 @@ export default function CalendarPage() {
 
           return {
             date: `${year}-${(index + 1).toString().padStart(2, '0')}`,
-            day: `${index + 1}月`,
+            day: `Month ${index + 1}`,
             totalFocusTime: monthTotalTime,
             completedCycles: monthCompletedCount,
             totalProjects: monthTaskCount,
             completedProjects: monthCompletedCount,
             categoryBreakdown: {
-              habit: 0,
-              task: monthTotalTime,
-              focus: 0,
-              exercise: 0,
+              todo: monthTotalTime,
+              'check-in': 0,
             },
           }
         })
@@ -217,9 +209,11 @@ export default function CalendarPage() {
           end.getMonth() + 1
         }/${end.getDate()}`
       case 'month':
-        return `${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月`
+        return `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1)
+          .toString()
+          .padStart(2, '0')}`
       case 'year':
-        return `${currentDate.getFullYear()}年`
+        return `${currentDate.getFullYear()}`
     }
   }
 
@@ -231,7 +225,7 @@ export default function CalendarPage() {
   if (isLoading) {
     return (
       <div className="h-screen bg-slate-900 text-white flex items-center justify-center">
-        <div className="text-slate-400">加载中...</div>
+        <div className="text-slate-400">Loading...</div>
       </div>
     )
   }
@@ -309,9 +303,9 @@ export default function CalendarPage() {
                       ? 'bg-slate-700 text-white'
                       : 'text-slate-400 hover:text-white hover:bg-slate-700'
                   }`}>
-                  {period === 'week' && '本周'}
-                  {period === 'month' && '本月'}
-                  {period === 'year' && '本年'}
+                  {period === 'week' && 'This Week'}
+                  {period === 'month' && 'This Month'}
+                  {period === 'year' && 'This Year'}
                 </button>
               ))}
             </div>
@@ -320,22 +314,22 @@ export default function CalendarPage() {
           {/* 统计卡片 */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatsCard
-              title="总专注时间"
+              title="Total Focus Time"
               value={formatTimeInHours(periodStats.totalFocusTime)}
               color="amber"
             />
             <StatsCard
-              title="完成循环"
+              title="Completed Cycles"
               value={periodStats.completedCycles}
               color="emerald"
             />
             <StatsCard
-              title="平均时长"
+              title="Average Duration"
               value={formatTimeInHours(periodStats.averageSessionLength)}
               color="blue"
             />
             <StatsCard
-              title="连续天数"
+              title="Streak Days"
               value={periodStats.streakDays}
               color="purple"
             />
@@ -344,9 +338,9 @@ export default function CalendarPage() {
           {/* 专注趋势图 */}
           <div className="bg-slate-800 rounded-3xl p-8 border border-slate-700/50">
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-light text-slate-200">专注趋势</h2>
+              <h2 className="text-xl font-light text-slate-200">Focus Trend</h2>
               <div className="flex items-center space-x-6">
-                {Object.entries(categoryConfig).map(([key, config]) => (
+                {Object.entries(taskTypeConfig).map(([key, config]) => (
                   <div key={key} className="flex items-center space-x-2">
                     <div
                       className={`w-3 h-3 rounded ${config.lightColor}`}></div>
@@ -364,48 +358,28 @@ export default function CalendarPage() {
                   const { categoryBreakdown } = data
 
                   // 计算每个类型的高度百分比
-                  const habitHeight =
+                  const todoHeight =
                     maxFocusTime > 0
-                      ? (categoryBreakdown.habit / maxFocusTime) * 100
+                      ? (categoryBreakdown.todo / maxFocusTime) * 100
                       : 0
-                  const taskHeight =
+                  const checkInHeight =
                     maxFocusTime > 0
-                      ? (categoryBreakdown.task / maxFocusTime) * 100
-                      : 0
-                  const focusHeight =
-                    maxFocusTime > 0
-                      ? (categoryBreakdown.focus / maxFocusTime) * 100
-                      : 0
-                  const exerciseHeight =
-                    maxFocusTime > 0
-                      ? (categoryBreakdown.exercise / maxFocusTime) * 100
+                      ? (categoryBreakdown['check-in'] / maxFocusTime) * 100
                       : 0
 
                   // 创建显示的分段数组
                   const segments = []
-                  if (categoryBreakdown.habit > 0)
+                  if (categoryBreakdown.todo > 0)
                     segments.push({
-                      type: 'habit',
-                      height: habitHeight,
-                      value: categoryBreakdown.habit,
+                      type: 'todo',
+                      height: todoHeight,
+                      value: categoryBreakdown.todo,
                     })
-                  if (categoryBreakdown.task > 0)
+                  if (categoryBreakdown['check-in'] > 0)
                     segments.push({
-                      type: 'task',
-                      height: taskHeight,
-                      value: categoryBreakdown.task,
-                    })
-                  if (categoryBreakdown.focus > 0)
-                    segments.push({
-                      type: 'focus',
-                      height: focusHeight,
-                      value: categoryBreakdown.focus,
-                    })
-                  if (categoryBreakdown.exercise > 0)
-                    segments.push({
-                      type: 'exercise',
-                      height: exerciseHeight,
-                      value: categoryBreakdown.exercise,
+                      type: 'check-in',
+                      height: checkInHeight,
+                      value: categoryBreakdown['check-in'],
                     })
 
                   // 设置最小柱子宽度
@@ -434,17 +408,12 @@ export default function CalendarPage() {
                         {segments.length > 0 ? (
                           segments.map((segment, segmentIndex) => {
                             const colors: { [key: string]: string } = {
-                              habit: 'bg-gray-400/70 hover:bg-gray-400/90',
-                              task: 'bg-blue-400/70 hover:bg-blue-400/90',
-                              focus: 'bg-amber-400/70 hover:bg-amber-400/90',
-                              exercise: 'bg-green-400/70 hover:bg-green-400/90',
+                              todo: 'bg-blue-400/70 hover:bg-blue-400/90',
+                              'check-in': 'bg-gray-400/70 hover:bg-gray-400/90',
                             }
-
                             const names: { [key: string]: string } = {
-                              habit: '习惯',
-                              task: '任务',
-                              focus: '专注',
-                              exercise: '运动',
+                              todo: 'Todo',
+                              'check-in': 'Check-in',
                             }
 
                             return (

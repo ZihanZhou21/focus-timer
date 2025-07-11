@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useRef,
   useCallback,
+  useMemo,
 } from 'react'
 import { useSearchParams } from 'next/navigation'
 
@@ -15,12 +16,18 @@ function ModernTimer({
   originalElapsed = 0,
   taskId,
   onComplete,
+  liveTaskProgress,
 }: {
   initialTime: number
   originalRemaining?: number
   originalElapsed?: number
   taskId?: string | null
   onComplete?: () => void
+  liveTaskProgress?: {
+    remainingMinutes: number
+    executedMinutes: number
+    progressPercentage: number
+  } | null
 }) {
   // 计算真实的总预估时间和已用时间
   const calculateInitialValues = () => {
@@ -60,7 +67,7 @@ function ModernTimer({
 
       if (savedState) {
         const parsed = JSON.parse(savedState)
-        console.log('从localStorage恢复状态:', parsed)
+        console.log('Restored state from localStorage:', parsed)
 
         // 验证数据完整性
         if (
@@ -80,13 +87,13 @@ function ModernTimer({
               isRunning: false, // 恢复时总是暂停状态
             }
           } else {
-            console.log('localStorage数据已过期，清除')
+            console.log('localStorage data expired, clearing')
             localStorage.removeItem(storageKey)
           }
         }
       }
     } catch (error) {
-      console.error('恢复localStorage状态失败:', error)
+      console.error('Failed to restore localStorage state:', error)
     }
 
     return null
@@ -108,9 +115,9 @@ function ModernTimer({
         }
 
         localStorage.setItem(storageKey, JSON.stringify(stateToSave))
-        console.log('状态已保存到localStorage:', stateToSave)
+        console.log('State saved to localStorage:', stateToSave)
       } catch (error) {
-        console.error('保存状态到localStorage失败:', error)
+        console.error('Failed to save state to localStorage:', error)
       }
     },
     [taskId]
@@ -123,9 +130,9 @@ function ModernTimer({
     try {
       const storageKey = getStorageKey()
       localStorage.removeItem(storageKey)
-      console.log('已清除localStorage状态')
+      console.log('Cleared localStorage state')
     } catch (error) {
-      console.error('清除localStorage状态失败:', error)
+      console.error('Failed to clear localStorage state:', error)
     }
   }, [taskId])
 
@@ -150,10 +157,69 @@ function ModernTimer({
   const [totalElapsed, setTotalElapsed] = useState(
     Math.floor(initialState.totalElapsed)
   )
-  const totalEstimated = Math.floor(initialState.totalEstimated)
+  const [totalEstimated, setTotalEstimated] = useState(
+    Math.floor(initialState.totalEstimated)
+  )
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const sessionStartTime = useRef<Date | null>(null)
+
+  // 标记是否已经从外部数据初始化过
+  const hasInitializedFromLiveData = useRef(false)
+  const lastSyncTime = useRef<number>(0)
+
+  // 同步外部任务进度数据 - 改进版本，避免干扰用户操作
+  useEffect(() => {
+    if (liveTaskProgress && taskId) {
+      console.log('🔄 收到实时任务进度:', liveTaskProgress)
+
+      // 计算新的时间状态
+      const newRemainingSeconds = liveTaskProgress.remainingMinutes * 60
+      const newElapsedSeconds = liveTaskProgress.executedMinutes * 60
+      const newTotalEstimated = newRemainingSeconds + newElapsedSeconds
+
+      // 只在以下情况才同步数据：
+      // 1. 首次初始化且计时器未运行
+      // 2. 距离上次同步超过5分钟且计时器未运行
+      const now = Date.now()
+      const shouldSync =
+        (!hasInitializedFromLiveData.current && !isRunning) ||
+        (now - lastSyncTime.current > 5 * 60 * 1000 && !isRunning)
+
+      if (shouldSync) {
+        // 检查数据变化是否显著（避免微小变化导致的重置）
+        const currentRemainingSeconds = timeRemaining
+        const timeDifference = Math.abs(
+          currentRemainingSeconds - newRemainingSeconds
+        )
+
+        // 只有当时间差超过30秒时才同步（避免微小误差导致的重置）
+        if (timeDifference > 30 || !hasInitializedFromLiveData.current) {
+          setTimeRemaining(Math.floor(newRemainingSeconds))
+          setTotalElapsed(Math.floor(newElapsedSeconds))
+          setTotalEstimated(Math.floor(newTotalEstimated))
+
+          // 保存新状态到localStorage
+          saveToStorage(
+            newRemainingSeconds,
+            newElapsedSeconds,
+            newTotalEstimated
+          )
+
+          hasInitializedFromLiveData.current = true
+          lastSyncTime.current = now
+
+          console.log(
+            `✅ Progress synced: ${liveTaskProgress.remainingMinutes} minutes remaining, ${liveTaskProgress.executedMinutes} minutes used`
+          )
+        } else {
+          console.log('⏭️ Skip sync: time difference less than 30 seconds')
+        }
+      } else {
+        console.log('⏭️ Skip sync: timer running or too soon since last sync')
+      }
+    }
+  }, [liveTaskProgress, taskId, isRunning, saveToStorage, timeRemaining])
 
   // 格式化时间显示
   const formatTime = (seconds: number) => {
@@ -165,13 +231,36 @@ function ModernTimer({
       .padStart(2, '0')}`
   }
 
-  // 计算当前总进度百分比
-  const currentProgress = Math.min((totalElapsed / totalEstimated) * 100, 100)
+  // 计算当前总进度百分比 - 结合本地计时器和API数据
+  const currentProgress = useMemo(() => {
+    // 计算本地计时器的实时进度
+    const localProgress = Math.min((totalElapsed / totalEstimated) * 100, 100)
+
+    // 如果计时器正在运行，优先使用本地进度确保实时性
+    if (isRunning) {
+      return localProgress
+    }
+
+    // 如果计时器暂停，结合API数据和本地进度
+    if (liveTaskProgress?.progressPercentage !== undefined) {
+      // 如果本地进度比API进度高，说明用户在当前会话中有新进展
+      // 使用较高的进度值
+      return Math.max(localProgress, liveTaskProgress.progressPercentage)
+    }
+
+    // 默认使用本地进度
+    return localProgress
+  }, [
+    totalElapsed,
+    totalEstimated,
+    isRunning,
+    liveTaskProgress?.progressPercentage,
+  ])
 
   // 保存当前会话数据到后端（优化版本）
   const saveSessionData = useCallback(async (): Promise<boolean> => {
     if (!taskId || !sessionStartTime.current) {
-      console.log('🚫 无taskId或会话开始时间，跳过保存')
+      console.log('🚫 No taskId or session start time, skipping save')
       return false
     }
 
@@ -185,7 +274,7 @@ function ModernTimer({
       duration: sessionDuration,
     }
 
-    console.log(`📝 保存工作会话: ${sessionDuration}秒`)
+    console.log(`📝 Saving work session: ${sessionDuration} seconds`)
 
     // 尝试多个API端点
     const apiEndpoints = [
@@ -211,21 +300,21 @@ function ModernTimer({
 
         if (response.ok) {
           const result = await response.json()
-          console.log(`✅ ${result.message || '会话保存成功'}`)
+          console.log(`✅ ${result.message || 'Session saved successfully'}`)
           return result.saved !== false // 默认认为保存成功
         } else {
           console.warn(
-            `⚠️ API ${endpoint} 失败: ${response.status} ${response.statusText}`
+            `⚠️ API ${endpoint} failed: ${response.status} ${response.statusText}`
           )
 
           // 404说明任务不存在，不需要重试
           if (response.status === 404) {
-            console.log('📝 任务不存在，跳过会话保存')
+            console.log('📝 Task does not exist, skipping session save')
             return false
           }
         }
       } catch (error) {
-        console.warn(`⚠️ 会话保存请求失败 ${endpoint}:`, error)
+        console.warn(`⚠️ Session save request failed ${endpoint}:`, error)
 
         // 继续尝试下一个端点
         continue
@@ -236,9 +325,9 @@ function ModernTimer({
     try {
       const backupKey = `session-backup-${taskId}-${Date.now()}`
       localStorage.setItem(backupKey, JSON.stringify(timeLogEntry))
-      console.log('💾 已保存会话到本地备份')
+      console.log('💾 Session saved to local backup')
     } catch (storageError) {
-      console.warn('⚠️ 本地备份失败:', storageError)
+      console.warn('⚠️ Local backup failed:', storageError)
     }
 
     return false
@@ -247,13 +336,13 @@ function ModernTimer({
   // 专门处理任务完成的函数（优化版本 + 错误处理）
   const completeTask = useCallback(async () => {
     if (!taskId) {
-      console.log('🎮 练习模式完成，无需保存任务数据')
+      console.log('🎮 Practice mode completed, no need to save task data')
       return
     }
 
     // 简单的网络连接检查
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      console.warn('🌐 检测到离线状态，尝试本地保存')
+      console.warn('🌐 Offline status detected, attempting local save')
 
       // 离线时直接保存到本地备份
       try {
@@ -278,14 +367,16 @@ function ModernTimer({
               totalMinutes: Math.floor(totalEstimated / 60),
             })
           )
-          console.log('💾 离线状态下已保存完成数据到本地备份')
+          console.log(
+            '💾 Completion data saved to local backup in offline mode'
+          )
         }
       } catch (error) {
-        console.warn('⚠️ 离线备份失败:', error)
+        console.warn('⚠️ Offline backup failed:', error)
       }
 
       alert(
-        '⚠️ 网络连接不可用，任务完成数据已保存到本地。\n请稍后在有网络时重新打开应用同步数据。'
+        '⚠️ Network connection unavailable, task completion data has been saved locally.\nPlease reopen the app when you have network to sync data.'
       )
       return
     }
@@ -303,7 +394,9 @@ function ModernTimer({
           endTime: new Date().toISOString(),
           duration: sessionDuration,
         }
-        console.log(`📝 准备保存最终会话: ${sessionDuration}秒`)
+        console.log(
+          `📝 Preparing to save final session: ${sessionDuration} seconds`
+        )
       }
     }
 
@@ -318,7 +411,7 @@ function ModernTimer({
 
     for (const endpoint of apiEndpoints) {
       try {
-        console.log(`🎯 尝试完成任务: ${taskId} (${endpoint})`)
+        console.log(`🎯 Attempting to complete task: ${taskId} (${endpoint})`)
 
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 10000) // 10秒超时
@@ -336,11 +429,13 @@ function ModernTimer({
 
         if (response.ok) {
           const result = await response.json()
-          console.log(`🎉 任务完成成功: ${result.title || taskId}`)
+          console.log(
+            `🎉 Task completed successfully: ${result.title || taskId}`
+          )
 
           // 计算总执行时间用于显示
           const totalMinutes = Math.floor(totalEstimated / 60)
-          console.log(`⏰ 总专注时间: ${totalMinutes}分钟`)
+          console.log(`⏰ Total focus time: ${totalMinutes} minutes`)
 
           // 浏览器通知功能已删除
 
@@ -355,7 +450,7 @@ function ModernTimer({
             error: errorData.error,
           }
 
-          console.warn(`⚠️ API ${endpoint} 失败:`, lastError)
+          console.warn(`⚠️ API ${endpoint} failed:`, lastError)
 
           // 404错误说明任务不存在，不需要重试其他端点
           if (response.status === 404) {
@@ -539,13 +634,13 @@ function ModernTimer({
         // ESC键安全退出
         if (isRunning) {
           const confirmed = window.confirm(
-            '计时器正在运行，确定要退出吗？退出后将暂停计时。'
+            'Timer is running, are you sure you want to exit? Timer will be paused when exiting.'
           )
           if (confirmed) {
-            // 保存当前状态到localStorage
+            // Save current state to localStorage
             saveToStorage(timeRemaining, totalElapsed, totalEstimated)
 
-            // ESC退出时保存会话数据
+            // Save session data when exiting with ESC
             await saveSessionData()
             setIsRunning(false)
             window.history.back()
@@ -578,12 +673,12 @@ function ModernTimer({
         clearInterval(intervalRef.current)
       }
 
-      // 组件卸载时如果正在运行，保存状态和数据
+      // If running when component unmounts, save state and data
       if (isRunning && sessionStartTime.current) {
-        // 保存当前状态到localStorage
+        // Save current state to localStorage
         saveToStorage(timeRemaining, totalElapsed, totalEstimated)
 
-        // 保存会话数据
+        // Save session data
         saveSessionData()
       }
     }
@@ -593,7 +688,7 @@ function ModernTimer({
   useEffect(() => {
     const restoredState = restoreFromStorage()
     if (restoredState) {
-      console.log('已从localStorage恢复计时器状态')
+      console.log('Timer state restored from localStorage')
     }
   }, [])
 
@@ -618,7 +713,7 @@ function ModernTimer({
           {/* 进度文字和百分比 */}
           <div className="flex justify-between items-center mb-6">
             <div className="text-2xl font-light text-slate-200 tracking-wider">
-              任务进度
+              Task Progress
             </div>
             <div className="text-2xl font-light text-green-400">
               {Math.round(currentProgress)}%
@@ -670,7 +765,7 @@ function ModernTimer({
         <button
           onClick={toggleTimer}
           className="bg-slate-800/80 backdrop-blur-xl text-white px-8 py-4 rounded-2xl font-medium text-xl hover:bg-slate-700/80 active:bg-slate-900/80 transition-all duration-200 shadow-lg border border-slate-700/50 hover:border-green-400/30">
-          {isRunning ? '暂停' : '开始'}
+          {isRunning ? 'Pause' : 'Start'}
         </button>
       </div>
     </div>
@@ -683,8 +778,8 @@ function FocusContent() {
   const remainingMinutes = Number(searchParams.get('remaining')) || 0
   const elapsedMinutes = Number(searchParams.get('elapsed')) || 0
 
-  // 调试信息
-  console.log('Focus页面参数:', {
+  // Debug info
+  console.log('Focus page parameters:', {
     taskId,
     remainingMinutes,
     elapsedMinutes,
@@ -726,7 +821,7 @@ function FocusContent() {
         // 处理任务基本信息
         if (taskResponse.status === 'fulfilled' && taskResponse.value.ok) {
           const task = await taskResponse.value.json()
-          console.log('📋 获取到任务信息:', task)
+          console.log('📋 Retrieved task info:', task)
 
           setTaskInfo({
             title: task.title,
@@ -737,7 +832,7 @@ function FocusContent() {
             completed: task.status === 'completed' || task.completed === true,
           })
         } else {
-          console.warn('⚠️ 任务不存在或已被删除')
+          console.warn('⚠️ Task does not exist or has been deleted')
           setTaskInfo(null)
         }
 
@@ -747,7 +842,10 @@ function FocusContent() {
           remainingResponse.value.ok
         ) {
           const remainingData = await remainingResponse.value.json()
-          console.log('⏰ 获取到每日更新的剩余时间:', remainingData)
+          console.log(
+            '⏰ Retrieved daily updated remaining time:',
+            remainingData
+          )
 
           setTaskProgress((prev) => ({
             remainingMinutes: remainingData.remainingMinutes,
@@ -755,7 +853,7 @@ function FocusContent() {
             progressPercentage: prev?.progressPercentage ?? 0,
           }))
         } else {
-          console.warn('⚠️ 获取剩余时间失败，使用URL参数')
+          console.warn('⚠️ Failed to get remaining time, using URL parameters')
           setTaskProgress((prev) => ({
             remainingMinutes: remainingMinutes,
             executedMinutes: elapsedMinutes,
@@ -913,7 +1011,7 @@ function FocusContent() {
               }))
             }
           } catch (error) {
-            console.error('刷新任务状态失败:', error)
+            console.error('Failed to refresh task status:', error)
           }
         }
         fetchUpdatedTaskInfo()
@@ -938,7 +1036,7 @@ function FocusContent() {
       <div className="h-screen bg-slate-900 text-white flex items-center justify-center">
         <div className="flex flex-col items-center space-y-3">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <div className="text-slate-400">加载任务信息...</div>
+          <div className="text-slate-400">Loading task info...</div>
         </div>
       </div>
     )
@@ -986,8 +1084,8 @@ function FocusContent() {
           {!taskId && (
             <div className="bg-amber-500/20 text-amber-300 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
               <span>🧘</span>
-              <span>练习模式</span>
-              <span className="text-amber-400">(不会保存进度)</span>
+              <span>Practice Mode</span>
+              <span className="text-amber-400">(Progress not saved)</span>
             </div>
           )}
 
@@ -1016,17 +1114,20 @@ function FocusContent() {
                   </svg>
                 </div>
                 <h1 className="text-4xl font-light text-white mb-4">
-                  任务已完成
+                  Task Completed
                 </h1>
                 <p className="text-xl text-slate-400 mb-8">
-                  🎉 恭喜！「{taskInfo.title}」已成功完成
+                  🎉 Congratulations! &ldquo;{taskInfo.title}&rdquo; has been
+                  completed successfully
                 </p>
                 <div className="bg-slate-800/60 backdrop-blur-xl p-6 rounded-2xl border border-slate-700/50 max-w-md mx-auto">
-                  <div className="text-slate-300 mb-2">任务详情</div>
+                  <div className="text-slate-300 mb-2">Task Details</div>
                   <div className="text-slate-400 text-sm">
-                    预计时长: {taskInfo.duration}
+                    Estimated Duration: {taskInfo.duration}
                   </div>
-                  <div className="text-slate-400 text-sm">状态: 已完成 ✅</div>
+                  <div className="text-slate-400 text-sm">
+                    Status: Completed ✅
+                  </div>
                 </div>
               </div>
 
@@ -1034,12 +1135,12 @@ function FocusContent() {
                 <button
                   onClick={handleBackToHome}
                   className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-2xl font-medium text-xl transition-all duration-200 shadow-lg">
-                  返回主页面
+                  Back to Home
                 </button>
                 <button
                   onClick={() => (window.location.href = '/stats')}
                   className="bg-slate-800/80 backdrop-blur-xl text-white px-8 py-4 rounded-2xl font-medium text-xl hover:bg-slate-700/80 transition-all duration-200 shadow-lg border border-slate-700/50">
-                  查看统计
+                  View Stats
                 </button>
               </div>
             </div>
@@ -1061,6 +1162,7 @@ function FocusContent() {
               originalElapsed={taskProgress?.executedMinutes ?? elapsedMinutes}
               taskId={taskId}
               onComplete={handleTimerComplete}
+              liveTaskProgress={taskProgress}
             />
           )}
         </div>
@@ -1073,13 +1175,13 @@ function FocusContent() {
             <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700">
               SPACE
             </div>
-            <span className="text-slate-400 text-sm">开始/暂停</span>
+            <span className="text-slate-400 text-sm">Start/Pause</span>
           </div>
           <div className="flex items-center space-x-3">
             <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700">
               ESC
             </div>
-            <span className="text-slate-400 text-sm">安全退出</span>
+            <span className="text-slate-400 text-sm">Safe Exit</span>
           </div>
         </div>
       </footer>
@@ -1094,7 +1196,7 @@ export default function FocusPage() {
         <div className="h-screen bg-slate-900 text-white flex items-center justify-center">
           <div className="flex flex-col items-center space-y-3">
             <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <div className="text-slate-400">加载专注环境...</div>
+            <div className="text-slate-400">Loading focus environment...</div>
           </div>
         </div>
       }>

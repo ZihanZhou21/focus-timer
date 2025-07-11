@@ -10,29 +10,29 @@ interface SimpleTaskModalProps {
 }
 
 const TASK_TYPES = [
-  { value: 'todo', label: '待办任务', icon: '📝' },
-  { value: 'check-in', label: '习惯打卡', icon: '✅' },
+  { value: 'todo', label: 'Todo Task', icon: '📝' },
+  { value: 'check-in', label: 'Habit Check-in', icon: '✅' },
 ]
 
 const PRIORITIES = [
-  { value: 'low', label: '低', color: 'text-green-400' },
-  { value: 'medium', label: '中', color: 'text-yellow-400' },
-  { value: 'high', label: '高', color: 'text-red-400' },
+  { value: 'low', label: 'Low', color: 'text-green-400' },
+  { value: 'medium', label: 'Medium', color: 'text-yellow-400' },
+  { value: 'high', label: 'High', color: 'text-red-400' },
 ]
 
 const COMMON_TAGS = [
-  '工作',
-  '学习',
-  '健康',
-  '运动',
-  '习惯',
-  '阅读',
-  '编程',
-  '设计',
-  '会议',
-  '家务',
-  '娱乐',
-  '社交',
+  'Work',
+  'Study',
+  'Health',
+  'Exercise',
+  'Habit',
+  'Reading',
+  'Programming',
+  'Design',
+  'Meeting',
+  'Housework',
+  'Entertainment',
+  'Social',
 ]
 
 export default function SimpleTaskModal({
@@ -54,13 +54,13 @@ export default function SimpleTaskModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const weekDays = [
-    { value: 1, label: '周一' },
-    { value: 2, label: '周二' },
-    { value: 3, label: '周三' },
-    { value: 4, label: '周四' },
-    { value: 5, label: '周五' },
-    { value: 6, label: '周六' },
-    { value: 0, label: '周日' },
+    { value: 1, label: 'Mon' },
+    { value: 2, label: 'Tue' },
+    { value: 3, label: 'Wed' },
+    { value: 4, label: 'Thu' },
+    { value: 5, label: 'Fri' },
+    { value: 6, label: 'Sat' },
+    { value: 0, label: 'Sun' },
   ]
 
   const addContentItem = () => {
@@ -191,13 +191,15 @@ export default function SimpleTaskModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-medium text-slate-200 mb-6">创建新任务</h2>
+        <h2 className="text-xl font-medium text-slate-200 mb-6">
+          Create New Task
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 任务类型选择 */}
           <div>
             <label className="block text-sm text-slate-400 mb-3">
-              任务类型
+              Task Type
             </label>
             <div className="grid grid-cols-2 gap-3">
               {TASK_TYPES.map((type) => (
@@ -220,7 +222,7 @@ export default function SimpleTaskModal({
           {/* 任务标题 */}
           <div>
             <label className="block text-sm text-slate-400 mb-2">
-              任务标题
+              Task Title
             </label>
             <input
               type="text"
@@ -228,7 +230,9 @@ export default function SimpleTaskModal({
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none"
               placeholder={
-                taskType === 'todo' ? '输入待办事项...' : '输入习惯名称...'
+                taskType === 'todo'
+                  ? 'Enter todo item...'
+                  : 'Enter habit name...'
               }
               required
             />
@@ -237,7 +241,7 @@ export default function SimpleTaskModal({
           {/* 任务内容 */}
           <div>
             <label className="block text-sm text-slate-400 mb-2">
-              {taskType === 'todo' ? '任务详情' : '打卡内容'}
+              {taskType === 'todo' ? 'Task Details' : 'Check-in Content'}
             </label>
             <div className="space-y-2">
               {content.map((item, index) => (
@@ -247,7 +251,7 @@ export default function SimpleTaskModal({
                     value={item}
                     onChange={(e) => updateContentItem(index, e.target.value)}
                     className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none"
-                    placeholder={`${taskType === 'todo' ? '步骤' : '内容'} ${
+                    placeholder={`${taskType === 'todo' ? 'Step' : 'Content'} ${
                       index + 1
                     }`}
                   />
@@ -265,7 +269,7 @@ export default function SimpleTaskModal({
                 type="button"
                 onClick={addContentItem}
                 className="text-sm text-amber-400 hover:text-amber-300 transition-colors">
-                + 添加{taskType === 'todo' ? '步骤' : '内容'}
+                + Add {taskType === 'todo' ? 'Step' : 'Content'}
               </button>
             </div>
           </div>
@@ -274,7 +278,7 @@ export default function SimpleTaskModal({
             {/* 计划时间 */}
             <div>
               <label className="block text-sm text-slate-400 mb-2">
-                计划时间
+                Planned Time
               </label>
               <input
                 type="time"
@@ -287,7 +291,7 @@ export default function SimpleTaskModal({
             {/* 优先级 */}
             <div>
               <label className="block text-sm text-slate-400 mb-2">
-                优先级
+                Priority
               </label>
               <select
                 value={priority}
@@ -297,7 +301,7 @@ export default function SimpleTaskModal({
                 className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none">
                 {PRIORITIES.map((p) => (
                   <option key={p.value} value={p.value}>
-                    {p.label}优先级
+                    {p.label} Priority
                   </option>
                 ))}
               </select>
@@ -309,7 +313,7 @@ export default function SimpleTaskModal({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm text-slate-400 mb-2">
-                  预计时长（分钟）
+                  Estimated Duration (minutes)
                 </label>
                 <input
                   type="number"
@@ -322,7 +326,7 @@ export default function SimpleTaskModal({
               </div>
               <div>
                 <label className="block text-sm text-slate-400 mb-2">
-                  截止日期
+                  Due Date
                 </label>
                 <input
                   type="date"
@@ -338,7 +342,7 @@ export default function SimpleTaskModal({
           {taskType === 'check-in' && (
             <div>
               <label className="block text-sm text-slate-400 mb-2">
-                重复设置
+                Recurrence Settings
               </label>
               <div className="space-y-3">
                 <label className="flex items-center">
@@ -348,13 +352,13 @@ export default function SimpleTaskModal({
                     onChange={(e) => setIsRecurring(e.target.checked)}
                     className="mr-2 rounded"
                   />
-                  <span className="text-slate-300">每日重复</span>
+                  <span className="text-slate-300">Daily Repeat</span>
                 </label>
 
                 {!isRecurring && (
                   <div>
                     <div className="text-xs text-slate-500 mb-2">
-                      选择重复日期：
+                      Select repeat days:
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {weekDays.map((day) => (
@@ -379,7 +383,7 @@ export default function SimpleTaskModal({
 
           {/* 标签 */}
           <div>
-            <label className="block text-sm text-slate-400 mb-2">标签</label>
+            <label className="block text-sm text-slate-400 mb-2">Tags</label>
             <div className="space-y-3">
               <div className="flex flex-wrap gap-2">
                 {COMMON_TAGS.map((tag) => (
@@ -406,13 +410,13 @@ export default function SimpleTaskModal({
                     e.key === 'Enter' && (e.preventDefault(), addCustomTag())
                   }
                   className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-1 text-sm text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none"
-                  placeholder="自定义标签..."
+                  placeholder="Custom tag..."
                 />
                 <button
                   type="button"
                   onClick={addCustomTag}
                   className="px-3 py-1 text-sm bg-slate-600 text-slate-300 rounded-lg hover:bg-slate-500 transition-colors">
-                  添加
+                  Add
                 </button>
               </div>
             </div>
@@ -424,15 +428,15 @@ export default function SimpleTaskModal({
               onClick={onClose}
               className="flex-1 px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors"
               disabled={isSubmitting}>
-              取消
+              Cancel
             </button>
             <button
               type="submit"
               className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
               disabled={isSubmitting || !title.trim()}>
               {isSubmitting
-                ? '创建中...'
-                : `创建${taskType === 'todo' ? '任务' : '习惯'}`}
+                ? 'Creating...'
+                : `Create ${taskType === 'todo' ? 'Task' : 'Habit'}`}
             </button>
           </div>
         </form>

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useRef, useEffect } from 'react'
 import { ProjectItem } from '@/lib/api'
-import { categoryConfig } from '@/lib/constants'
+import { taskTypeConfig } from '@/lib/constants'
 import { formatDuration } from '@/lib/utils'
 import { taskProgressAPI, TaskProgressData } from '@/lib/task-progress-api'
 import { taskRemainingAPI, TaskRemainingData } from '@/lib/task-remaining-api'
@@ -26,7 +26,7 @@ export default function TaskDetailCard({
   onClose,
 }: TaskDetailCardProps) {
   // 调试信息
-  console.log('TaskDetailCard 接收到的 selectedItem:', selectedItem)
+  console.log('TaskDetailCard received selectedItem:', selectedItem)
   const [isUpdating, setIsUpdating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -42,7 +42,6 @@ export default function TaskDetailCard({
     title: '',
     time: '',
     tags: [] as string[],
-    category: '',
     durationMinutes: 0,
   })
   const [taskProgressData, setTaskProgressData] = useState<
@@ -114,7 +113,7 @@ export default function TaskDetailCard({
         onTaskUpdate?.(updatedTask)
       }
     } catch (error) {
-      console.error('更新任务失败:', error)
+      console.error('Failed to update task:', error)
     } finally {
       setIsUpdating(false)
     }
@@ -175,7 +174,7 @@ export default function TaskDetailCard({
       const progressData = await taskProgressAPI.getTaskProgress(taskId)
       setTaskProgressData((prev) => new Map(prev.set(taskId, progressData)))
     } catch (error) {
-      console.error(`加载任务进度失败 (${taskId}):`, error)
+      console.error(`Failed to load task progress (${taskId}):`, error)
     }
   }
 
@@ -185,7 +184,7 @@ export default function TaskDetailCard({
       const remainingData = await taskRemainingAPI.getTaskRemaining(taskId)
       setTaskRemainingData((prev) => new Map(prev.set(taskId, remainingData)))
     } catch (error) {
-      console.error(`加载任务剩余时间失败 (${taskId}):`, error)
+      console.error(`Failed to load task remaining time (${taskId}):`, error)
     }
   }
 
@@ -216,7 +215,7 @@ export default function TaskDetailCard({
         onTaskUpdate?.(updatedTask)
       }
     } catch (error) {
-      console.error('更新任务详情失败:', error)
+      console.error('Failed to update task details:', error)
     }
 
     setEditingDetail(null)
@@ -259,7 +258,7 @@ export default function TaskDetailCard({
         onTaskUpdate?.(updatedTask)
       }
     } catch (error) {
-      console.error('删除任务详情失败:', error)
+      console.error('Failed to delete task details:', error)
     }
   }
 
@@ -287,7 +286,7 @@ export default function TaskDetailCard({
         setEditingText(newDetail)
       }
     } catch (error) {
-      console.error('添加任务详情失败:', error)
+      console.error('Failed to add task details:', error)
     }
   }
 
@@ -323,7 +322,6 @@ export default function TaskDetailCard({
       title: selectedItem.title,
       time: selectedItem.time,
       tags: selectedItem.tags || [],
-      category: selectedItem.category,
       durationMinutes: selectedItem.durationMinutes || 0,
     })
     setIsEditingTask(true)
@@ -357,10 +355,10 @@ export default function TaskDetailCard({
         onTaskUpdate?.(updatedTask)
         setIsEditingTask(false)
       } else {
-        console.error('更新任务失败')
+        console.error('Failed to update task')
       }
     } catch (error) {
-      console.error('更新任务出错:', error)
+      console.error('Error updating task:', error)
     } finally {
       setIsUpdating(false)
     }
@@ -373,7 +371,6 @@ export default function TaskDetailCard({
       title: '',
       time: '',
       tags: [],
-      category: '',
       durationMinutes: 0,
     })
   }
@@ -410,19 +407,14 @@ export default function TaskDetailCard({
         onTaskDelete(selectedItem.id)
         onClose?.() // 关闭详情面板
       } else {
-        console.error('删除任务失败')
+        console.error('Failed to delete task')
       }
     } catch (error) {
-      console.error('删除任务出错:', error)
+      console.error('Error deleting task:', error)
     } finally {
       setIsDeleting(false)
       setShowDeleteConfirm(false)
     }
-  }
-
-  // 确认删除对话框
-  const confirmDelete = () => {
-    setShowDeleteConfirm(true)
   }
 
   // 取消删除
@@ -446,7 +438,7 @@ export default function TaskDetailCard({
                   {/* 编辑标题 */}
                   <div>
                     <label className="block text-slate-400 text-xs mb-2">
-                      任务标题
+                      Task Title
                     </label>
                     <input
                       type="text"
@@ -458,7 +450,7 @@ export default function TaskDetailCard({
                         }))
                       }
                       className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white text-2xl font-bold focus:outline-none focus:border-amber-500"
-                      placeholder="输入任务标题"
+                      placeholder="Enter task title"
                     />
                   </div>
 
@@ -466,7 +458,7 @@ export default function TaskDetailCard({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-slate-400 text-xs mb-2">
-                        计划时间
+                        Planned Time
                       </label>
                       <input
                         type="time"
@@ -483,7 +475,7 @@ export default function TaskDetailCard({
                     {!isCheckInTask && (
                       <div>
                         <label className="block text-slate-400 text-xs mb-2">
-                          预估时长(分钟)
+                          Estimated Duration (minutes)
                         </label>
                         <input
                           type="number"
@@ -506,7 +498,7 @@ export default function TaskDetailCard({
                   {/* 编辑标签 */}
                   <div>
                     <label className="block text-slate-400 text-xs mb-2">
-                      标签
+                      Tags
                     </label>
                     <div className="flex flex-wrap gap-2 mb-2">
                       {editingTaskData.tags.map((tag, index) => (
@@ -525,7 +517,7 @@ export default function TaskDetailCard({
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="添加标签"
+                        placeholder="Add tag"
                         className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
@@ -544,12 +536,12 @@ export default function TaskDetailCard({
                       onClick={saveTaskEdit}
                       disabled={isUpdating || !editingTaskData.title.trim()}
                       className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg text-sm transition-colors">
-                      {isUpdating ? '保存中...' : '保存'}
+                      {isUpdating ? 'Saving...' : 'Save'}
                     </button>
                     <button
                       onClick={cancelTaskEdit}
                       className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm transition-colors">
-                      取消
+                      Cancel
                     </button>
                   </div>
                 </div>
@@ -560,7 +552,7 @@ export default function TaskDetailCard({
                   <div className="flex items-center gap-3 mb-1">
                     <div
                       className={`w-2 h-2 rounded-full ${
-                        categoryConfig[selectedItem.category].color
+                        taskTypeConfig[selectedItem.type ?? 'todo'].color
                       }`}></div>
                     <h1 className="text-white text-3xl font-bold leading-tight">
                       {selectedItem.title}
@@ -584,16 +576,12 @@ export default function TaskDetailCard({
                   </div>
                   {/* 类型和标签在同一行 */}
                   <div className="flex items-center gap-3 flex-wrap">
-                    {selectedItem.category !== 'habit' && (
-                      <div className="text-slate-400 text-sm">
-                        {categoryConfig[selectedItem.category].name}
-                      </div>
-                    )}
+                    <div className="text-slate-400 text-sm">
+                      {taskTypeConfig[selectedItem.type ?? 'todo'].name}
+                    </div>
                     {selectedItem.tags && selectedItem.tags.length > 0 && (
                       <>
-                        {selectedItem.category !== 'habit' && (
-                          <div className="text-slate-600">|</div>
-                        )}
+                        <div className="text-slate-600">|</div>
                         <div className="flex flex-wrap gap-2">
                           {selectedItem.tags.map(
                             (tag: string, index: number) => (
@@ -699,7 +687,7 @@ export default function TaskDetailCard({
               <div className="flex items-baseline gap-6 mb-2">
                 <div>
                   <div className="text-slate-400 text-xs font-medium mb-1">
-                    总时长
+                    Total Duration
                   </div>
                   <div className="text-white text-4xl font-light tracking-wide">
                     {formatDuration(selectedItem.durationMinutes)}
@@ -714,10 +702,10 @@ export default function TaskDetailCard({
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400 text-sm">任务进度</span>
+                  <span className="text-slate-400 text-sm">Task Progress</span>
                   {getExecutedTime(selectedItem) > 0 && (
                     <span className="text-slate-500 text-xs">
-                      已执行 {getExecutedTime(selectedItem)} 分钟
+                      Executed {getExecutedTime(selectedItem)} minutes
                     </span>
                   )}
                 </div>
@@ -739,7 +727,7 @@ export default function TaskDetailCard({
           <div className="mb-4">
             <div className="flex items-center gap-3">
               <h4 className="text-slate-400 text-sm font-medium uppercase tracking-wider">
-                {isCheckInTask ? '打卡清单' : '任务清单'}
+                {isCheckInTask ? 'Check-in List' : 'Task List'}
               </h4>
               <div className="text-slate-600">|</div>
               <span className="text-slate-400 text-sm">
@@ -835,14 +823,14 @@ export default function TaskDetailCard({
                       </div>
                       <div
                         onClick={() => toggleDetailCompletion(index)}
-                        className={`w-5 h-5 rounded-full border-2 transition-colors cursor-pointer flex items-center justify-center ${
+                        className={`w-5 h-5 rounded-full  transition-colors cursor-pointer flex items-center justify-center ${
                           completedDetails.has(index)
                             ? 'border-green-400/40 bg-green-400/20 text-white'
-                            : 'border-amber-400/80 hover:border-amber-300'
+                            : ' border-2 border-amber-400/80 hover:border-amber-300'
                         }`}>
                         {completedDetails.has(index) && (
                           <svg
-                            className="w-3 h-3"
+                            className="w-3 h-3 text-green-400"
                             fill="currentColor"
                             viewBox="0 0 20 20">
                             <path
@@ -895,19 +883,20 @@ export default function TaskDetailCard({
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-white">
-                  确认删除任务
+                  Confirm Delete Task
                 </h3>
               </div>
 
               <p className="text-slate-300 mb-6">
-                您确定要删除任务{' '}
+                Are you sure you want to delete the task{' '}
                 <span className="font-medium text-white">
                   &ldquo;{selectedItem.title}&rdquo;
                 </span>{' '}
-                吗？
+                ?
                 <br />
                 <span className="text-slate-400 text-sm">
-                  此操作无法撤销，所有相关数据将被永久删除。
+                  This action cannot be undone, all related data will be
+                  permanently deleted.
                 </span>
               </p>
 
@@ -916,7 +905,7 @@ export default function TaskDetailCard({
                   onClick={cancelDelete}
                   disabled={isDeleting}
                   className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-colors disabled:opacity-50">
-                  取消
+                  Cancel
                 </button>
                 <button
                   onClick={handleDeleteTask}
@@ -925,10 +914,10 @@ export default function TaskDetailCard({
                   {isDeleting ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      删除中...
+                      Deleting...
                     </>
                   ) : (
-                    '确认删除'
+                    'Confirm Delete'
                   )}
                 </button>
               </div>
@@ -944,7 +933,9 @@ export default function TaskDetailCard({
     <div className="flex flex-col h-full">
       {/* 今日统计 */}
       <div className="flex items-center justify-between mb-8">
-        <h3 className="text-xl font-light text-slate-200">今日项目</h3>
+        <h3 className="text-xl font-light text-slate-200">
+          Today&apos;s Projects
+        </h3>
         <div className="flex items-center space-x-2">
           <div className="text-2xl font-light text-amber-400">
             {timelineItems.filter((item) => item.completed).length}
@@ -964,7 +955,7 @@ export default function TaskDetailCard({
               {/* 已完成项目 */}
               <div className="space-y-2 pr-2">
                 <h4 className="text-xs text-slate-400 font-medium mb-2">
-                  已完成
+                  Completed
                 </h4>
                 {timelineItems
                   .filter((item) => item.completed)
@@ -977,16 +968,13 @@ export default function TaskDetailCard({
                         <div className="flex items-center gap-2 flex-1">
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
-                              categoryConfig[item.category].color
+                              taskTypeConfig[item.type ?? 'todo'].color
                             }`}></span>
                           <h5 className="text-slate-100 text-sm truncate flex-1">
                             {item.title}
                           </h5>
                         </div>
                         <div className="flex items-center gap-2">
-                          {item.type === 'check-in' && (
-                            <span className="text-xs text-slate-400">打卡</span>
-                          )}
                           <div className="w-5 h-5 rounded-full flex items-center justify-center bg-green-500/20 ml-2">
                             <svg
                               className="w-3 h-3 text-green-400"
@@ -1020,7 +1008,7 @@ export default function TaskDetailCard({
               {/* 未完成项目 */}
               <div className="space-y-2 pl-2">
                 <h4 className="text-xs text-slate-400 font-medium mb-2">
-                  未完成
+                  Incomplete
                 </h4>
                 {timelineItems
                   .filter((item) => !item.completed)
@@ -1033,16 +1021,13 @@ export default function TaskDetailCard({
                         <div className="flex items-center gap-2 flex-1">
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
-                              categoryConfig[item.category].color
+                              taskTypeConfig[item.type ?? 'todo'].color
                             }`}></span>
                           <h5 className="text-slate-200 text-sm truncate flex-1">
                             {item.title}
                           </h5>
                         </div>
                         <div className="flex items-center gap-2">
-                          {item.type === 'check-in' && (
-                            <span className="text-xs text-slate-400">打卡</span>
-                          )}
                           <div className="w-4 h-4 rounded-full border-2 border-amber-400"></div>
                         </div>
                       </div>
@@ -1068,7 +1053,7 @@ export default function TaskDetailCard({
           <div className="mt-6 pt-4 border-t border-slate-700/30 flex-shrink-0">
             <div className="flex justify-between text-xs text-slate-500">
               <span>
-                打卡{' '}
+                Check-in{' '}
                 {
                   timelineItems.filter(
                     (item) => item.type === 'check-in' && item.completed
@@ -1081,7 +1066,7 @@ export default function TaskDetailCard({
                 }
               </span>
               <span>
-                任务{' '}
+                Tasks{' '}
                 {
                   timelineItems.filter(
                     (item) => item.type !== 'check-in' && item.completed
@@ -1112,8 +1097,10 @@ export default function TaskDetailCard({
       ) : (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-slate-500">
-            <p className="text-lg mb-2">暂无任务</p>
-            <p className="text-sm">点击时间线中的任务查看详情</p>
+            <p className="text-lg mb-2">No tasks</p>
+            <p className="text-sm">
+              Click on tasks in the timeline to view details
+            </p>
           </div>
         </div>
       )}

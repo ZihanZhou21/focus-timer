@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ProjectItem } from '@/lib/api'
 import { todayTasksService } from '@/lib/today-api'
-import { categoryConfig, DEFAULT_USER_ID } from '@/lib/constants'
+import { taskTypeConfig, DEFAULT_USER_ID } from '@/lib/constants'
 import { formatDuration } from '@/lib/utils'
 import { taskProgressAPI } from '@/lib/task-progress-api'
 import AppNavigation from '@/components/AppNavigation'
@@ -13,87 +13,87 @@ import TaskDetailCard from '@/components/TaskDetailCard'
 import WeekChart from '@/components/WeekChart'
 
 export default function Home() {
-  // 本地状态管理 - 统一使用ProjectItem
+  // Local state management - unified use of ProjectItem
   const [timelineItems, setTimelineItems] = useState<ProjectItem[]>([])
   const [selectedItem, setSelectedItem] = useState<ProjectItem | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
-  // 处理新任务添加
+  // Handle new task addition
   const handleTaskAdded = async () => {
     try {
-      // 重新加载今日任务数据
+      // Reload today's task data
       const projectItems = await todayTasksService.getTodaysTasksAsProjectItems(
         DEFAULT_USER_ID
       )
       setTimelineItems(projectItems)
-      console.log('任务列表已更新')
+      console.log('Task list updated')
     } catch (error) {
       console.error('Failed to refresh tasks:', error)
     }
   }
 
-  // 处理任务更新
+  // Handle task updates
   const handleTaskUpdate = (updatedTask: ProjectItem) => {
     setTimelineItems((prev) =>
       prev.map((item) => (item.id === updatedTask.id ? updatedTask : item))
     )
-    // 如果当前选中的是被更新的任务，也要更新选中项
+    // If the currently selected task is the updated one, also update the selected item
     if (selectedItem?.id === updatedTask.id) {
       setSelectedItem(updatedTask)
     }
   }
 
-  // 调试信息
-  console.log('主页面 selectedItem:', selectedItem)
+  // Debug info
+  console.log('Main page selectedItem:', selectedItem)
 
-  // 处理任务删除
+  // Handle task deletion
   const handleTaskDelete = async (taskId: string) => {
     try {
-      // 先调用后端API删除任务
+      // First call backend API to delete task
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: 'DELETE',
       })
 
       if (response.ok) {
-        // API删除成功后，从本地状态中移除任务
+        // After successful API deletion, remove task from local state
         setTimelineItems((prev) => prev.filter((item) => item.id !== taskId))
-        setSelectedItem(null) // 关闭详情面板
-        console.log(`任务 ${taskId} 已成功删除`)
+        setSelectedItem(null) // Close detail panel
+        console.log(`Task ${taskId} successfully deleted`)
       } else {
-        console.error('删除任务失败:', response.status)
-        // 可以在这里添加用户提示
+        console.error('Failed to delete task:', response.status)
+        // Can add user notification here
       }
     } catch (error) {
-      console.error('删除任务出错:', error)
-      // 可以在这里添加用户提示
+      console.error('Error deleting task:', error)
+      // Can add user notification here
     }
   }
 
-  // 关闭任务详情
+  // Close task details
   const handleCloseTaskDetail = () => {
     setSelectedItem(null)
   }
 
-  // 初始化数据
+  // Initialize data
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // 清除过期缓存（包括跨日的缓存）
+        // Clear expired cache (including cross-day cache)
         taskProgressAPI.clearExpiredCache()
 
-        // 加载今日任务数据
+        // Load today's task data
         const projectItems =
           await todayTasksService.getTodaysTasksAsProjectItems(DEFAULT_USER_ID)
         setTimelineItems(projectItems)
 
         console.log(
-          `成功加载 ${projectItems.length} 个项目:`,
+          `Successfully loaded ${projectItems.length} projects:`,
           projectItems.map((item) => item.title)
         )
       } catch (error) {
         console.error('Failed to initialize app:', error)
-        // 设置空数据作为fallback
+        // Set empty data as fallback
         setTimelineItems([])
       } finally {
         setIsLoading(false)
@@ -106,14 +106,14 @@ export default function Home() {
   if (isLoading) {
     return (
       <div className="h-screen bg-slate-900 text-white flex items-center justify-center">
-        <div className="text-slate-400">加载中...</div>
+        <div className="text-slate-400">Loading...</div>
       </div>
     )
   }
 
   return (
     <div className="h-screen bg-slate-900 text-white flex flex-col">
-      {/* 顶部导航栏 */}
+      {/* Top navigation bar */}
       <header className="flex items-center justify-between px-8 pt-6 flex-shrink-0">
         <div className="flex items-center space-x-4">
           <div className="text-xl font-bold text-slate-300">Focus Timer</div>
@@ -132,22 +132,28 @@ export default function Home() {
       </header>
 
       <div className="flex flex-1 min-h-0">
-        {/* 左侧面板 - Week & Activity */}
+        {/* Left panel - Week & Activity */}
         <div className="w-[30%] p-6 overflow-y-auto flex flex-col justify-between">
-          {/* Week 区域 - 使用独立的WeekChart组件 */}
-          <WeekChart userId={DEFAULT_USER_ID} />
+          {/* Week area - using independent WeekChart component */}
+          <div className="shadow-lg rounded-lg">
+            <WeekChart userId={DEFAULT_USER_ID} />
+          </div>
 
-          {/* Activity 区域 - 重新启用，现在使用tasks API */}
-          <ActivityCalendar />
+          {/* Activity area - re-enabled, now using tasks API */}
+          <div className="shadow-lg rounded-lg">
+            <ActivityCalendar />
+          </div>
         </div>
 
-        {/* 中间面板 - 工作时间流程 */}
+        {/* Middle panel - Work timeline */}
         <div className="w-[30%] p-6">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-light text-slate-200">所有项目</h2>
+              <h2 className="text-xl font-light text-slate-200">
+                All Projects
+              </h2>
               <span className="bg-slate-700/50 text-slate-300 px-2 py-1 rounded-md text-xs font-medium">
-                {timelineItems.length} 个项目
+                {timelineItems.length} projects
               </span>
             </div>
             <button
@@ -162,25 +168,26 @@ export default function Home() {
 
             <div className="h-full overflow-y-auto">
               {timelineItems.length === 0 ? (
-                // 空状态显示
+                // Empty state display
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <div className="w-16 h-16 bg-slate-700/50 rounded-full flex items-center justify-center mb-4">
                     <span className="text-2xl">📝</span>
                   </div>
                   <h3 className="text-slate-300 text-lg font-medium mb-2">
-                    暂无项目
+                    No Projects
                   </h3>
                   <p className="text-slate-400 text-sm mb-6 max-w-xs">
-                    点击右上角的 + 按钮创建你的第一个项目
+                    Click the + button in the top right to create your first
+                    project
                   </p>
                   <button
                     onClick={() => setIsAddModalOpen(true)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                    创建项目
+                    Create Project
                   </button>
                 </div>
               ) : (
-                // 正常的任务列表
+                // Normal task list
                 <div className="relative space-y-6 pt-6 pb-6">
                   <div
                     className="absolute left-7 top-0 w-0.5 bg-slate-700"
@@ -193,7 +200,7 @@ export default function Home() {
 
                       <div
                         className={`w-10 h-10 rounded-full ${
-                          categoryConfig[item.category].color
+                          taskTypeConfig[item.type].color
                         } flex items-center justify-center text-white relative z-10 mx-2 flex-shrink-0 shadow-lg ${
                           item.completed ? 'opacity-75' : ''
                         }`}>
@@ -217,7 +224,11 @@ export default function Home() {
                       <div className="flex-1 min-w-0">
                         <div
                           onClick={() => {
-                            console.log('直接点击卡片:', item.title, item.id)
+                            console.log(
+                              'Direct card click:',
+                              item.title,
+                              item.id
+                            )
                             setSelectedItem(item)
                           }}
                           className={`relative rounded-3xl p-4 mr-4 transition-all duration-200 cursor-pointer group ${
@@ -229,14 +240,14 @@ export default function Home() {
                               ? 'border border-amber-500 bg-slate-700'
                               : 'border hover:bg-slate-700'
                           }`}>
-                          {/* 可点击的主要区域 - 已移除，改为直接在卡片上点击 */}
+                          {/* Clickable main area - removed, changed to direct card click */}
 
-                          {/* hover删除区域 - 右边1/5 */}
+                          {/* Hover delete area - right 1/5 */}
                           <div
                             className="absolute top-0 right-0 w-1/5 h-full z-20 group/delete"
                             onMouseEnter={(e) => e.stopPropagation()}
                             onClick={(e) => e.stopPropagation()}>
-                            {/* 删除按钮 */}
+                            {/* Delete button */}
                             <div className="opacity-0 group-hover/delete:opacity-100 transition-opacity duration-200 absolute top-1/2 right-3 transform -translate-y-1/2">
                               <button
                                 onClick={async (e) => {
@@ -275,18 +286,16 @@ export default function Home() {
                                     } ${item.completed ? 'line-through' : ''}`}>
                                     <span
                                       className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                                        categoryConfig[item.category].color
+                                        taskTypeConfig[item.type].color
                                       }`}></span>
                                     {item.title}
                                   </h3>
-                                  {item.category !== 'habit' && (
-                                    <span className="text-slate-400 text-xs font-normal">
-                                      · {categoryConfig[item.category].name}
-                                    </span>
-                                  )}
+                                  <span className="text-slate-400 text-xs font-normal">
+                                    · {taskTypeConfig[item.type].name}
+                                  </span>
                                   {item.completed && (
                                     <span className="text-green-400 text-xs font-normal">
-                                      · 已完成
+                                      · Completed
                                     </span>
                                   )}
                                 </div>
@@ -327,7 +336,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 右侧面板 - 项目详情 */}
+        {/* Right panel - Project details */}
         <div className="flex-1 p-6 flex flex-col">
           <div className="bg-slate-800 rounded-3xl p-8 flex-1 border-slate-700 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
@@ -344,7 +353,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 简化的任务创建模态框 */}
+      {/* Simplified task creation modal */}
       <SimpleTaskModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}

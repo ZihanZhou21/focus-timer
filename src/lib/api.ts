@@ -6,6 +6,7 @@ import {
   TimeLogEntry,
   CheckInEntry,
 } from '@/lib/types'
+import { TaskType } from '@/lib/constants'
 
 // 兼容旧系统的ProjectItem类型
 export interface ProjectItem {
@@ -17,13 +18,12 @@ export interface ProjectItem {
   durationMinutes: number
   icon: string
   iconColor: string
-  category: 'habit' | 'task' | 'focus' | 'exercise'
   completed: boolean
   details?: string[]
   tags?: string[]
   priority?: string
   status?: string
-  type?: string
+  type: TaskType
   // 重复任务相关字段
   isRecurring?: boolean
   recurringDays?: number[]

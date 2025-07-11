@@ -17,7 +17,7 @@ export default function TodayTasksView() {
       const data = await todayTasksService.getTodaysTasks()
       setTodaysData(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '获取失败')
+      setError(err instanceof Error ? err.message : 'Failed to fetch')
     } finally {
       setLoading(false)
     }
@@ -34,24 +34,24 @@ export default function TodayTasksView() {
   }
 
   if (loading) {
-    return <div className="text-center py-8">正在加载今天的任务...</div>
+    return <div className="text-center py-8">Loading today&apos;s tasks...</div>
   }
 
   if (error) {
     return (
       <div className="text-center py-8 text-red-500">
-        <p>获取任务失败: {error}</p>
+        <p>Failed to fetch tasks: {error}</p>
         <button
           onClick={handleRefresh}
           className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-          重试
+          Retry
         </button>
       </div>
     )
   }
 
   if (!todaysData) {
-    return <div className="text-center py-8">暂无数据</div>
+    return <div className="text-center py-8">No data</div>
   }
 
   const { tasks, stats } = todaysData
@@ -61,21 +61,21 @@ export default function TodayTasksView() {
       {/* 头部信息 */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          今日任务 ({todaysData.date})
+          Today&apos;s Tasks ({todaysData.date})
         </h1>
         <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-          <span>总计: {stats.total}</span>
-          <span>待办: {stats.todoTasks}</span>
-          <span>习惯: {stats.checkInTasks}</span>
-          <span>高优先级: {stats.highPriority}</span>
+          <span>Total: {stats.total}</span>
+          <span>Todo: {stats.todoTasks}</span>
+          <span>Habits: {stats.checkInTasks}</span>
+          <span>High Priority: {stats.highPriority}</span>
         </div>
       </div>
 
       {/* 任务列表 */}
       {tasks.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
-          <p className="text-lg">今天没有任务</p>
-          <p className="text-sm mt-2">享受轻松的一天吧！</p>
+          <p className="text-lg">No tasks for today</p>
+          <p className="text-sm mt-2">Enjoy a relaxing day!</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -101,7 +101,7 @@ export default function TodayTasksView() {
                           ? 'bg-blue-100 text-blue-800'
                           : 'bg-purple-100 text-purple-800'
                       }`}>
-                      {task.type === 'todo' ? '待办' : '习惯'}
+                      {task.type === 'todo' ? 'Todo' : 'Habit'}
                     </span>
 
                     <span className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-800">
@@ -153,7 +153,7 @@ export default function TodayTasksView() {
         <button
           onClick={handleRefresh}
           className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-          刷新任务
+          Refresh Tasks
         </button>
       </div>
     </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { categoryConfig, DEFAULT_USER_ID } from '@/lib/constants'
+import { taskTypeConfig, DEFAULT_USER_ID } from '@/lib/constants'
 import { ProjectItem } from '@/lib/api'
 
 interface AddProjectModalProps {
@@ -94,7 +94,7 @@ export default function AddProjectModal({
     title: string
     time: string
     durationMinutes: number
-    category: 'habit' | 'task' | 'focus' | 'exercise'
+    type: 'todo' | 'check-in'
     icon: string
     iconColor: string
     details: string[]
@@ -107,7 +107,7 @@ export default function AddProjectModal({
     title: '',
     time: '',
     durationMinutes: 0,
-    category: 'task',
+    type: 'todo',
     icon: '📝',
     iconColor: 'bg-blue-500',
     details: [],
@@ -141,7 +141,7 @@ export default function AddProjectModal({
           title: formData.title,
           time: formData.time,
           durationMinutes: formData.durationMinutes,
-          category: formData.category,
+          type: formData.type,
           icon: formData.icon,
           iconColor: formData.iconColor,
           details: formData.details.filter((d) => d.trim()),
@@ -198,9 +198,7 @@ export default function AddProjectModal({
           title: formData.title,
           time: formData.time,
           durationMinutes: formData.durationMinutes,
-          category: formData.category,
-          icon: formData.icon,
-          iconColor: formData.iconColor,
+          type: formData.type,
           details: formData.details.filter((d) => d.trim()),
           tags: formData.tags.filter((t) => t.trim()),
           date: baseDate,
@@ -233,7 +231,7 @@ export default function AddProjectModal({
       title: '',
       time: '',
       durationMinutes: 0,
-      category: 'task',
+      type: 'todo',
       icon: '📝',
       iconColor: 'bg-blue-500',
       details: [],
@@ -526,18 +524,18 @@ export default function AddProjectModal({
               项目分类
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {Object.entries(categoryConfig).map(([key, config]) => (
+              {Object.entries(taskTypeConfig).map(([key, config]) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() =>
                     setFormData((prev) => ({
                       ...prev,
-                      category: key as 'habit' | 'task' | 'focus' | 'exercise',
+                      type: key as 'todo' | 'check-in',
                     }))
                   }
                   className={`p-3 rounded-2xl border-2 transition-all ${
-                    formData.category === key
+                    formData.type === key
                       ? 'border-amber-500 bg-amber-500/20 text-amber-200'
                       : 'border-slate-600 bg-slate-700 text-slate-300 hover:border-slate-500'
                   }`}>

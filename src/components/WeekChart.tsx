@@ -25,7 +25,7 @@ export default function WeekChart({
   const generateLast7DaysData = async (): Promise<DayData[]> => {
     try {
       // ✅ 使用专门的周度统计API，获取真实的任务执行时间
-      console.log('获取过去7天任务执行时间统计')
+      console.log('Getting last 7 days task execution time statistics')
       const weeklyStats = await weeklyStatsAPI.getLast7DaysStats(userId)
 
       // 转换为组件需要的数据格式（只统计TODO任务，不包含打卡任务）
@@ -76,7 +76,7 @@ export default function WeekChart({
       setWeeklyData(newWeekData)
       onDataUpdate?.(newWeekData)
     } catch (error) {
-      console.error('刷新周数据失败:', error)
+      console.error('Failed to refresh weekly data:', error)
     } finally {
       setIsLoading(false)
     }
@@ -92,7 +92,7 @@ export default function WeekChart({
       <div className="flex-1 flex flex-col">
         <h3 className="text-lg font-light mb-4 text-slate-200">Week</h3>
         <div className="bg-slate-800 rounded-3xl p-4 flex-1 flex items-center justify-center">
-          <div className="text-slate-400 text-sm">加载中...</div>
+          <div className="text-slate-400 text-sm">Loading...</div>
         </div>
       </div>
     )
@@ -105,7 +105,7 @@ export default function WeekChart({
         <button
           onClick={refreshWeekData}
           className="text-slate-400 hover:text-slate-300 transition-colors"
-          title="刷新数据">
+          title="Refresh data">
           <svg
             className="w-4 h-4"
             fill="none"
@@ -122,7 +122,7 @@ export default function WeekChart({
       </div>
 
       <div className="bg-slate-800 rounded-3xl p-4 flex-1 flex flex-col mb-4">
-        <h4 className="text-xs text-slate-400 mb-4">过去7天专注时间</h4>
+        <h4 className="text-xs text-slate-400 mb-4">Last 7 Days Focus Time</h4>
 
         {/* 柱状图区域 */}
         <div className="flex items-end justify-between flex-1 mb-3">
@@ -159,7 +159,7 @@ export default function WeekChart({
                   }}
                   title={`${day}: ${formatTimeInHours(
                     data?.focus || 0
-                  )} 专注时间, ${data?.cycles || 0} 个番茄钟`}
+                  )} focus time, ${data?.cycles || 0} pomodoros`}
                 />
               </div>
             </div>
@@ -185,13 +185,13 @@ export default function WeekChart({
           <div className="mt-4 pt-3 border-t border-slate-700">
             <div className="flex justify-between text-xs text-slate-400">
               <span>
-                本周总计:{' '}
+                This Week Total:{' '}
                 {formatTimeInHours(
                   weeklyData.reduce((sum, day) => sum + day.focus, 0)
                 )}
               </span>
               <span>
-                {weeklyData.reduce((sum, day) => sum + day.cycles, 0)} 个番茄钟
+                {weeklyData.reduce((sum, day) => sum + day.cycles, 0)} pomodoros
               </span>
             </div>
           </div>

@@ -1,36 +1,20 @@
 // 项目类型配置 - 统一管理
-export const categoryConfig = {
-  habit: {
-    name: '习惯',
-    color: 'bg-gray-500',
-    lightColor: 'bg-gray-400',
-    description: '日常习惯打卡',
-    icon: '🔄',
-  },
-  task: {
-    name: '任务',
+export const taskTypeConfig = {
+  todo: {
+    name: 'Todo',
     color: 'bg-blue-500',
     lightColor: 'bg-blue-400',
-    description: '工作任务',
     icon: '📋',
   },
-  focus: {
-    name: '专注',
-    color: 'bg-amber-500',
-    lightColor: 'bg-amber-400',
-    description: '深度专注',
-    icon: '🎯',
-  },
-  exercise: {
-    name: '运动',
-    color: 'bg-green-500',
-    lightColor: 'bg-green-400',
-    description: '运动健身',
-    icon: '💪',
+  'check-in': {
+    name: 'Check-in',
+    color: 'bg-gray-500',
+    lightColor: 'bg-gray-400',
+    icon: '✅',
   },
 } as const
 
-export type ProjectCategory = keyof typeof categoryConfig
+export type TaskType = keyof typeof taskTypeConfig
 
 // 时间段类型
 export type TimePeriod = 'week' | 'month' | 'year'
