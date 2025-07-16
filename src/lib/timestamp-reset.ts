@@ -1,5 +1,5 @@
 // 基于时间戳的逻辑重置工具
-import { Task, TodoTask, CheckInTask, TimeLogEntry } from '@/lib/types'
+import { Task, TodoTask, CheckInTask } from '@/lib/types'
 
 /**
  * 获取今天的日期字符串 (YYYY-MM-DD)
@@ -10,9 +10,11 @@ export function getTodayDateString(): string {
 
 /**
  * 检查日期是否是今天
+ * 支持时间戳格式 (YYYY-MM-DDTHH:mm:ss.sssZ) 和日期格式 (YYYY-MM-DD)
  */
 export function isToday(dateString: string): boolean {
-  const date = dateString.split('T')[0] // 提取日期部分
+  // 如果包含 'T'，说明是时间戳格式，需要提取日期部分
+  const date = dateString.includes('T') ? dateString.split('T')[0] : dateString
   return date === getTodayDateString()
 }
 
@@ -28,20 +30,20 @@ export function shouldShowResetState(task: Task): boolean {
     return false // 今天有更新，不需要重置
   }
 
-  // 检查任务的完成时间
-  if (task.completedAt && isToday(task.completedAt)) {
-    return false // 今天有完成，不需要重置
+  // 检查任务的完成时间 - 现在是数组格式
+  if (Array.isArray(task.completedAt) && task.completedAt.length > 0) {
+    const today = getTodayDateString()
+    if (task.completedAt.includes(today)) {
+      return false // 今天有完成，不需要重置
+    }
   }
 
-  // 对于 TODO 任务，检查时间记录
+  // 对于 TODO 任务，检查每日时间统计
   if (task.type === 'todo') {
     const todoTask = task as TodoTask
-    if (todoTask.timeLog && todoTask.timeLog.length > 0) {
-      // 检查是否有今天的时间记录
-      const hasTodayLog = todoTask.timeLog.some((log) => isToday(log.startTime))
-      if (hasTodayLog) {
-        return false // 今天有时间记录，不需要重置
-      }
+    const today = getTodayDateString()
+    if (todoTask.dailyTimeStats && todoTask.dailyTimeStats[today] > 0) {
+      return false // 今天有时间记录，不需要重置
     }
   }
 
@@ -78,13 +80,24 @@ export function applyLogicalReset<T extends Task>(task: T): T {
   if (resetTask.status === 'completed') {
     resetTask.status = 'pending'
   }
-  resetTask.completedAt = null
+  // 从 completedAt 数组中移除今天的日期（逻辑重置）
+  const today = getTodayDateString()
+  if (Array.isArray(resetTask.completedAt)) {
+    resetTask.completedAt = resetTask.completedAt.filter(
+      (date) => date !== today
+    )
+  } else {
+    resetTask.completedAt = []
+  }
 
   // 针对不同类型的任务进行特殊处理
   if (task.type === 'todo') {
     const todoTask = resetTask as TodoTask
-    // 清空时间记录（逻辑上）
-    todoTask.timeLog = []
+    // 清空今日时间记录（逻辑上）
+    const today = getTodayDateString()
+    if (todoTask.dailyTimeStats && todoTask.dailyTimeStats[today]) {
+      delete todoTask.dailyTimeStats[today]
+    }
   } else if (task.type === 'check-in') {
     const checkInTask = resetTask as CheckInTask
     // 清空打卡历史（逻辑上）
@@ -95,22 +108,12 @@ export function applyLogicalReset<T extends Task>(task: T): T {
 }
 
 /**
- * 获取任务今天的时间记录
- */
-export function getTodayTimeLogs(task: TodoTask): TimeLogEntry[] {
-  if (!task.timeLog || task.timeLog.length === 0) {
-    return []
-  }
-
-  return task.timeLog.filter((log) => isToday(log.startTime))
-}
-
-/**
  * 计算任务今天的执行时间（秒）
+ * 简化版本：直接从dailyTimeStats获取
  */
 export function getTodayExecutedTime(task: TodoTask): number {
-  const todayLogs = getTodayTimeLogs(task)
-  return todayLogs.reduce((total, log) => total + log.duration, 0)
+  const today = getTodayDateString()
+  return task.dailyTimeStats?.[today] || 0
 }
 
 /**
@@ -122,6 +125,15 @@ export function getTodayProgress(task: TodoTask): number {
 
   const progress = Math.min((todayExecutedTime / estimatedDuration) * 100, 100)
   return Math.round(progress * 10) / 10 // 保留1位小数
+}
+
+/**
+ * 初始化任务的dailyTimeStats (确保字段存在)
+ */
+export function initializeDailyTimeStats(task: TodoTask): void {
+  if (!task.dailyTimeStats) {
+    task.dailyTimeStats = {}
+  }
 }
 
 /**

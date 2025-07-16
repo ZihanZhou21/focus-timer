@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import ClientProvider from '@/components/ClientProvider'
 
 const inter = Inter({
   variable: '--font-inter',
@@ -73,7 +74,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased bg-slate-50 dark:bg-slate-950 selection:bg-amber-200 dark:selection:bg-amber-800 selection:text-amber-900 dark:selection:text-amber-100`}>
-        {children}
+        <ClientProvider>{children}</ClientProvider>
       </body>
     </html>
   )

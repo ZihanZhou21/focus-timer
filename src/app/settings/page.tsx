@@ -2,6 +2,7 @@
 
 import Layout from '@/components/Layout'
 import { useState, useEffect } from 'react'
+import { autoResetService, AutoResetState } from '@/lib/auto-reset'
 
 export default function SettingsPage() {
   // 设置状态
@@ -23,19 +24,39 @@ export default function SettingsPage() {
   })
   const [isResetting, setIsResetting] = useState(false)
   const [lastResetTime, setLastResetTime] = useState<string | null>(null)
+  const [autoResetStatus, setAutoResetStatus] = useState<
+    (AutoResetState & { todayDate: string; needsReset: boolean }) | null
+  >(null)
 
   // 加载重置状态
   useEffect(() => {
     loadResetStatus()
+    loadAutoResetStatus()
   }, [])
+
+  // 获取自动重置状态
+  const loadAutoResetStatus = () => {
+    try {
+      const status = autoResetService.getStatus()
+      setAutoResetStatus(status)
+    } catch (error) {
+      console.error('获取自动重置状态失败:', error)
+    }
+  }
 
   // 获取重置状态
   const loadResetStatus = async () => {
     try {
-      const response = await fetch('/api/tasks/reset-daily')
+      const response = await fetch('/api/tasks/reset-daily?userId=user_001')
       if (response.ok) {
-        const status = await response.json()
-        setResetStatus(status)
+        const data = await response.json()
+        setResetStatus({
+          totalTasks: data.totalTasks,
+          completedCheckIns: data.completedCheckIns,
+          completedTodos: data.completedTodos,
+          todosWithProgress: data.todosWithProgress,
+          canReset: data.canReset,
+        })
       }
     } catch (error) {
       console.error('获取重置状态失败:', error)
@@ -46,7 +67,7 @@ export default function SettingsPage() {
   const handleManualReset = async () => {
     setIsResetting(true)
     try {
-      const response = await fetch('/api/tasks/reset-daily', {
+      const response = await fetch('/api/tasks/reset-daily?userId=user_001', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })
@@ -55,9 +76,21 @@ export default function SettingsPage() {
         const result = await response.json()
         setLastResetTime(new Date().toISOString())
         await loadResetStatus() // 重新加载状态
-        alert(result.message || '重置完成')
+
+        if (result.success) {
+          alert(result.message || '重置完成')
+          // 触发页面数据刷新
+          window.dispatchEvent(
+            new CustomEvent('daily-reset-completed', {
+              detail: result,
+            })
+          )
+        } else {
+          alert(result.message || '没有需要重置的数据')
+        }
       } else {
-        alert('重置失败，请稍后重试')
+        const errorData = await response.json()
+        alert(errorData.error || '重置失败，请稍后重试')
       }
     } catch (error) {
       console.error('手动重置失败:', error)
@@ -318,26 +351,63 @@ export default function SettingsPage() {
 
             {/* 自动重置状态 */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <div className="text-blue-600 dark:text-blue-400 mt-0.5">
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="text-blue-600 dark:text-blue-400 mt-0.5">
+                    <svg
+                      className="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
+                      智能重置系统
+                    </div>
+                    <div className="text-xs text-blue-700 dark:text-blue-400">
+                      自动检测并执行每日任务重置，确保每天的新开始
+                    </div>
+                    {autoResetStatus && (
+                      <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+                        <div>
+                          状态:{' '}
+                          {autoResetStatus.autoResetEnabled
+                            ? '已启用'
+                            : '已禁用'}
+                        </div>
+                        <div>
+                          上次重置:{' '}
+                          {autoResetStatus.lastResetDate || '从未重置'}
+                        </div>
+                        <div>
+                          需要重置: {autoResetStatus.needsReset ? '是' : '否'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
-                    智能重置系统
-                  </div>
-                  <div className="text-xs text-blue-700 dark:text-blue-400">
-                    基于时间戳的逻辑重置，每日自动生效，无需配置定时任务
-                  </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (autoResetStatus) {
+                        autoResetService.setAutoResetEnabled(
+                          !autoResetStatus.autoResetEnabled
+                        )
+                        loadAutoResetStatus()
+                      }
+                    }}
+                    className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                      autoResetStatus?.autoResetEnabled
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-300'
+                    }`}>
+                    {autoResetStatus?.autoResetEnabled ? '禁用' : '启用'}
+                  </button>
                 </div>
               </div>
             </div>

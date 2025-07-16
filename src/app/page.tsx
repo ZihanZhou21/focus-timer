@@ -11,12 +11,23 @@ import SimpleTaskModal from '@/components/SimpleTaskModal'
 import ActivityCalendar from '@/components/ActivityCalendar'
 import TaskDetailCard from '@/components/TaskDetailCard'
 import WeekChart from '@/components/WeekChart'
+import { useDispatch, useSelector } from 'react-redux'
+import { RootState } from '@/app/store'
+import {
+  setTimelineItems,
+  setSelectedItem,
+  updateTask,
+  deleteTask,
+} from '@/app/slices/tasksSlice'
+// 导入自动重置服务（自动启动）
+import '@/lib/auto-reset'
 
 export default function Home() {
   // Local state management - unified use of ProjectItem
-  const [timelineItems, setTimelineItems] = useState<ProjectItem[]>([])
-  const [selectedItem, setSelectedItem] = useState<ProjectItem | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const dispatch = useDispatch()
+  const { timelineItems, selectedItem, isLoading } = useSelector(
+    (state: RootState) => state.tasks
+  )
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
   // Handle new task addition
@@ -26,7 +37,7 @@ export default function Home() {
       const projectItems = await todayTasksService.getTodaysTasksAsProjectItems(
         DEFAULT_USER_ID
       )
-      setTimelineItems(projectItems)
+      dispatch(setTimelineItems(projectItems))
       console.log('Task list updated')
     } catch (error) {
       console.error('Failed to refresh tasks:', error)
@@ -35,13 +46,7 @@ export default function Home() {
 
   // Handle task updates
   const handleTaskUpdate = (updatedTask: ProjectItem) => {
-    setTimelineItems((prev) =>
-      prev.map((item) => (item.id === updatedTask.id ? updatedTask : item))
-    )
-    // If the currently selected task is the updated one, also update the selected item
-    if (selectedItem?.id === updatedTask.id) {
-      setSelectedItem(updatedTask)
-    }
+    dispatch(updateTask(updatedTask))
   }
 
   // Debug info
@@ -57,8 +62,7 @@ export default function Home() {
 
       if (response.ok) {
         // After successful API deletion, remove task from local state
-        setTimelineItems((prev) => prev.filter((item) => item.id !== taskId))
-        setSelectedItem(null) // Close detail panel
+        dispatch(deleteTask(taskId))
         console.log(`Task ${taskId} successfully deleted`)
       } else {
         console.error('Failed to delete task:', response.status)
@@ -72,7 +76,7 @@ export default function Home() {
 
   // Close task details
   const handleCloseTaskDetail = () => {
-    setSelectedItem(null)
+    dispatch(setSelectedItem(null))
   }
 
   // Initialize data
@@ -85,7 +89,7 @@ export default function Home() {
         // Load today's task data
         const projectItems =
           await todayTasksService.getTodaysTasksAsProjectItems(DEFAULT_USER_ID)
-        setTimelineItems(projectItems)
+        dispatch(setTimelineItems(projectItems))
 
         console.log(
           `Successfully loaded ${projectItems.length} projects:`,
@@ -94,14 +98,29 @@ export default function Home() {
       } catch (error) {
         console.error('Failed to initialize app:', error)
         // Set empty data as fallback
-        setTimelineItems([])
+        dispatch(setTimelineItems([]))
       } finally {
-        setIsLoading(false)
+        // setIsLoading(false) // This line is removed as per the edit hint
       }
     }
 
     initializeApp()
-  }, [])
+
+    // 监听每日重置完成事件，重新加载数据
+    const handleDailyResetCompleted = () => {
+      console.log('检测到每日重置完成，重新加载任务数据')
+      initializeApp()
+    }
+
+    window.addEventListener('daily-reset-completed', handleDailyResetCompleted)
+
+    return () => {
+      window.removeEventListener(
+        'daily-reset-completed',
+        handleDailyResetCompleted
+      )
+    }
+  }, [dispatch])
 
   if (isLoading) {
     return (
@@ -135,12 +154,12 @@ export default function Home() {
         {/* Left panel - Week & Activity */}
         <div className="w-[30%] p-6 overflow-y-auto flex flex-col justify-between">
           {/* Week area - using independent WeekChart component */}
-          <div className="shadow-lg rounded-lg">
+          <div className="rounded-lg flex-1 mb-4">
             <WeekChart userId={DEFAULT_USER_ID} />
           </div>
 
           {/* Activity area - re-enabled, now using tasks API */}
-          <div className="shadow-lg rounded-lg">
+          <div className="shadow-lg rounded-lg flex-1">
             <ActivityCalendar />
           </div>
         </div>
@@ -229,7 +248,7 @@ export default function Home() {
                               item.title,
                               item.id
                             )
-                            setSelectedItem(item)
+                            dispatch(setSelectedItem(item))
                           }}
                           className={`relative rounded-3xl p-4 mr-4 transition-all duration-200 cursor-pointer group ${
                             item.completed
@@ -343,7 +362,7 @@ export default function Home() {
               <TaskDetailCard
                 selectedItem={selectedItem}
                 timelineItems={timelineItems}
-                onSelectItem={setSelectedItem}
+                onSelectItem={(item) => dispatch(setSelectedItem(item))}
                 onTaskUpdate={handleTaskUpdate}
                 onTaskDelete={handleTaskDelete}
                 onClose={handleCloseTaskDetail}

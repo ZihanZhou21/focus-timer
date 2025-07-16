@@ -3,16 +3,21 @@ import { isNewDay } from '@/lib/timestamp-reset'
 
 interface TaskProgressData {
   taskId: string
-  totalExecutedTime: number // 总执行时间（秒）
+  totalExecutedTime: number // 今日执行时间（秒）
   estimatedDuration: number // 预估时间（秒）
-  progressPercentage: number // 进度百分比
+  progressPercentage: number // 今日进度百分比
   isCompleted: boolean
-  executionSessions: {
+  dailyProgress: {
     date: string
     duration: number
-    startTime: string
-    endTime: string
+    minutes: number
   }[]
+  todayProgress?: {
+    date: string
+    duration: number
+    minutes: number
+  }
+  todayOnly?: boolean // 标记：返回的是今日进度
 }
 
 interface TaskProgressError {
@@ -72,7 +77,7 @@ class TaskProgressAPI {
         taskId: data.taskId,
         progress: data.progressPercentage,
         executedTime: data.totalExecutedTime,
-        sessions: data.executionSessions.length,
+        sessions: data.dailyProgress?.length || 0,
       })
 
       return data
@@ -92,7 +97,7 @@ class TaskProgressAPI {
         estimatedDuration: 1500,
         progressPercentage: 0,
         isCompleted: false,
-        executionSessions: [],
+        dailyProgress: [],
       }
     }
   }
@@ -185,14 +190,14 @@ class TaskProgressAPI {
    * @param taskId 任务ID
    * @returns 执行会话数组
    */
-  async getTaskExecutionSessions(
+  async getTaskDailyProgress(
     taskId: string
-  ): Promise<TaskProgressData['executionSessions']> {
+  ): Promise<TaskProgressData['dailyProgress']> {
     try {
       const data = await this.getTaskProgress(taskId)
-      return data.executionSessions
+      return data.dailyProgress
     } catch (error) {
-      console.error(`获取任务执行会话失败 (${taskId}):`, error)
+      console.error(`获取任务每日进度失败 (${taskId}):`, error)
       return []
     }
   }

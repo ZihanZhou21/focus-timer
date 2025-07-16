@@ -2,30 +2,29 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useSelector } from 'react-redux'
+import { RootState } from '@/app/store'
 
 interface NavigationProps {
   className?: string
 }
 
-// 计时器状态类型定义
-interface TimerState {
-  timeRemaining: number
-  isRunning: boolean
-  totalElapsed: number
-  lastUpdateTime: number
-  taskId: string | null
-  initialTime: number
-  originalProgress: number
-  originalRemaining: number
-  originalElapsed: number
-}
-
 export default function AppNavigation({ className = '' }: NavigationProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const timerState = useSelector((state: RootState) => state.timer)
 
   // 检查是否有正在运行或暂停的计时器
   const checkActiveTimer = () => {
+    // 首先检查Redux状态
+    if (
+      timerState.taskId &&
+      (timerState.isRunning || timerState.timeRemaining > 0)
+    ) {
+      return timerState
+    }
+
+    // 如果Redux没有状态，检查localStorage作为fallback
     if (typeof window === 'undefined') return null
 
     try {
@@ -37,7 +36,7 @@ export default function AppNavigation({ className = '' }: NavigationProps) {
       for (const key of keys) {
         const savedState = localStorage.getItem(key)
         if (savedState) {
-          const state: TimerState = JSON.parse(savedState)
+          const state = JSON.parse(savedState)
 
           // 检查计时器是否已过期（只针对正在运行的计时器）
           if (state.isRunning) {
@@ -71,15 +70,9 @@ export default function AppNavigation({ className = '' }: NavigationProps) {
     if (activeTimer && activeTimer.taskId) {
       if (activeTimer.isRunning) {
         // 如果有正在运行的任务计时器，跳转到该任务
-        // 计算当前的剩余时间和已用时间
-        const timeDiff = Math.floor(
-          (Date.now() - activeTimer.lastUpdateTime) / 1000
-        )
-        const currentRemaining = Math.max(
-          0,
-          activeTimer.timeRemaining - timeDiff
-        )
-        const currentElapsed = activeTimer.totalElapsed + timeDiff
+        // 对于Redux状态，直接使用当前值
+        const currentRemaining = activeTimer.timeRemaining
+        const currentElapsed = activeTimer.totalElapsed
 
         const params = new URLSearchParams({
           id: activeTimer.taskId,

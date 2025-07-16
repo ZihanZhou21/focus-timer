@@ -1,32 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readFileSync, existsSync } from 'fs'
-import { join } from 'path'
-import { isToday } from '@/lib/timestamp-reset'
+import { promises as fs } from 'fs'
+import * as path from 'path'
+import { Task, TodoTask } from '@/lib/types'
 
-// 任务类型定义
-interface TimeLog {
-  startTime: string
-  endTime: string
-  duration: number
-}
+const getDataFilePath = () => path.join(process.cwd(), 'data', 'tasks.json')
 
-interface TodoTask {
-  _id: string
-  userId: string
-  type: 'todo'
-  title: string
-  status: string
-  estimatedDuration?: number
-  timeLog?: TimeLog | TimeLog[]
-  completedAt?: string
-}
+async function readTasksData(): Promise<Task[]> {
+  try {
+    const filePath = getDataFilePath()
 
-interface TaskRemainingResponse {
-  taskId: string
-  estimatedMinutes: number // 预估时间（分钟）
-  executedMinutes: number // 已执行时间（分钟）
-  remainingMinutes: number // 剩余时间（分钟）
-  isCompleted: boolean
+    try {
+      await fs.access(filePath)
+    } catch {
+      return []
+    }
+
+    const fileContent = await fs.readFile(filePath, 'utf-8')
+    if (!fileContent.trim()) return []
+
+    const tasks = JSON.parse(fileContent)
+    return Array.isArray(tasks) ? tasks : []
+  } catch (error) {
+    console.error('Failed to read tasks:', error)
+    return []
+  }
 }
 
 export async function GET(
@@ -34,76 +31,63 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: taskId } = await params
-
-    if (!taskId) {
-      return NextResponse.json({ error: '请提供任务ID' }, { status: 400 })
-    }
-
-    // 读取任务数据
-    const dataPath = join(process.cwd(), 'data', 'tasks.json')
-    if (!existsSync(dataPath)) {
-      return NextResponse.json({ error: '任务数据文件不存在' }, { status: 404 })
-    }
-
-    const fileContent = readFileSync(dataPath, 'utf-8')
-    const allTasks: TodoTask[] = JSON.parse(fileContent)
-
-    // 查找指定任务
-    const task = allTasks.find((t) => t._id === taskId && t.type === 'todo')
+    const { id } = await params
+    const tasks = await readTasksData()
+    const task = tasks.find((t) => t._id === id)
 
     if (!task) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+    }
+
+    // 只有 TODO 任务才有剩余时间概念
+    if (task.type !== 'todo') {
       return NextResponse.json(
-        { error: '任务不存在或不是TODO类型任务' },
-        { status: 404 }
+        { error: 'Only TODO tasks have remaining time' },
+        { status: 400 }
       )
     }
 
-    // 直接计算剩余时间（避免小数点问题）
-    const remainingData = calculateTaskRemaining(task)
+    const todoTask = task as TodoTask
+
+    // 获取今天的日期字符串 (YYYY-MM-DD)
+    const today = new Date().toISOString().split('T')[0]
+
+    // 只计算今日已执行时间（从 dailyTimeStats[today] 获取）
+    const todayExecutedSeconds = todoTask.dailyTimeStats?.[today] || 0
+
+    // 预估时间（从 estimatedDuration 获取，单位：秒）
+    const estimatedSeconds = todoTask.estimatedDuration || 25 * 60 // 默认25分钟
+
+    // 基于今日执行时间计算剩余时间
+    const remainingSeconds = Math.max(
+      0,
+      estimatedSeconds - todayExecutedSeconds
+    )
+
+    // 转换为分钟，使用精确的小数表示以保持秒级精度
+    const executedMinutes = Math.round((todayExecutedSeconds / 60) * 100) / 100 // 保留2位小数
+    const estimatedMinutes = Math.round((estimatedSeconds / 60) * 100) / 100
+    const remainingMinutes = Math.round((remainingSeconds / 60) * 100) / 100
+
+    const remainingData = {
+      taskId: id,
+      estimatedMinutes,
+      executedMinutes, // 今日已执行时间（分钟）
+      remainingMinutes, // 今日剩余时间（分钟）
+      remainingSeconds, // 今日剩余时间（秒）
+      executedSeconds: todayExecutedSeconds, // 今日已执行时间（秒）
+      estimatedSeconds,
+      isCompleted: task.status === 'completed',
+      todayOnly: true, // 标记：此API返回的是今日数据
+      date: today, // 当前计算基于的日期
+    }
 
     return NextResponse.json(remainingData)
   } catch (error) {
-    console.error('获取任务剩余时间失败:', error)
+    console.error('GET task remaining error:', error)
     return NextResponse.json(
-      {
-        error: '获取任务剩余时间失败',
-        details: error instanceof Error ? error.message : '未知错误',
-      },
+      { error: 'Failed to get task remaining time' },
       { status: 500 }
     )
-  }
-}
-
-// 直接计算任务剩余时间（整数分钟，避免小数点问题）
-function calculateTaskRemaining(task: TodoTask): TaskRemainingResponse {
-  // 1. 预估时间（分钟）- 直接从estimatedDuration计算，避免多次转换
-  const estimatedMinutes = Math.floor((task.estimatedDuration || 1500) / 60)
-
-  // 2. 已执行时间（分钟）- 只累加今日的timeLog，使用Math.floor避免向上舍入
-  let todayExecutedSeconds = 0
-  if (task.timeLog) {
-    const timeLogs = Array.isArray(task.timeLog) ? task.timeLog : [task.timeLog]
-    for (const timeLog of timeLogs) {
-      // 只处理今天的时间记录
-      if (isToday(timeLog.startTime)) {
-        todayExecutedSeconds += timeLog.duration
-      }
-    }
-  }
-  const executedMinutes = Math.floor(todayExecutedSeconds / 60)
-
-  // 3. 剩余时间（分钟）- 确保不小于0
-  const remainingMinutes = Math.max(0, estimatedMinutes - executedMinutes)
-
-  // 4. 检查是否已完成
-  const isCompleted = task.status === 'completed' || !!task.completedAt
-
-  return {
-    taskId: task._id,
-    estimatedMinutes,
-    executedMinutes,
-    remainingMinutes,
-    isCompleted,
   }
 }

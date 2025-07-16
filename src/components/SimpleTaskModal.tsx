@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { TimeLogEntry, CheckInEntry } from '@/lib/types'
+import type { CheckInEntry } from '@/lib/types'
 
 interface SimpleTaskModalProps {
   isOpen: boolean
@@ -140,7 +140,7 @@ export default function SimpleTaskModal({
         plannedTime: string
         dueDate?: string | null
         estimatedDuration?: number
-        timeLog?: TimeLogEntry[]
+        dailyTimeStats?: { [date: string]: number }
         checkInHistory?: CheckInEntry[]
         recurrence?: {
           frequency: 'daily' | 'weekly'
@@ -153,7 +153,7 @@ export default function SimpleTaskModal({
           ...baseTask,
           dueDate: dueDate || null,
           estimatedDuration: estimatedDuration * 60, // 转换为秒
-          timeLog: [],
+          dailyTimeStats: {},
         }
       } else {
         taskData = {

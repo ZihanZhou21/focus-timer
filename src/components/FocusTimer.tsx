@@ -198,15 +198,10 @@ export default function FocusTimer({
                 tags: ['专注', '番茄钟'],
                 plannedTime: new Date().toTimeString().substring(0, 5),
                 estimatedDuration: initialFocusTime * 60,
-                timeLog: [
-                  {
-                    startTime: new Date(
-                      Date.now() - initialFocusTime * 60 * 1000
-                    ).toISOString(),
-                    endTime: new Date().toISOString(),
-                    duration: initialFocusTime * 60,
-                  },
-                ],
+                dailyTimeStats: {
+                  [new Date().toISOString().split('T')[0]]:
+                    initialFocusTime * 60,
+                },
               }
 
               fetch('/api/tasks', {

@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       tags: taskData.tags || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      completedAt: taskData.completedAt || null,
+      completedAt: taskData.completedAt || [],
       plannedTime: taskData.plannedTime || null,
       ...taskData,
     }

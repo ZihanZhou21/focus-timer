@@ -1,11 +1,5 @@
 // 客户端API服务层
-import {
-  Task,
-  TodoTask,
-  CheckInTask,
-  TimeLogEntry,
-  CheckInEntry,
-} from '@/lib/types'
+import { Task, TodoTask, CheckInTask, CheckInEntry } from '@/lib/types'
 import { TaskType } from '@/lib/constants'
 
 // 兼容旧系统的ProjectItem类型
@@ -120,19 +114,24 @@ export class TaskService {
 
   // 完成TODO任务
   async completeTodoTask(id: string): Promise<TodoTask> {
-    return this.updateTask(id, {
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-    }) as Promise<TodoTask>
+    const today = new Date().toISOString().split('T')[0]
+
+    // 发送字符串日期，PUT API会自动将其添加到completedAt数组中
+    const response = await fetch(`${this.baseUrl}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'completed',
+        completedAt: today, // 字符串会被PUT API处理为添加到数组
+      }),
+    })
+
+    if (!response.ok) throw new Error(`完成任务失败: ${response.statusText}`)
+    return response.json()
   }
 
-  // 添加时间记录到TODO任务
-  async addTimeLog(id: string, timeLog: TimeLogEntry): Promise<TodoTask> {
-    const task = (await this.getTask(id)) as TodoTask
-    return this.updateTask(id, {
-      timeLog: [...task.timeLog, timeLog],
-    }) as Promise<TodoTask>
-  }
+  // addTimeLog已弃用 - 改用session API直接更新dailyTimeStats
+  // async addTimeLog() - 请使用 /api/tasks/[id]/session 端点
 
   // 添加打卡记录
   async addCheckIn(id: string, checkIn: CheckInEntry): Promise<CheckInTask> {
@@ -175,10 +174,13 @@ export class TaskService {
 
   private calculateTotalFocusTime(todoTasks: TodoTask[]): number {
     return todoTasks.reduce((total, task) => {
-      return (
-        total +
-        task.timeLog.reduce((taskTotal, log) => taskTotal + log.duration, 0)
-      )
+      const taskTotal = task.dailyTimeStats
+        ? Object.values(task.dailyTimeStats).reduce(
+            (sum, time) => sum + time,
+            0
+          )
+        : 0
+      return total + taskTotal
     }, 0)
   }
 

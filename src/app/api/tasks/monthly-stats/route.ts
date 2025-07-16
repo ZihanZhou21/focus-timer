@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readFileSync, existsSync } from 'fs'
-import { join } from 'path'
-import { Task, TodoTask, CheckInTask } from '@/lib/types'
+import { promises as fs } from 'fs'
+import * as path from 'path'
+import { Task, TodoTask } from '@/lib/types'
 
+// 日常统计数据接口
 interface DailyStats {
   date: string
   totalDuration: number // 总执行时间（分钟）
@@ -24,6 +25,62 @@ interface MonthlyStatsResponse {
   }
 }
 
+// 获取数据文件路径
+const getDataFilePath = () => {
+  return path.join(process.cwd(), 'data', 'tasks.json')
+}
+
+// 读取任务数据
+async function readTasksData(): Promise<Task[]> {
+  try {
+    const filePath = getDataFilePath()
+
+    try {
+      await fs.access(filePath)
+    } catch {
+      console.log('任务数据文件不存在，返回空数组')
+      return []
+    }
+
+    const fileContent = await fs.readFile(filePath, 'utf-8')
+    if (!fileContent.trim()) {
+      console.log('任务数据文件为空，返回空数组')
+      return []
+    }
+
+    const tasks = JSON.parse(fileContent)
+    return Array.isArray(tasks) ? tasks : []
+  } catch (error) {
+    console.error('读取任务数据失败:', error)
+    return []
+  }
+}
+
+// 获取本地日期字符串 (YYYY-MM-DD)
+function getLocalDateString(date: Date): string {
+  return date.toISOString().split('T')[0]
+}
+
+// 计算TODO任务的执行时间
+// 简化版本：直接使用dailyTimeStats
+function calculateTodoExecutionTime(
+  task: TodoTask,
+  targetDate: string
+): number {
+  return task.dailyTimeStats?.[targetDate] || 0
+}
+
+// 检查任务是否在指定日期完成
+function isTaskCompletedOnDate(task: Task, targetDate: string): boolean {
+  if (!task.completedAt || !Array.isArray(task.completedAt)) {
+    return false
+  }
+
+  // completedAt 现在是日期数组，检查目标日期是否在数组中
+  return task.completedAt.includes(targetDate)
+}
+
+// 获取月度统计数据
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -34,81 +91,123 @@ export async function GET(request: NextRequest) {
     const month = parseInt(
       searchParams.get('month') || (new Date().getMonth() + 1).toString()
     )
+    const startDateParam = searchParams.get('startDate')
+    const endDateParam = searchParams.get('endDate')
 
     if (!userId || !year || !month || month < 1 || month > 12) {
       return NextResponse.json(
-        { error: '请提供有效的 userId, year 和 month 参数' },
+        { error: '请提供有效的 userId、year 和 month 参数' },
         { status: 400 }
       )
     }
 
-    console.log(`获取用户 ${userId} ${year}年${month}月的每日任务执行时间统计`)
+    console.log(`获取用户 ${userId} ${year}年${month}月的月度统计`)
 
-    // 读取任务数据
-    const dataPath = join(process.cwd(), 'data', 'tasks.json')
-    if (!existsSync(dataPath)) {
-      console.log('任务数据文件不存在，返回空统计')
-      return NextResponse.json({
-        year,
-        month,
-        dailyStats: [],
-        summary: {
-          totalDuration: 0,
-          totalTasks: 0,
-          totalCompleted: 0,
-          averageDailyTime: 0,
-        },
-      })
+    // 计算日期范围：支持自定义开始和结束日期（用于日历网格）
+    let startDate: Date
+    let endDate: Date
+
+    if (startDateParam && endDateParam) {
+      // 使用自定义日期范围（用于日历网格）
+      startDate = new Date(startDateParam)
+      endDate = new Date(endDateParam)
+      console.log(`使用自定义日期范围: ${startDateParam} 到 ${endDateParam}`)
+    } else {
+      // 使用默认月份范围
+      startDate = new Date(year, month - 1, 1)
+      endDate = new Date(year, month, 0) // 当月最后一天
     }
 
-    const fileContent = readFileSync(dataPath, 'utf-8')
-    const allTasks: Task[] = JSON.parse(fileContent)
+    // 读取任务数据
+    const allTasks = await readTasksData()
 
     // 过滤用户任务
     const userTasks = allTasks.filter((task) => task.userId === userId)
+    console.log(`用户 ${userId} 共有 ${userTasks.length} 个任务`)
 
-    // 生成月份的所有日期
-    const daysInMonth = new Date(year, month, 0).getDate()
+    // 生成每日统计
     const dailyStats: DailyStats[] = []
+    const currentDate = new Date(startDate)
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day
-        .toString()
-        .padStart(2, '0')}`
+    while (currentDate <= endDate) {
+      const dateStr = getLocalDateString(currentDate)
 
-      // 获取该日期的任务和时间统计
-      const dayStats = calculateDayStats(userTasks, dateStr)
+      // 初始化当日统计
+      let totalDuration = 0
+      let todoTime = 0
+      let checkInTime = 0
+      let taskCount = 0
+      let completedCount = 0
+
+      // 遍历用户任务，计算当天的统计数据
+      for (const task of userTasks) {
+        // 检查任务是否在当天完成
+        if (isTaskCompletedOnDate(task, dateStr)) {
+          completedCount++
+        }
+
+        if (task.type === 'todo') {
+          // TODO任务：计算执行时间
+          const executionTime = calculateTodoExecutionTime(
+            task as TodoTask,
+            dateStr
+          )
+          if (executionTime > 0) {
+            const minutes = Math.round(executionTime / 60)
+            todoTime += minutes
+            totalDuration += minutes
+            taskCount++
+          }
+        } else if (task.type === 'check-in') {
+          // 打卡任务：如果在当天完成，计算为固定时间（比如1分钟）
+          if (isTaskCompletedOnDate(task, dateStr)) {
+            checkInTime += 1 // 打卡任务固定1分钟
+            totalDuration += 1
+            taskCount++
+          }
+        }
+      }
 
       dailyStats.push({
         date: dateStr,
-        ...dayStats,
+        totalDuration,
+        todoTime,
+        checkInTime,
+        taskCount,
+        completedCount,
       })
+
+      // 移动到下一天
+      currentDate.setDate(currentDate.getDate() + 1)
     }
 
-    // 计算总体统计
-    const summary = {
-      totalDuration: dailyStats.reduce(
-        (sum, day) => sum + day.totalDuration,
-        0
-      ),
-      totalTasks: dailyStats.reduce((sum, day) => sum + day.taskCount, 0),
-      totalCompleted: dailyStats.reduce(
-        (sum, day) => sum + day.completedCount,
-        0
-      ),
-      averageDailyTime: Math.round(
-        dailyStats.reduce((sum, day) => sum + day.totalDuration, 0) /
-          daysInMonth
-      ),
-    }
+    // 计算月度汇总
+    const totalDuration = dailyStats.reduce(
+      (sum, day) => sum + day.totalDuration,
+      0
+    )
+    const totalTasks = dailyStats.reduce((sum, day) => sum + day.taskCount, 0)
+    const totalCompleted = dailyStats.reduce(
+      (sum, day) => sum + day.completedCount,
+      0
+    )
+    const averageDailyTime = Math.round(totalDuration / dailyStats.length)
 
     const response: MonthlyStatsResponse = {
       year,
       month,
       dailyStats,
-      summary,
+      summary: {
+        totalDuration,
+        totalTasks,
+        totalCompleted,
+        averageDailyTime,
+      },
     }
 
+    console.log(
+      `月度统计完成: ${totalDuration}分钟总时长, ${totalCompleted}个完成任务`
+    )
     return NextResponse.json(response)
   } catch (error) {
     console.error('获取月度统计失败:', error)
@@ -119,101 +218,5 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     )
-  }
-}
-
-// 计算单日统计
-function calculateDayStats(
-  tasks: Task[],
-  targetDate: string
-): Omit<DailyStats, 'date'> {
-  let todoTime = 0 // TODO任务执行时间（秒）
-  let checkInTime = 0 // 打卡任务执行时间（秒）
-  let taskCount = 0 // 该日相关任务总数
-  let completedCount = 0 // 该日完成的任务数
-
-  for (const task of tasks) {
-    let isRelevantForDay = false
-    let dayDuration = 0
-
-    if (task.type === 'todo') {
-      const todoTask = task as TodoTask
-
-      // 处理timeLog（可能是数组或单个对象）
-      if (todoTask.timeLog) {
-        const timeLogs = Array.isArray(todoTask.timeLog)
-          ? todoTask.timeLog
-          : [todoTask.timeLog]
-
-        for (const timeLog of timeLogs) {
-          const logDate = timeLog.startTime.split('T')[0]
-          if (logDate === targetDate) {
-            dayDuration += timeLog.duration
-            isRelevantForDay = true
-          }
-        }
-      }
-
-      // 如果该日期有执行时间，累加到todoTime
-      if (dayDuration > 0) {
-        todoTime += dayDuration
-      }
-
-      // 检查是否在该日期完成了任务
-      const completedDate = todoTask.completedAt
-        ? todoTask.completedAt.split('T')[0]
-        : null
-      if (completedDate === targetDate) {
-        completedCount++
-        if (!isRelevantForDay) {
-          isRelevantForDay = true
-        }
-      }
-
-      // 检查是否是该日期应该关注的任务（到期日期）
-      const dueDate = todoTask.dueDate ? todoTask.dueDate.split('T')[0] : null
-      if (dueDate === targetDate && !isRelevantForDay) {
-        isRelevantForDay = true
-      }
-    } else if (task.type === 'check-in') {
-      const checkInTask = task as CheckInTask
-
-      // 检查打卡历史中是否有该日期的记录
-      for (const checkIn of checkInTask.checkInHistory) {
-        if (checkIn.date === targetDate) {
-          isRelevantForDay = true
-          dayDuration += checkIn.duration
-          checkInTime += checkIn.duration
-          completedCount++
-          break
-        }
-      }
-
-      // 或者检查是否是该日期应该执行的重复任务
-      if (!isRelevantForDay) {
-        const targetDateObj = new Date(targetDate)
-        const dayOfWeek = targetDateObj.getDay()
-
-        if (
-          checkInTask.recurrence.frequency === 'daily' ||
-          (checkInTask.recurrence.frequency === 'weekly' &&
-            checkInTask.recurrence.daysOfWeek.includes(dayOfWeek))
-        ) {
-          isRelevantForDay = true
-        }
-      }
-    }
-
-    if (isRelevantForDay) {
-      taskCount++
-    }
-  }
-
-  return {
-    totalDuration: Math.round((todoTime + checkInTime) / 60), // 转换为分钟
-    todoTime: Math.round(todoTime / 60),
-    checkInTime: Math.round(checkInTime / 60),
-    taskCount,
-    completedCount,
   }
 }

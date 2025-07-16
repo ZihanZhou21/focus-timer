@@ -2,9 +2,15 @@
 interface TaskRemainingData {
   taskId: string
   estimatedMinutes: number // 预估时间（分钟）
-  executedMinutes: number // 已执行时间（分钟）
-  remainingMinutes: number // 剩余时间（分钟）
+  executedMinutes: number // 今日已执行时间（分钟）
+  remainingMinutes: number // 今日剩余时间（分钟）
+  // 新增秒级精度数据
+  remainingSeconds?: number // 今日剩余时间（秒）
+  executedSeconds?: number // 今日已执行时间（秒）
+  estimatedSeconds?: number // 预估时间（秒）
   isCompleted: boolean
+  todayOnly?: boolean // 标记：返回的是今日数据
+  date?: string // 计算基于的日期
 }
 
 class TaskRemainingAPI {
@@ -12,7 +18,7 @@ class TaskRemainingAPI {
     string,
     { data: TaskRemainingData; timestamp: number }
   >()
-  private readonly CACHE_DURATION = 2 * 60 * 1000 // 2分钟缓存
+  private readonly CACHE_DURATION = 10 * 1000 // 10秒缓存，配合5秒刷新间隔
 
   /**
    * 获取任务剩余时间数据

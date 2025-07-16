@@ -77,6 +77,55 @@ class MonthlyStatsAPIService {
   }
 
   /**
+   * 获取指定日期范围的统计数据（用于日历网格）
+   */
+  async getMonthlyStatsWithDateRange(
+    year: number,
+    month: number,
+    startDate: string,
+    endDate: string,
+    userId = 'user_001'
+  ): Promise<MonthlyStatsResponse> {
+    const cacheKey = `${userId}_${year}_${month}_${startDate}_${endDate}`
+
+    // 检查缓存
+    const cached = this.cache.get(cacheKey)
+    if (cached && Date.now() < cached.expiry) {
+      console.log(`使用缓存的日期范围统计：${startDate} 到 ${endDate}`)
+      return cached.data
+    }
+
+    try {
+      console.log(
+        `获取日期范围统计：${startDate} 到 ${endDate}，用户：${userId}`
+      )
+
+      const response = await fetch(
+        `/api/tasks/monthly-stats?userId=${userId}&year=${year}&month=${month}&startDate=${startDate}&endDate=${endDate}`
+      )
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data: MonthlyStatsResponse = await response.json()
+
+      // 缓存数据
+      this.cache.set(cacheKey, {
+        data,
+        timestamp: Date.now(),
+        expiry: Date.now() + this.CACHE_DURATION,
+      })
+
+      console.log(`获取成功：${data.dailyStats.length} 天的统计数据`)
+      return data
+    } catch (error) {
+      console.error('获取日期范围统计失败:', error)
+      throw error
+    }
+  }
+
+  /**
    * 获取当前月份的统计
    */
   async getCurrentMonthStats(

@@ -158,19 +158,10 @@ function calculateDayStats(
     if (task.type === 'todo') {
       const todoTask = task as TodoTask
 
-      // 处理timeLog（可能是数组或单个对象）
-      if (todoTask.timeLog) {
-        const timeLogs = Array.isArray(todoTask.timeLog)
-          ? todoTask.timeLog
-          : [todoTask.timeLog]
-
-        for (const timeLog of timeLogs) {
-          const logDate = timeLog.startTime.split('T')[0]
-          if (logDate === targetDate) {
-            dayDuration += timeLog.duration
-            isRelevantForDay = true
-          }
-        }
+      // 简化版本：直接使用dailyTimeStats
+      dayDuration = todoTask.dailyTimeStats?.[targetDate] || 0
+      if (dayDuration > 0) {
+        isRelevantForDay = true
       }
 
       // 如果该日期有执行时间，累加到todoTime
@@ -179,10 +170,11 @@ function calculateDayStats(
       }
 
       // 检查是否在该日期完成了任务
-      const completedDate = todoTask.completedAt
-        ? todoTask.completedAt.split('T')[0]
-        : null
-      if (completedDate === targetDate) {
+      // completedAt 现在是日期数组
+      if (
+        Array.isArray(todoTask.completedAt) &&
+        todoTask.completedAt.includes(targetDate)
+      ) {
         completedCount++
         if (!isRelevantForDay) {
           isRelevantForDay = true

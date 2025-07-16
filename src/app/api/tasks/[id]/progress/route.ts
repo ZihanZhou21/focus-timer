@@ -1,38 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readFileSync, existsSync } from 'fs'
-import { join } from 'path'
-import { isToday } from '@/lib/timestamp-reset'
+import { promises as fs } from 'fs'
+import * as path from 'path'
+import { Task, TodoTask } from '@/lib/types'
 
-// 任务类型定义
-interface TimeLog {
-  startTime: string
-  endTime: string
-  duration: number
-}
+const getDataFilePath = () => path.join(process.cwd(), 'data', 'tasks.json')
 
-interface TodoTask {
-  _id: string
-  userId: string
-  type: 'todo'
-  title: string
-  status: string
-  estimatedDuration?: number
-  timeLog?: TimeLog | TimeLog[]
-  completedAt?: string
-}
+async function readTasksData(): Promise<Task[]> {
+  try {
+    const filePath = getDataFilePath()
 
-interface TaskProgressResponse {
-  taskId: string
-  totalExecutedTime: number // 总执行时间（秒）
-  estimatedDuration: number // 预估时间（秒）
-  progressPercentage: number // 进度百分比
-  isCompleted: boolean
-  executionSessions: {
-    date: string
-    duration: number
-    startTime: string
-    endTime: string
-  }[]
+    try {
+      await fs.access(filePath)
+    } catch {
+      return []
+    }
+
+    const fileContent = await fs.readFile(filePath, 'utf-8')
+    if (!fileContent.trim()) return []
+
+    const tasks = JSON.parse(fileContent)
+    return Array.isArray(tasks) ? tasks : []
+  } catch (error) {
+    console.error('Failed to read tasks:', error)
+    return []
+  }
 }
 
 export async function GET(
@@ -40,97 +31,72 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: taskId } = await params
-
-    if (!taskId) {
-      return NextResponse.json({ error: '请提供任务ID' }, { status: 400 })
-    }
-
-    // 读取任务数据
-    const dataPath = join(process.cwd(), 'data', 'tasks.json')
-    if (!existsSync(dataPath)) {
-      return NextResponse.json({ error: '任务数据文件不存在' }, { status: 404 })
-    }
-
-    const fileContent = readFileSync(dataPath, 'utf-8')
-    const allTasks: TodoTask[] = JSON.parse(fileContent)
-
-    // 查找指定任务
-    const task = allTasks.find((t) => t._id === taskId && t.type === 'todo')
+    const { id } = await params
+    const tasks = await readTasksData()
+    const task = tasks.find((t) => t._id === id)
 
     if (!task) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+    }
+
+    // 只有 TODO 任务才有进度概念
+    if (task.type !== 'todo') {
       return NextResponse.json(
-        { error: '任务不存在或不是TODO类型任务' },
-        { status: 404 }
+        { error: 'Only TODO tasks have progress' },
+        { status: 400 }
       )
     }
 
-    // 计算任务执行进度
-    const progressData = calculateTaskProgress(task)
+    const todoTask = task as TodoTask
+
+    // 获取今天的日期字符串 (YYYY-MM-DD)
+    const today = new Date().toISOString().split('T')[0]
+
+    // 只计算今日执行时间（从 dailyTimeStats[today] 获取）
+    const todayExecutedTime = todoTask.dailyTimeStats?.[today] || 0
+
+    // 预估时间（从 estimatedDuration 获取，单位：秒）
+    const estimatedDuration = todoTask.estimatedDuration || 25 * 60 // 默认25分钟
+
+    // 基于今日执行时间计算进度百分比
+    const progressPercentage = Math.min(
+      100,
+      Math.round((todayExecutedTime / estimatedDuration) * 100)
+    )
+
+    // 构建每日执行数据（保留历史数据用于统计）
+    const dailyProgress = todoTask.dailyTimeStats
+      ? Object.entries(todoTask.dailyTimeStats).map(([date, duration]) => ({
+          date,
+          duration,
+          minutes: Math.round(duration / 60),
+        }))
+      : []
+
+    // 为前端提供今日专用数据
+    const todayProgress = {
+      date: today,
+      duration: todayExecutedTime,
+      minutes: Math.round(todayExecutedTime / 60),
+    }
+
+    const progressData = {
+      taskId: id,
+      totalExecutedTime: todayExecutedTime, // 改为今日执行时间
+      estimatedDuration,
+      progressPercentage, // 基于今日时间计算的进度
+      isCompleted: task.status === 'completed',
+      dailyProgress, // 保留所有历史数据
+      todayProgress, // 新增：今日专用数据
+      todayOnly: true, // 标记：此API返回的是今日进度
+    }
 
     return NextResponse.json(progressData)
   } catch (error) {
-    console.error('获取任务进度失败:', error)
+    console.error('GET task progress error:', error)
     return NextResponse.json(
-      {
-        error: '获取任务进度失败',
-        details: error instanceof Error ? error.message : '未知错误',
-      },
+      { error: 'Failed to get task progress' },
       { status: 500 }
     )
-  }
-}
-
-// 计算任务执行进度（基于时间戳的逻辑重置）
-function calculateTaskProgress(task: TodoTask): TaskProgressResponse {
-  let todayExecutedTime = 0 // 今天的执行时间（秒）
-  const executionSessions: TaskProgressResponse['executionSessions'] = []
-
-  // 处理timeLog（可能是数组或单个对象）- 只考虑今天的记录
-  if (task.timeLog) {
-    const timeLogs = Array.isArray(task.timeLog) ? task.timeLog : [task.timeLog]
-
-    for (const timeLog of timeLogs) {
-      // 只处理今天的时间记录
-      if (isToday(timeLog.startTime)) {
-        todayExecutedTime += timeLog.duration
-
-        // 记录今天的执行会话
-        executionSessions.push({
-          date: timeLog.startTime.split('T')[0],
-          duration: timeLog.duration,
-          startTime: timeLog.startTime,
-          endTime: timeLog.endTime,
-        })
-      }
-    }
-  }
-
-  // 获取预估时间（默认25分钟 = 1500秒）
-  const estimatedDuration = task.estimatedDuration || 1500
-
-  // 计算今天的进度百分比
-  const progressPercentage = Math.min(
-    (todayExecutedTime / estimatedDuration) * 100,
-    100
-  )
-
-  // 检查是否已完成（只考虑今天的完成状态）
-  const isCompletedToday =
-    (task.status === 'completed' &&
-      task.completedAt &&
-      isToday(task.completedAt)) ||
-    (task.status === 'completed' && executionSessions.length > 0)
-
-  return {
-    taskId: task._id,
-    totalExecutedTime: todayExecutedTime, // 只返回今天的执行时间
-    estimatedDuration,
-    progressPercentage: Math.round(progressPercentage * 10) / 10, // 保留1位小数
-    isCompleted: isCompletedToday,
-    executionSessions: executionSessions.sort(
-      (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-    ),
   }
 }

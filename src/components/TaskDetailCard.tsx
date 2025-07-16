@@ -104,7 +104,9 @@ export default function TaskDetailCard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: task.completed ? 'in_progress' : 'completed',
-          completedAt: task.completed ? null : new Date().toISOString(),
+          completedAt: task.completed
+            ? null // PUT API会从数组中移除今天的日期
+            : new Date().toISOString().split('T')[0], // PUT API会添加到数组中
         }),
       })
 

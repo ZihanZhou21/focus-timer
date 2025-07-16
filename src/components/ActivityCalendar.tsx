@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { DEFAULT_USER_ID } from '@/lib/constants'
-import { monthlyStatsAPI } from '@/lib/monthly-stats-api'
+import { monthlyStatsAPI, DailyStats } from '@/lib/monthly-stats-api'
 
 interface DayRecord {
   date: number
@@ -86,11 +86,13 @@ export default function ActivityCalendar({
       endDate.setDate(endDate.getDate() + remainingDays)
 
       try {
-        // ✅ 使用月度统计API一次性获取整个月的任务执行时间数据
-        console.log(`获取月度统计数据: ${year}-${month + 1}`)
-        const monthlyStats = await monthlyStatsAPI.getMonthlyStats(
+        // ✅ 使用月度统计API一次性获取整个日历网格的任务执行时间数据
+        console.log(`获取日历网格数据: ${year}-${month + 1}`)
+        const monthlyStats = await monthlyStatsAPI.getMonthlyStatsWithDateRange(
           year,
           month + 1, // monthlyStatsAPI使用1-12月份格式
+          getLocalDateString(startDate),
+          getLocalDateString(endDate),
           DEFAULT_USER_ID
         )
 
@@ -111,7 +113,7 @@ export default function ActivityCalendar({
 
           // ✅ 从月度统计数据中获取当天的执行时间和任务数据（只统计TODO任务，不包含打卡任务）
           const dayStats = monthlyStats.dailyStats.find(
-            (day) => day.date === dateStr
+            (day: DailyStats) => day.date === dateStr
           )
           const focusTime = dayStats ? dayStats.todoTime : 0 // 只统计TODO任务时间（分钟），不包含打卡任务
           const cycles = dayStats ? dayStats.completedCount : 0 // 使用完成任务数作为周期数

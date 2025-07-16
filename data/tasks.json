@@ -17,8 +17,10 @@
       "Habit"
     ],
     "createdAt": "2025-06-25T10:00:00.000Z",
-    "updatedAt": "2025-07-11T06:37:04.927Z",
-    "completedAt": "2025-07-11T06:37:03.764Z",
+    "updatedAt": "2025-07-16T08:51:40.109Z",
+    "completedAt": [
+      "2025-07-16"
+    ],
     "plannedTime": "07:00",
     "checkInHistory": [
       {
@@ -71,94 +73,26 @@
       "Programming"
     ],
     "createdAt": "2025-06-25T09:00:00.000Z",
-    "updatedAt": "2025-07-07T05:36:10.903Z",
-    "completedAt": "2025-06-26T10:55:00.000Z",
+    "updatedAt": "2025-07-16T08:41:21.214Z",
+    "completedAt": [
+      "2025-06-26"
+    ],
     "plannedTime": "09:00",
     "dueDate": "2025-06-26T18:00:00.000Z",
     "estimatedDuration": 14400,
-    "timeLog": [
-      {
-        "startTime": "2025-06-25T09:00:00.000Z",
-        "endTime": "2025-06-25T12:00:00.000Z",
-        "duration": 3600
-      },
-      {
-        "startTime": "2025-07-02T02:11:10.444Z",
-        "endTime": "2025-07-02T02:11:14.051Z",
-        "duration": 3
-      },
-      {
-        "startTime": "2025-07-02T02:58:43.062Z",
-        "endTime": "2025-07-02T02:58:59.833Z",
-        "duration": 16
-      },
-      {
-        "startTime": "2025-07-02T02:58:43.062Z",
-        "endTime": "2025-07-02T02:59:02.915Z",
-        "duration": 19
-      },
-      {
-        "startTime": "2025-07-03T00:59:25.622Z",
-        "endTime": "2025-07-03T00:59:38.902Z",
-        "duration": 13
-      },
-      {
-        "startTime": "2025-07-03T02:41:25.846Z",
-        "endTime": "2025-07-03T03:47:47.090Z",
-        "duration": 3981
-      },
-      {
-        "startTime": "2025-07-03T06:29:33.343Z",
-        "endTime": "2025-07-03T06:29:38.876Z",
-        "duration": 5
-      },
-      {
-        "startTime": "2025-07-03T06:29:33.343Z",
-        "endTime": "2025-07-03T06:29:41.517Z",
-        "duration": 8
-      },
-      {
-        "startTime": "2025-07-03T06:58:42.304Z",
-        "endTime": "2025-07-03T06:58:45.772Z",
-        "duration": 3
-      },
-      {
-        "startTime": "2025-07-03T06:58:47.386Z",
-        "endTime": "2025-07-03T06:58:55.110Z",
-        "duration": 7
-      },
-      {
-        "startTime": "2025-07-03T07:45:55.151Z",
-        "endTime": "2025-07-03T07:46:01.782Z",
-        "duration": 6
-      },
-      {
-        "startTime": "2025-07-03T07:45:55.151Z",
-        "endTime": "2025-07-03T07:46:01.777Z",
-        "duration": 6
-      },
-      {
-        "startTime": "2025-07-03T07:45:55.151Z",
-        "endTime": "2025-07-03T07:46:05.591Z",
-        "duration": 10
-      },
-      {
-        "startTime": "2025-07-03T07:45:55.151Z",
-        "endTime": "2025-07-03T07:46:05.595Z",
-        "duration": 10
-      },
-      {
-        "startTime": "2025-07-07T05:36:06.078Z",
-        "endTime": "2025-07-07T05:36:10.827Z",
-        "duration": 4
-      }
-    ],
     "details": [
       "Complete the development of the user authentication module",
       "Write unit test cases",
       "Update API documentation",
       "Code review and optimization"
-    ]
+    ],
+    "dailyTimeStats": {
+      "2025-06-25": 3600,
+      "2025-07-02": 38,
+      "2025-07-03": 4049,
+      "2025-07-07": 4,
+      "2025-07-11": 5436
+    }
   },
   {
     "_id": "task_1719399600004_yzabcd345",
@@ -178,8 +112,10 @@
       "Morning Exercise"
     ],
     "createdAt": "2025-06-25T06:00:00.000Z",
-    "updatedAt": "2025-07-11T06:50:49.973Z",
-    "completedAt": "2025-07-11T06:50:48.722Z",
+    "updatedAt": "2025-07-16T08:51:43.497Z",
+    "completedAt": [
+      "2025-07-16"
+    ],
     "plannedTime": "07:30",
     "checkInHistory": [
       {
@@ -218,8 +154,10 @@
       "Meditation"
     ],
     "createdAt": "2025-06-29T11:16:07.372Z",
-    "updatedAt": "2025-07-02T07:06:48.388Z",
-    "completedAt": "2025-07-02T07:06:48.313Z",
+    "updatedAt": "2025-07-16T08:51:45.774Z",
+    "completedAt": [
+      "2025-07-16"
+    ],
     "plannedTime": "09:15",
     "checkInHistory": [],
     "recurrence": {
@@ -236,159 +174,75 @@
     }
   },
   {
-    "_id": "task_1751425168374_o42upkz7z",
+    "_id": "task_1752637472144_3euwsqwzf",
     "userId": "user_001",
     "type": "todo",
-    "title": "test task",
-    "content": [
-      "123123"
+    "title": "api",
+    "content": [],
+    "status": "pending",
+    "priority": "medium",
+    "tags": [],
+    "createdAt": "2025-07-16T03:44:32.145Z",
+    "updatedAt": "2025-07-16T08:49:05.969Z",
+    "completedAt": [],
+    "plannedTime": "09:00",
+    "dueDate": null,
+    "estimatedDuration": 60,
+    "dailyTimeStats": {}
+  },
+  {
+    "_id": "task_1752651827650_dp1iafmei",
+    "userId": "user_001",
+    "type": "todo",
+    "title": "333",
+    "content": [],
+    "status": "completed",
+    "priority": "medium",
+    "tags": [],
+    "createdAt": "2025-07-16T07:43:47.650Z",
+    "updatedAt": "2025-07-16T08:52:13.375Z",
+    "completedAt": [
+      "2025-07-16"
     ],
-    "status": "completed",
-    "priority": "medium",
-    "tags": [],
-    "createdAt": "2025-07-02T02:59:28.374Z",
-    "updatedAt": "2025-07-07T03:40:10.647Z",
-    "completedAt": "2025-07-02T03:05:05.924Z",
     "plannedTime": "09:00",
     "dueDate": null,
-    "estimatedDuration": 300,
-    "timeLog": [
-      {
-        "startTime": "2025-07-02T02:59:36.759Z",
-        "endTime": "2025-07-02T02:59:44.733Z",
-        "duration": 7
-      },
-      {
-        "startTime": "2025-07-02T02:59:36.759Z",
-        "endTime": "2025-07-02T03:00:06.853Z",
-        "duration": 30
-      },
-      {
-        "startTime": "2025-07-02T03:00:30.481Z",
-        "endTime": "2025-07-02T03:02:05.072Z",
-        "duration": 94
-      },
-      {
-        "startTime": "2025-07-02T03:00:30.481Z",
-        "endTime": "2025-07-02T03:05:04.480Z",
-        "duration": 273
-      }
-    ]
+    "estimatedDuration": 60,
+    "dailyTimeStats": {
+      "2025-07-16": 60
+    }
   },
   {
-    "_id": "task_1751526480054_l0grtzhmo",
+    "_id": "task_1752652424299_dnl5sjlzu",
     "userId": "user_001",
     "type": "todo",
-    "title": "task2",
+    "title": "new",
     "content": [],
-    "status": "completed",
+    "status": "pending",
     "priority": "medium",
     "tags": [],
-    "createdAt": "2025-07-03T07:08:00.054Z",
-    "updatedAt": "2025-07-07T03:40:20.487Z",
-    "completedAt": "2025-07-04T02:37:27.309Z",
+    "createdAt": "2025-07-16T07:53:44.299Z",
+    "updatedAt": "2025-07-16T08:49:05.969Z",
+    "completedAt": [],
     "plannedTime": "09:00",
     "dueDate": null,
-    "estimatedDuration": 300,
-    "timeLog": [
-      {
-        "startTime": "2025-07-03T07:08:05.752Z",
-        "endTime": "2025-07-03T07:08:14.758Z",
-        "duration": 9
-      },
-      {
-        "startTime": "2025-07-03T07:08:27.022Z",
-        "endTime": "2025-07-03T07:08:31.289Z",
-        "duration": 4
-      },
-      {
-        "startTime": "2025-07-03T07:08:35.782Z",
-        "endTime": "2025-07-03T07:08:39.899Z",
-        "duration": 4
-      },
-      {
-        "startTime": "2025-07-03T07:11:00.427Z",
-        "endTime": "2025-07-03T07:11:17.724Z",
-        "duration": 17
-      },
-      {
-        "startTime": "2025-07-03T07:13:28.596Z",
-        "endTime": "2025-07-03T07:13:47.912Z",
-        "duration": 19
-      },
-      {
-        "startTime": "2025-07-03T07:46:09.569Z",
-        "endTime": "2025-07-03T07:46:12.871Z",
-        "duration": 3
-      },
-      {
-        "startTime": "2025-07-03T07:46:09.569Z",
-        "endTime": "2025-07-03T07:46:12.878Z",
-        "duration": 3
-      },
-      {
-        "startTime": "2025-07-03T07:46:09.569Z",
-        "endTime": "2025-07-03T07:46:15.204Z",
-        "duration": 5
-      },
-      {
-        "startTime": "2025-07-03T07:46:09.569Z",
-        "endTime": "2025-07-03T07:46:15.210Z",
-        "duration": 5
-      },
-      {
-        "startTime": "2025-07-03T07:46:09.569Z",
-        "endTime": "2025-07-03T07:47:17.341Z",
-        "duration": 67
-      },
-      {
-        "startTime": "2025-07-03T07:46:09.569Z",
-        "endTime": "2025-07-03T07:47:17.336Z",
-        "duration": 67
-      },
-      {
-        "startTime": "2025-07-03T07:48:49.336Z",
-        "endTime": "2025-07-03T07:48:54.085Z",
-        "duration": 4
-      },
-      {
-        "startTime": "2025-07-04T02:32:23.703Z",
-        "endTime": "2025-07-04T02:32:58.382Z",
-        "duration": 34
-      },
-      {
-        "startTime": "2025-07-04T02:32:23.703Z",
-        "endTime": "2025-07-04T02:37:26.701Z",
-        "duration": 302
-      }
-    ]
+    "estimatedDuration": 60,
+    "dailyTimeStats": {}
   },
   {
-    "_id": "task_1751625917907_gfylihz0h",
+    "_id": "task_1752653584800_vfhhz4xiu",
     "userId": "user_001",
     "type": "todo",
-    "title": "task1",
+    "title": "123",
     "content": [],
-    "status": "in_progress",
+    "status": "pending",
     "priority": "medium",
     "tags": [],
-    "createdAt": "2025-07-04T10:45:17.907Z",
-    "updatedAt": "2025-07-11T06:51:20.888Z",
-    "completedAt": null,
+    "createdAt": "2025-07-16T08:13:04.800Z",
+    "updatedAt": "2025-07-16T08:49:30.823Z",
+    "completedAt": [],
     "plannedTime": "09:00",
     "dueDate": null,
     "estimatedDuration": 300,
-    "timeLog": [
-      {
-        "startTime": "2025-07-10T07:25:55.537Z",
-        "endTime": "2025-07-10T07:25:59.013Z",
-        "duration": 3
-      },
-      {
-        "startTime": "2025-07-11T06:51:15.827Z",
-        "endTime": "2025-07-11T06:51:20.848Z",
-        "duration": 5
-      }
-    ]
+    "dailyTimeStats": {}
   }
 ]
