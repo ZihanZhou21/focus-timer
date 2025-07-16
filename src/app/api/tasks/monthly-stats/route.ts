@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
       // 初始化当日统计
       let totalDuration = 0
       let todoTime = 0
-      let checkInTime = 0
+      const checkInTime = 0
       let taskCount = 0
       let completedCount = 0
 
@@ -159,10 +159,8 @@ export async function GET(request: NextRequest) {
             taskCount++
           }
         } else if (task.type === 'check-in') {
-          // 打卡任务：如果在当天完成，计算为固定时间（比如1分钟）
+          // 打卡任务：如果在当天完成，不计算时间
           if (isTaskCompletedOnDate(task, dateStr)) {
-            checkInTime += 1 // 打卡任务固定1分钟
-            totalDuration += 1
             taskCount++
           }
         }

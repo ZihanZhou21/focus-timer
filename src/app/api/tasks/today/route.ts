@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import * as path from 'path'
-import { Task, TodoTask, CheckInTask } from '@/lib/types'
+import { Task, TodoTask } from '@/lib/types'
 import { applyLogicalResetToTasks } from '@/lib/timestamp-reset'
 
 // 获取数据文件路径
@@ -110,15 +110,8 @@ function convertToProjectItems(tasks: Task[]): ProjectItem[] {
     if (task.type === 'todo') {
       durationMinutes = Math.round((task as TodoTask).estimatedDuration / 60)
     } else {
-      const checkInTask = task as CheckInTask
-      if (checkInTask.checkInHistory.length > 0) {
-        const avgDuration =
-          checkInTask.checkInHistory.reduce(
-            (sum, entry) => sum + entry.duration,
-            0
-          ) / checkInTask.checkInHistory.length
-        durationMinutes = Math.round(avgDuration / 60)
-      }
+      // check-in任务不再有duration概念，固定显示为0分钟
+      durationMinutes = 0
     }
 
     // 确定分类和图标

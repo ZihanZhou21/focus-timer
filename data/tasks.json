@@ -26,13 +26,11 @@
       {
         "date": "2025-06-24",
         "note": "Got up on time today",
-        "duration": 300,
         "rating": 4
       },
       {
         "date": "2025-06-25",
         "note": "Felt great after getting up",
-        "duration": 240,
         "rating": 5
       }
     ],
@@ -73,7 +71,7 @@
       "Programming"
     ],
     "createdAt": "2025-06-25T09:00:00.000Z",
-    "updatedAt": "2025-07-16T08:41:21.214Z",
+    "updatedAt": "2025-07-16T09:42:02.409Z",
     "completedAt": [
       "2025-06-26"
     ],
@@ -91,7 +89,12 @@
       "2025-07-02": 38,
       "2025-07-03": 4049,
       "2025-07-07": 4,
-      "2025-07-11": 5436
+      "2025-07-11": 5436,
+      "2025-07-12": 4505,
+      "2025-07-13": 985,
+      "2025-07-14": 2350,
+      "2025-07-15": 4933,
+      "2025-07-16": 3826
     }
   },
   {
@@ -121,7 +124,6 @@
       {
         "date": "2025-06-24",
         "note": "Felt great during the morning run today",
-        "duration": 1500,
         "rating": 5
       }
     ],
@@ -133,7 +135,6 @@
         5
       ]
     },
-    "estimatedDuration": 1500,
     "details": [
       "20 minutes morning run",
       "5 minutes breathing practice",
@@ -179,16 +180,20 @@
     "type": "todo",
     "title": "api",
     "content": [],
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "tags": [],
     "createdAt": "2025-07-16T03:44:32.145Z",
-    "updatedAt": "2025-07-16T08:49:05.969Z",
-    "completedAt": [],
+    "updatedAt": "2025-07-16T09:17:33.104Z",
+    "completedAt": [
+      "2025-07-16"
+    ],
     "plannedTime": "09:00",
     "dueDate": null,
     "estimatedDuration": 60,
-    "dailyTimeStats": {}
+    "dailyTimeStats": {
+      "2025-07-16": 63
+    }
   },
   {
     "_id": "task_1752651827650_dp1iafmei",
@@ -221,12 +226,14 @@
     "priority": "medium",
     "tags": [],
     "createdAt": "2025-07-16T07:53:44.299Z",
-    "updatedAt": "2025-07-16T08:49:05.969Z",
+    "updatedAt": "2025-07-16T09:33:45.803Z",
     "completedAt": [],
     "plannedTime": "09:00",
     "dueDate": null,
     "estimatedDuration": 60,
-    "dailyTimeStats": {}
+    "dailyTimeStats": {
+      "2025-07-16": 13
+    }
   },
   {
     "_id": "task_1752653584800_vfhhz4xiu",
@@ -238,13 +245,13 @@
     "priority": "medium",
     "tags": [],
     "createdAt": "2025-07-16T08:13:04.800Z",
-    "updatedAt": "2025-07-16T09:05:54.436Z",
+    "updatedAt": "2025-07-16T09:26:51.821Z",
     "completedAt": [],
     "plannedTime": "09:00",
     "dueDate": null,
     "estimatedDuration": 300,
     "dailyTimeStats": {
-      "2025-07-16": 10
+      "2025-07-16": 80
     }
   }
 ]

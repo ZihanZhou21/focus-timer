@@ -147,7 +147,7 @@ function calculateDayStats(
   targetDate: string
 ): Omit<DayStats, 'date' | 'dayLabel' | 'isToday'> {
   let todoTime = 0 // TODO任务执行时间（秒）
-  let checkInTime = 0 // 打卡任务执行时间（秒）
+  const checkInTime = 0 // 打卡任务执行时间（秒）
   let taskCount = 0 // 该日相关任务总数
   let completedCount = 0 // 该日完成的任务数
 
@@ -193,8 +193,7 @@ function calculateDayStats(
       for (const checkIn of checkInTask.checkInHistory) {
         if (checkIn.date === targetDate) {
           isRelevantForDay = true
-          dayDuration += checkIn.duration
-          checkInTime += checkIn.duration
+          // duration字段已删除，check-in任务不再计算时间
           completedCount++
           break
         }

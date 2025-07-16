@@ -168,7 +168,7 @@ export class TaskService {
       activeCheckIns: checkInTasks.filter((t) => t.status === 'in_progress')
         .length,
       totalFocusTime: this.calculateTotalFocusTime(todoTasks),
-      totalCheckInTime: this.calculateTotalCheckInTime(checkInTasks),
+      totalCheckInTime: this.calculateTotalCheckInTime(),
     }
   }
 
@@ -184,16 +184,9 @@ export class TaskService {
     }, 0)
   }
 
-  private calculateTotalCheckInTime(checkInTasks: CheckInTask[]): number {
-    return checkInTasks.reduce((total, task) => {
-      return (
-        total +
-        task.checkInHistory.reduce(
-          (taskTotal, entry) => taskTotal + entry.duration,
-          0
-        )
-      )
-    }, 0)
+  private calculateTotalCheckInTime(): number {
+    // check-in任务不再有duration概念，返回0
+    return 0
   }
 }
 

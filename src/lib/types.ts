@@ -37,7 +37,6 @@ export interface CheckInTask extends BaseTask {
 export interface CheckInEntry {
   date: string
   note: string
-  duration: number // 秒
   rating: number // 1-5
 }
 

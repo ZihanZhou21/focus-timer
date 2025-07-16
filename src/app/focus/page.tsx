@@ -57,6 +57,13 @@ function ModernTimer({
   const [localTotalElapsed, setLocalTotalElapsed] = useState(0)
   const [localTotalEstimated, setLocalTotalEstimated] = useState(0)
 
+  // 新增：基于时间戳的后台计时器状态
+  const [timerStartTimestamp, setTimerStartTimestamp] = useState<number | null>(
+    null
+  )
+  const [timerInitialRemaining, setTimerInitialRemaining] = useState(0)
+  const [timerInitialElapsed, setTimerInitialElapsed] = useState(0)
+
   // 运行时使用本地状态，暂停时使用Redux状态
   const timeRemaining = isRunning
     ? localTimeRemaining
@@ -97,7 +104,7 @@ function ModernTimer({
   const getStorageKey = () =>
     taskId ? `focus-timer-${taskId}` : 'focus-timer-practice'
 
-  // 从localStorage恢复状态
+  // 从localStorage恢复状态 - 支持时间戳计算
   const restoreFromStorage = () => {
     if (typeof window === 'undefined') return null
 
@@ -120,10 +127,40 @@ function ModernTimer({
           const hoursSinceLastSave =
             (Date.now() - parsed.lastSaveTime) / (1000 * 60 * 60)
           if (hoursSinceLastSave < 24) {
+            // 如果有时间戳且计时器应该在运行中，计算实际当前状态
+            if (parsed.timerStartTimestamp && parsed.wasRunning) {
+              const now = Date.now()
+              const elapsedSeconds = Math.floor(
+                (now - parsed.timerStartTimestamp) / 1000
+              )
+              const currentRemaining = Math.max(
+                0,
+                parsed.timerInitialRemaining - elapsedSeconds
+              )
+              const currentElapsed = parsed.timerInitialElapsed + elapsedSeconds
+
+              console.log('🕐 Timer was running in background:', {
+                savedRemaining: parsed.timeRemaining,
+                calculatedRemaining: currentRemaining,
+                backgroundElapsed: elapsedSeconds,
+              })
+
+              return {
+                timeRemaining: currentRemaining,
+                totalElapsed: currentElapsed,
+                totalEstimated: parsed.totalEstimated,
+                wasRunning: parsed.wasRunning,
+                timerStartTimestamp: parsed.timerStartTimestamp,
+                timerInitialRemaining: parsed.timerInitialRemaining,
+                timerInitialElapsed: parsed.timerInitialElapsed,
+              }
+            }
+
             return {
               timeRemaining: parsed.timeRemaining,
               totalElapsed: parsed.totalElapsed,
               totalEstimated: parsed.totalEstimated,
+              wasRunning: false,
             }
           } else {
             console.log('localStorage data expired, clearing')
@@ -142,7 +179,7 @@ function ModernTimer({
   const lastSaveTimeRef = useRef(0)
   const SAVE_THROTTLE_MS = 10000 // 10秒内最多保存一次
 
-  // 保存状态到localStorage（带节流控制）
+  // 保存状态到localStorage（带节流控制）- 支持时间戳
   const saveToStorage = useCallback(
     (
       timeRemaining: number,
@@ -167,6 +204,11 @@ function ModernTimer({
           totalEstimated,
           taskId,
           lastSaveTime: now,
+          // 新增：保存时间戳信息
+          wasRunning: isRunning,
+          timerStartTimestamp: timerStartTimestamp,
+          timerInitialRemaining: timerInitialRemaining,
+          timerInitialElapsed: timerInitialElapsed,
         }
 
         localStorage.setItem(storageKey, JSON.stringify(stateToSave))
@@ -176,7 +218,13 @@ function ModernTimer({
         console.error('Failed to save state to localStorage:', error)
       }
     },
-    [taskId]
+    [
+      taskId,
+      isRunning,
+      timerStartTimestamp,
+      timerInitialRemaining,
+      timerInitialElapsed,
+    ]
   )
 
   // 清除localStorage状态
@@ -215,7 +263,38 @@ function ModernTimer({
     setLocalTimeRemaining(initialValues.timeRemaining)
     setLocalTotalElapsed(initialValues.totalElapsed)
     setLocalTotalEstimated(initialValues.totalEstimated)
-  }, [dispatch, taskId, initialTime, originalRemaining, originalElapsed])
+
+    // 新增：恢复时间戳状态
+    if (
+      restoredState &&
+      restoredState.wasRunning &&
+      restoredState.timerStartTimestamp
+    ) {
+      console.log('🔄 Restoring background timer state')
+      setTimerStartTimestamp(restoredState.timerStartTimestamp)
+      setTimerInitialRemaining(restoredState.timerInitialRemaining)
+      setTimerInitialElapsed(restoredState.timerInitialElapsed)
+
+      // 如果计时器之前在运行且未完成，重新启动
+      if (initialValues.timeRemaining > 0) {
+        dispatch(startTimer())
+      } else {
+        // 如果已经完成，触发完成逻辑
+        console.log('🏁 Timer completed while in background')
+        dispatch(completeTimer())
+        setTimeout(() => {
+          onComplete?.()
+        }, 100)
+      }
+    }
+  }, [
+    dispatch,
+    taskId,
+    initialTime,
+    originalRemaining,
+    originalElapsed,
+    onComplete,
+  ])
 
   // 同步外部任务进度数据 - 改进版本，避免干扰用户操作
   useEffect(() => {
@@ -558,16 +637,34 @@ function ModernTimer({
     sessionStartTime.current = new Date()
 
     // 启动时从Redux同步到本地状态
-    setLocalTimeRemaining(timerState.timeRemaining)
-    setLocalTotalElapsed(timerState.totalElapsed)
-    setLocalTotalEstimated(timerState.totalEstimated)
+    const currentTimeRemaining = timerState.timeRemaining
+    const currentTotalElapsed = timerState.totalElapsed
+    const currentTotalEstimated = timerState.totalEstimated
+
+    setLocalTimeRemaining(currentTimeRemaining)
+    setLocalTotalElapsed(currentTotalElapsed)
+    setLocalTotalEstimated(currentTotalEstimated)
+
+    // 新增：设置时间戳状态，支持后台运行
+    const startTimestamp = Date.now()
+    setTimerStartTimestamp(startTimestamp)
+    setTimerInitialRemaining(currentTimeRemaining)
+    setTimerInitialElapsed(currentTotalElapsed)
 
     dispatch(startTimer())
 
-    // 每秒只更新本地状态，不更新Redux
+    // 每秒更新本地状态，但使用时间戳计算确保精确性
     intervalRef.current = setInterval(() => {
-      setLocalTimeRemaining((prev) => Math.max(0, prev - 1))
-      setLocalTotalElapsed((prev) => prev + 1)
+      const now = Date.now()
+      const elapsedSeconds = Math.floor((now - startTimestamp) / 1000)
+      const newTimeRemaining = Math.max(
+        0,
+        currentTimeRemaining - elapsedSeconds
+      )
+      const newTotalElapsed = currentTotalElapsed + elapsedSeconds
+
+      setLocalTimeRemaining(newTimeRemaining)
+      setLocalTotalElapsed(newTotalElapsed)
     }, 1000)
   }, [
     dispatch,
@@ -657,7 +754,7 @@ function ModernTimer({
     }
   }, [isRunning, pauseTimerHandler, startTimerHandler])
 
-  // 页面离开确认
+  // 页面离开确认 - 修改为支持后台运行
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isRunning) {
@@ -679,49 +776,56 @@ function ModernTimer({
 
         // 页面刷新/关闭时保存会话数据
         saveSessionData()
+
+        // 显示提示但不阻止页面关闭
         e.preventDefault()
-        e.returnValue = '计时器正在运行，确定要离开吗？'
-        return '计时器正在运行，确定要离开吗？'
+        e.returnValue =
+          '计时器将在后台继续运行，下次打开focus页面可继续查看进度'
+        return '计时器将在后台继续运行，下次打开focus页面可继续查看进度'
       }
     }
 
     const handlePopState = async () => {
       if (isRunning) {
-        const confirmed = window.confirm('计时器正在运行，确定要离开吗？')
-        if (confirmed) {
-          // 页面切换时将本地状态同步到Redux并保存
-          const currentTimeRemaining = isRunning
-            ? localTimeRemaining
-            : timeRemaining
-          const currentTotalElapsed = isRunning
-            ? localTotalElapsed
-            : totalElapsed
-          const currentTotalEstimated = isRunning
-            ? localTotalEstimated
-            : totalEstimated
+        // 不再阻止导航，而是提示用户并保存状态
+        console.log(
+          '🔄 Timer running, saving state for background continuation'
+        )
 
-          if (isRunning) {
-            dispatch(
-              updateTime({
-                remaining: localTimeRemaining,
-                elapsed: localTotalElapsed,
-              })
-            )
-          }
+        // 页面切换时将本地状态同步到Redux并保存
+        const currentTimeRemaining = isRunning
+          ? localTimeRemaining
+          : timeRemaining
+        const currentTotalElapsed = isRunning ? localTotalElapsed : totalElapsed
+        const currentTotalEstimated = isRunning
+          ? localTotalEstimated
+          : totalEstimated
 
-          saveToStorage(
-            currentTimeRemaining,
-            currentTotalElapsed,
-            currentTotalEstimated,
-            true
+        if (isRunning) {
+          dispatch(
+            updateTime({
+              remaining: localTimeRemaining,
+              elapsed: localTotalElapsed,
+            })
           )
+        }
 
-          // 页面切换时保存会话数据并暂停
-          await saveSessionData()
-          dispatch(pauseTimer())
-        } else {
-          // 阻止导航，恢复当前URL
-          window.history.pushState(null, '', window.location.href)
+        saveToStorage(
+          currentTimeRemaining,
+          currentTotalElapsed,
+          currentTotalEstimated,
+          true
+        )
+
+        // 页面切换时保存会话数据，但不暂停计时器
+        await saveSessionData()
+
+        // 显示友好提示
+        if (typeof window !== 'undefined') {
+          setTimeout(() => {
+            // 使用toast或简单alert通知用户
+            console.log('💡 Timer continues running in background')
+          }, 100)
         }
       }
     }
@@ -729,10 +833,7 @@ function ModernTimer({
     window.addEventListener('beforeunload', handleBeforeUnload)
     window.addEventListener('popstate', handlePopState)
 
-    // 防止浏览器后退
-    if (isRunning) {
-      window.history.pushState(null, '', window.location.href)
-    }
+    // 不再阻止浏览器后退，允许正常导航
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
@@ -759,47 +860,50 @@ function ModernTimer({
         toggleTimer()
       } else if (e.code === 'Escape') {
         e.preventDefault()
-        // ESC键安全退出
+        // ESC键安全退出 - 支持后台运行
         if (isRunning) {
-          const confirmed = window.confirm(
-            'Timer is running, are you sure you want to exit? Timer will be paused when exiting.'
+          console.log(
+            '🔄 ESC pressed while timer running, saving state for background continuation'
           )
-          if (confirmed) {
-            // ESC退出时将本地状态同步到Redux并保存
-            if (isRunning) {
-              dispatch(
-                updateTime({
-                  remaining: localTimeRemaining,
-                  elapsed: localTotalElapsed,
-                })
-              )
-            }
 
-            const currentTimeRemaining = isRunning
-              ? localTimeRemaining
-              : timeRemaining
-            const currentTotalElapsed = isRunning
-              ? localTotalElapsed
-              : totalElapsed
-            const currentTotalEstimated = isRunning
-              ? localTotalEstimated
-              : totalEstimated
-
-            saveToStorage(
-              currentTimeRemaining,
-              currentTotalElapsed,
-              currentTotalEstimated,
-              true
+          // ESC退出时将本地状态同步到Redux并保存
+          if (isRunning) {
+            dispatch(
+              updateTime({
+                remaining: localTimeRemaining,
+                elapsed: localTotalElapsed,
+              })
             )
-
-            // Save session data when exiting with ESC
-            await saveSessionData()
-            dispatch(pauseTimer())
-            window.history.back()
           }
-        } else {
-          window.history.back()
+
+          const currentTimeRemaining = isRunning
+            ? localTimeRemaining
+            : timeRemaining
+          const currentTotalElapsed = isRunning
+            ? localTotalElapsed
+            : totalElapsed
+          const currentTotalEstimated = isRunning
+            ? localTotalEstimated
+            : totalEstimated
+
+          saveToStorage(
+            currentTimeRemaining,
+            currentTotalElapsed,
+            currentTotalEstimated,
+            true
+          )
+
+          // Save session data when exiting with ESC, but don't pause timer
+          await saveSessionData()
+
+          // 显示友好提示
+          if (typeof window !== 'undefined') {
+            alert('💡 计时器将在后台继续运行\n下次打开focus页面可继续查看进度')
+          }
         }
+
+        // 直接退出，不需要确认
+        window.history.back()
       }
     },
     [
@@ -1302,57 +1406,59 @@ function FocusContent() {
               </div>
             </div>
           ) : (
-            // 正常的计时器显示
-            <ModernTimer
-              initialTime={
-                // 优先使用秒级数据转换为分钟，提高精度
-                taskProgress?.remainingSeconds !== undefined
-                  ? taskProgress.remainingSeconds / 60
-                  : (taskProgress?.remainingMinutes ?? 0) > 0
-                  ? taskProgress?.remainingMinutes ?? 0
-                  : remainingMinutes > 0
-                  ? remainingMinutes
-                  : taskInfo
-                  ? parseDurationToMinutes(taskInfo.duration)
-                  : 25
-              }
-              originalRemaining={
-                // 优先使用秒级数据转换为分钟
-                taskProgress?.remainingSeconds !== undefined
-                  ? taskProgress.remainingSeconds / 60
-                  : taskProgress?.remainingMinutes ?? remainingMinutes
-              }
-              originalElapsed={
-                // 优先使用秒级数据转换为分钟
-                taskProgress?.executedSeconds !== undefined
-                  ? taskProgress.executedSeconds / 60
-                  : taskProgress?.executedMinutes ?? elapsedMinutes
-              }
-              taskId={taskId}
-              onComplete={handleTimerComplete}
-              liveTaskProgress={taskProgress}
-            />
+            <div>
+              {/* 正常的计时器显示 */}
+              <ModernTimer
+                initialTime={
+                  // 优先使用秒级数据转换为分钟，提高精度
+                  taskProgress?.remainingSeconds !== undefined
+                    ? taskProgress.remainingSeconds / 60
+                    : (taskProgress?.remainingMinutes ?? 0) > 0
+                    ? taskProgress?.remainingMinutes ?? 0
+                    : remainingMinutes > 0
+                    ? remainingMinutes
+                    : taskInfo
+                    ? parseDurationToMinutes(taskInfo.duration)
+                    : 25
+                }
+                originalRemaining={
+                  // 优先使用秒级数据转换为分钟
+                  taskProgress?.remainingSeconds !== undefined
+                    ? taskProgress.remainingSeconds / 60
+                    : taskProgress?.remainingMinutes ?? remainingMinutes
+                }
+                originalElapsed={
+                  // 优先使用秒级数据转换为分钟
+                  taskProgress?.executedSeconds !== undefined
+                    ? taskProgress.executedSeconds / 60
+                    : taskProgress?.executedMinutes ?? elapsedMinutes
+                }
+                taskId={taskId}
+                onComplete={handleTimerComplete}
+                liveTaskProgress={taskProgress}
+              />
+
+              {/* 快捷键提示 - 移到中间容器 */}
+              <div className="mt-8 pt-8 ">
+                <div className="flex items-center justify-center space-x-8">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700">
+                      SPACE
+                    </div>
+                    <span className="text-slate-400 text-sm">Start/Pause</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700">
+                      ESC
+                    </div>
+                    <span className="text-slate-400 text-sm">Safe Exit</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </main>
-
-      {/* 底部区域 - 快捷键提示 */}
-      <footer className="p-8">
-        <div className="flex items-center justify-center space-x-8">
-          <div className="flex items-center space-x-3">
-            <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700">
-              SPACE
-            </div>
-            <span className="text-slate-400 text-sm">Start/Pause</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700">
-              ESC
-            </div>
-            <span className="text-slate-400 text-sm">Safe Exit</span>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }
