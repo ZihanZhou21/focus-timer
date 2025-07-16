@@ -901,9 +901,9 @@ function ModernTimer({
   return (
     <div className="w-full max-w-6xl mx-auto flex flex-col h-full">
       {/* 上部区域 - 倒计时显示 */}
-      <div className="flex flex-col items-center space-y-8 mb-16">
+      <div className="flex flex-col items-center space-y-8 mb-12">
         {/* 时间显示框 */}
-        <div className="bg-slate-800/80 backdrop-blur-xl text-white p-8 rounded-3xl border border-slate-700/50 shadow-2xl relative">
+        <div className="bg-slate-800/80 backdrop-blur-xl text-white p-6 rounded-3xl border border-slate-700/50 shadow-2xl relative">
           <div className="text-8xl font-light tracking-wider text-center">
             {formatTime(timeRemaining)}
           </div>
@@ -911,22 +911,22 @@ function ModernTimer({
       </div>
 
       {/* 中部区域 - 进度条 */}
-      <div className="flex flex-col justify-start max-w-4xl mx-auto w-full">
+      <div className="flex flex-col justify-start max-w-3xl mx-auto w-full mb-16">
         <div className="relative">
           {/* 进度文字和百分比 */}
-          <div className="flex justify-between items-center mb-6">
-            <div className="text-2xl font-light text-slate-200 tracking-wider">
+          <div className="flex justify-between items-center mb-4">
+            <div className="text-xl font-light text-slate-200 tracking-wider">
               Task Progress
             </div>
-            <div className="text-2xl font-light text-green-400">
+            <div className="text-xl font-light text-green-400">
               {Math.round(currentProgress)}%
             </div>
           </div>
 
           {/* 进度条容器 */}
-          <div className="relative bg-slate-800/60 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-slate-700/50">
+          <div className="relative bg-slate-800/60 backdrop-blur-xl p-3 rounded-xl shadow-2xl border border-slate-700/50">
             {/* 进度条内容区域 */}
-            <div className="relative h-12 bg-gray-800 flex gap-1">
+            <div className="relative h-8 bg-gray-800 flex gap-1">
               {/* 20个独立方格 */}
               {Array.from({ length: 20 }, (_, i) => {
                 const blockStart = i * 5 // 当前格子的起始百分比
@@ -947,7 +947,7 @@ function ModernTimer({
                   <div
                     key={i}
                     className="relative flex-1 bg-gray-700 border border-gray-600"
-                    style={{ minHeight: '48px' }}>
+                    style={{ minHeight: '32px' }}>
                     {/* 填充部分 */}
                     <div
                       className="bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-200 ease-out"
@@ -964,30 +964,28 @@ function ModernTimer({
       </div>
 
       {/* 底部区域 - 控制按钮 */}
-      <div className="flex flex-col items-center space-y-6 mt-auto mb-12">
+      <div className="flex flex-col items-center mt-auto mb-12">
         {/* 主要控制按钮 */}
-        <div className="flex items-center space-x-6">
+        <div className="flex items-center">
           <button
             onClick={toggleTimer}
-            className={`w-24 h-24 rounded-full border-4 transition-all duration-300 flex items-center justify-center text-2xl font-light tracking-wider ${
+            className={`w-20 h-20 rounded-full transition-all duration-300 flex items-center justify-center text-3xl font-medium shadow-2xl relative overflow-hidden group ${
               isRunning
-                ? 'border-red-500 bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                : 'border-green-500 bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                ? 'bg-gradient-to-br from-slate-700 to-slate-800 text-white border-2 border-slate-600 hover:from-slate-600 hover:to-slate-700'
+                : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white border-2 border-blue-400 hover:from-blue-400 hover:to-blue-500 shadow-blue-500/25'
             }`}>
-            {isRunning ? '⏸' : '▶'}
+            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <span className="relative z-10">
+              {isRunning ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-2 h-6 bg-current rounded-sm"></div>
+                  <div className="w-2 h-6 bg-current rounded-sm ml-1"></div>
+                </div>
+              ) : (
+                '▶'
+              )}
+            </span>
           </button>
-        </div>
-
-        {/* 快捷键提示 */}
-        <div className="text-slate-400 text-sm text-center">
-          <div>
-            Press <kbd className="bg-slate-700 px-2 py-1 rounded">Space</kbd> to
-            play/pause
-          </div>
-          <div>
-            Press <kbd className="bg-slate-700 px-2 py-1 rounded">Esc</kbd> to
-            exit
-          </div>
         </div>
       </div>
     </div>
@@ -1253,7 +1251,7 @@ function FocusContent() {
       </header>
 
       {/* 主要内容区域 */}
-      <main className="flex-1 flex items-center justify-center p-8">
+      <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-4xl">
           {/* 检查任务是否已完成 */}
           {taskInfo && taskInfo.completed ? (
