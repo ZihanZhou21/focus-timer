@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { promises as fs } from 'fs'
-import * as path from 'path'
 import { Task, TodoTask } from '@/lib/types'
+import { readTasksData } from '@/lib/database'
 
 // 日常统计数据接口
 interface DailyStats {
@@ -22,37 +21,6 @@ interface MonthlyStatsResponse {
     totalTasks: number
     totalCompleted: number
     averageDailyTime: number
-  }
-}
-
-// 获取数据文件路径
-const getDataFilePath = () => {
-  return path.join(process.cwd(), 'data', 'tasks.json')
-}
-
-// 读取任务数据
-async function readTasksData(): Promise<Task[]> {
-  try {
-    const filePath = getDataFilePath()
-
-    try {
-      await fs.access(filePath)
-    } catch {
-      console.log('任务数据文件不存在，返回空数组')
-      return []
-    }
-
-    const fileContent = await fs.readFile(filePath, 'utf-8')
-    if (!fileContent.trim()) {
-      console.log('任务数据文件为空，返回空数组')
-      return []
-    }
-
-    const tasks = JSON.parse(fileContent)
-    return Array.isArray(tasks) ? tasks : []
-  } catch (error) {
-    console.error('读取任务数据失败:', error)
-    return []
   }
 }
 

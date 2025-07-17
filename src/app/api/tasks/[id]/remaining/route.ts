@@ -1,30 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { promises as fs } from 'fs'
-import * as path from 'path'
-import { Task, TodoTask } from '@/lib/types'
-
-const getDataFilePath = () => path.join(process.cwd(), 'data', 'tasks.json')
-
-async function readTasksData(): Promise<Task[]> {
-  try {
-    const filePath = getDataFilePath()
-
-    try {
-      await fs.access(filePath)
-    } catch {
-      return []
-    }
-
-    const fileContent = await fs.readFile(filePath, 'utf-8')
-    if (!fileContent.trim()) return []
-
-    const tasks = JSON.parse(fileContent)
-    return Array.isArray(tasks) ? tasks : []
-  } catch (error) {
-    console.error('Failed to read tasks:', error)
-    return []
-  }
-}
+import { TodoTask } from '@/lib/types'
+import { findTaskById } from '@/lib/database'
 
 export async function GET(
   request: NextRequest,
@@ -32,8 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const tasks = await readTasksData()
-    const task = tasks.find((t) => t._id === id)
+    const task = await findTaskById(id)
 
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })

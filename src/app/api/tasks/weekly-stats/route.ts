@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readFileSync, existsSync } from 'fs'
-import { join } from 'path'
 import { Task, TodoTask, CheckInTask } from '@/lib/types'
+import { readTasksData } from '@/lib/database'
 
 interface DayStats {
   date: string
@@ -51,9 +50,10 @@ export async function GET(request: NextRequest) {
     console.log(`获取用户 ${userId} 过去${days}天的任务执行时间统计`)
 
     // 读取任务数据
-    const dataPath = join(process.cwd(), 'data', 'tasks.json')
-    if (!existsSync(dataPath)) {
-      console.log('任务数据文件不存在，返回空统计')
+    const allTasks: Task[] = await readTasksData()
+
+    if (allTasks.length === 0) {
+      console.log('没有任务数据，返回空统计')
       return NextResponse.json({
         startDate: startDate.toISOString().split('T')[0],
         endDate: endDate.toISOString().split('T')[0],
@@ -66,9 +66,6 @@ export async function GET(request: NextRequest) {
         },
       })
     }
-
-    const fileContent = readFileSync(dataPath, 'utf-8')
-    const allTasks: Task[] = JSON.parse(fileContent)
 
     // 过滤用户任务
     const userTasks = allTasks.filter((task) => task.userId === userId)

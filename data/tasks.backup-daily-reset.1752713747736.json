@@ -17,10 +17,9 @@
       "Habit"
     ],
     "createdAt": "2025-06-25T10:00:00.000Z",
-    "updatedAt": "2025-07-17T00:56:43.558Z",
+    "updatedAt": "2025-07-16T08:51:40.109Z",
     "completedAt": [
-      "2025-07-16",
-      "2025-07-17"
+      "2025-07-16"
     ],
     "plannedTime": "07:00",
     "checkInHistory": [
@@ -109,14 +108,14 @@
       "Feel the tranquility of the morning",
       "Energize for the new day"
     ],
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "tags": [
       "Health",
       "Morning Exercise"
     ],
     "createdAt": "2025-06-25T06:00:00.000Z",
-    "updatedAt": "2025-07-17T00:55:47.744Z",
+    "updatedAt": "2025-07-16T08:51:43.497Z",
     "completedAt": [
       "2025-07-16"
     ],
@@ -149,14 +148,14 @@
     "type": "check-in",
     "title": "Morning Meditation",
     "content": [],
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "tags": [
       "Habit",
       "Meditation"
     ],
     "createdAt": "2025-06-29T11:16:07.372Z",
-    "updatedAt": "2025-07-17T00:55:47.744Z",
+    "updatedAt": "2025-07-16T08:51:45.774Z",
     "completedAt": [
       "2025-07-16"
     ],
@@ -181,11 +180,11 @@
     "type": "todo",
     "title": "api",
     "content": [],
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "tags": [],
     "createdAt": "2025-07-16T03:44:32.145Z",
-    "updatedAt": "2025-07-17T00:55:47.744Z",
+    "updatedAt": "2025-07-16T09:17:33.104Z",
     "completedAt": [
       "2025-07-16"
     ],
@@ -202,11 +201,11 @@
     "type": "todo",
     "title": "333",
     "content": [],
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "tags": [],
     "createdAt": "2025-07-16T07:43:47.650Z",
-    "updatedAt": "2025-07-17T00:55:47.744Z",
+    "updatedAt": "2025-07-16T08:52:13.375Z",
     "completedAt": [
       "2025-07-16"
     ],
@@ -246,14 +245,13 @@
     "priority": "medium",
     "tags": [],
     "createdAt": "2025-07-16T08:13:04.800Z",
-    "updatedAt": "2025-07-17T01:05:09.648Z",
+    "updatedAt": "2025-07-16T09:26:51.821Z",
     "completedAt": [],
     "plannedTime": "09:00",
     "dueDate": null,
     "estimatedDuration": 300,
     "dailyTimeStats": {
-      "2025-07-16": 80,
-      "2025-07-17": 25
+      "2025-07-16": 80
     }
   }
 ]

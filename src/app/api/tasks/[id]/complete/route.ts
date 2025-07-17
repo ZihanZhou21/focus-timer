@@ -1,30 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { promises as fs } from 'fs'
-import * as path from 'path'
-import { Task, TodoTask } from '@/lib/types'
-
-const getDataFilePath = () => path.join(process.cwd(), 'data', 'tasks.json')
-
-async function readTasksData(): Promise<Task[]> {
-  try {
-    const filePath = getDataFilePath()
-    const fileContent = await fs.readFile(filePath, 'utf-8')
-    return JSON.parse(fileContent)
-  } catch (error) {
-    console.error('读取任务数据失败:', error)
-    return []
-  }
-}
-
-async function writeTasksData(tasks: Task[]): Promise<void> {
-  try {
-    const filePath = getDataFilePath()
-    await fs.writeFile(filePath, JSON.stringify(tasks, null, 2), 'utf-8')
-  } catch (error) {
-    console.error('写入任务数据失败:', error)
-    throw new Error('写入任务数据失败')
-  }
-}
+import { TodoTask } from '@/lib/types'
+import { findTaskById, updateTask } from '@/lib/database'
 
 export async function POST(
   request: NextRequest,
@@ -35,14 +11,11 @@ export async function POST(
     const body = await request.json()
     const { duration } = body as { duration?: number }
 
-    const tasks = await readTasksData()
+    const task = await findTaskById(id)
 
-    const taskIndex = tasks.findIndex((t) => t._id === id)
-    if (taskIndex === -1) {
+    if (!task) {
       return NextResponse.json({ error: '任务不存在' }, { status: 404 })
     }
-
-    const task = tasks[taskIndex]
 
     // 更新任务状态
     const today = new Date().toISOString().split('T')[0] // 今天的日期
@@ -83,8 +56,7 @@ export async function POST(
       )
     }
 
-    tasks[taskIndex] = updatedTask
-    await writeTasksData(tasks)
+    await updateTask(id, updatedTask)
 
     return NextResponse.json({
       message: '任务已完成',

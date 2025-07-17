@@ -1,25 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { promises as fs } from 'fs'
-import * as path from 'path'
 import { Task, TodoTask } from '@/lib/types'
 import { applyLogicalResetToTasks } from '@/lib/timestamp-reset'
-
-// 获取数据文件路径
-const getDataFilePath = () => {
-  return path.join(process.cwd(), 'data', 'tasks.json')
-}
-
-// 读取任务数据
-async function readTasksData(): Promise<Task[]> {
-  try {
-    const filePath = getDataFilePath()
-    const fileContent = await fs.readFile(filePath, 'utf-8')
-    return JSON.parse(fileContent)
-  } catch (error) {
-    console.error('读取任务数据失败:', error)
-    return []
-  }
-}
+import { readTasksData } from '@/lib/database'
 
 // 获取日期字符串（YYYY-MM-DD格式）
 function getDateString(date?: string): string {

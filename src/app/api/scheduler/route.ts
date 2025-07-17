@@ -1,35 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { promises as fs } from 'fs'
-import * as path from 'path'
-import { Task, TodoTask, CheckInTask } from '@/lib/types'
-
-// 获取数据文件路径
-const getDataFilePath = () => {
-  return path.join(process.cwd(), 'data', 'tasks.json')
-}
-
-// 读取任务数据
-async function readTasksData(): Promise<Task[]> {
-  try {
-    const dataPath = getDataFilePath()
-    const data = await fs.readFile(dataPath, 'utf-8')
-    return JSON.parse(data)
-  } catch (error) {
-    console.error('读取任务数据失败:', error)
-    return []
-  }
-}
-
-// 写入任务数据
-async function writeTasksData(tasks: Task[]): Promise<void> {
-  try {
-    const dataPath = getDataFilePath()
-    await fs.writeFile(dataPath, JSON.stringify(tasks, null, 2))
-  } catch (error) {
-    console.error('写入任务数据失败:', error)
-    throw error
-  }
-}
+import { TodoTask, CheckInTask } from '@/lib/types'
+import { readTasksData, writeTasksData } from '@/lib/database'
 
 // 执行每日重置逻辑
 async function performDailyReset(userId: string = 'user_001') {
@@ -39,13 +10,7 @@ async function performDailyReset(userId: string = 'user_001') {
   let resetCount = 0
   const today = new Date().toISOString().split('T')[0]
 
-  // 备份数据
-  const backupPath = path.join(
-    process.cwd(),
-    'data',
-    `tasks.backup-daily-reset.${Date.now()}.json`
-  )
-  await fs.writeFile(backupPath, JSON.stringify(tasks, null, 2))
+  // MongoDB 本身提供数据备份功能，无需手动创建备份文件
 
   for (let i = 0; i < tasks.length; i++) {
     const task = tasks[i]
@@ -113,7 +78,6 @@ async function performDailyReset(userId: string = 'user_001') {
   return {
     resetCount,
     totalTasks: userTasks.length,
-    backupPath,
     resetDate: today,
   }
 }

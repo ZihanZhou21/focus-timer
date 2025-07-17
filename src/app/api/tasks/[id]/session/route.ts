@@ -1,30 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { promises as fs } from 'fs'
-import * as path from 'path'
-import { Task, TodoTask } from '@/lib/types'
-
-// 任务数据文件位置
-const getDataFilePath = () => path.join(process.cwd(), 'data', 'tasks.json')
-
-async function readTasksData(): Promise<Task[]> {
-  try {
-    const filePath = getDataFilePath()
-    const fileContent = await fs.readFile(filePath, 'utf-8')
-    if (!fileContent.trim()) return []
-    const tasks = JSON.parse(fileContent)
-    return Array.isArray(tasks) ? tasks : []
-  } catch (error) {
-    console.error('Failed to read tasks:', error)
-    return []
-  }
-}
-
-async function writeTasksData(tasks: Task[]): Promise<void> {
-  const filePath = getDataFilePath()
-  const dir = path.dirname(filePath)
-  await fs.mkdir(dir, { recursive: true })
-  await fs.writeFile(filePath, JSON.stringify(tasks, null, 2), 'utf-8')
-}
+import { TodoTask } from '@/lib/types'
+import { findTaskById, updateTask } from '@/lib/database'
 
 // POST /api/tasks/[id]/session - 简化版本：只记录今日执行时间
 export async function POST(
@@ -45,14 +21,11 @@ export async function POST(
       )
     }
 
-    const tasks = await readTasksData()
-    const index = tasks.findIndex((t) => t._id === id)
+    const task = await findTaskById(id)
 
-    if (index === -1) {
+    if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 })
     }
-
-    const task = tasks[index]
 
     if (task.type !== 'todo') {
       return NextResponse.json(
@@ -80,8 +53,7 @@ export async function POST(
 
     todoTask.updatedAt = new Date().toISOString()
 
-    tasks[index] = todoTask
-    await writeTasksData(tasks)
+    await updateTask(id, todoTask)
 
     return NextResponse.json({
       saved: true,
