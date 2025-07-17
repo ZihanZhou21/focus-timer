@@ -57,13 +57,6 @@ function ModernTimer({
   const [localTotalElapsed, setLocalTotalElapsed] = useState(0)
   const [localTotalEstimated, setLocalTotalEstimated] = useState(0)
 
-  // 新增：基于时间戳的后台计时器状态
-  const [timerStartTimestamp, setTimerStartTimestamp] = useState<number | null>(
-    null
-  )
-  const [timerInitialRemaining, setTimerInitialRemaining] = useState(0)
-  const [timerInitialElapsed, setTimerInitialElapsed] = useState(0)
-
   // 运行时使用本地状态，暂停时使用Redux状态
   const timeRemaining = isRunning
     ? localTimeRemaining
@@ -104,7 +97,7 @@ function ModernTimer({
   const getStorageKey = () =>
     taskId ? `focus-timer-${taskId}` : 'focus-timer-practice'
 
-  // 从localStorage恢复状态 - 支持时间戳计算
+  // 从localStorage恢复状态（移除后台计算功能）
   const restoreFromStorage = () => {
     if (typeof window === 'undefined') return null
 
@@ -127,40 +120,12 @@ function ModernTimer({
           const hoursSinceLastSave =
             (Date.now() - parsed.lastSaveTime) / (1000 * 60 * 60)
           if (hoursSinceLastSave < 24) {
-            // 如果有时间戳且计时器应该在运行中，计算实际当前状态
-            if (parsed.timerStartTimestamp && parsed.wasRunning) {
-              const now = Date.now()
-              const elapsedSeconds = Math.floor(
-                (now - parsed.timerStartTimestamp) / 1000
-              )
-              const currentRemaining = Math.max(
-                0,
-                parsed.timerInitialRemaining - elapsedSeconds
-              )
-              const currentElapsed = parsed.timerInitialElapsed + elapsedSeconds
-
-              console.log('🕐 Timer was running in background:', {
-                savedRemaining: parsed.timeRemaining,
-                calculatedRemaining: currentRemaining,
-                backgroundElapsed: elapsedSeconds,
-              })
-
-              return {
-                timeRemaining: currentRemaining,
-                totalElapsed: currentElapsed,
-                totalEstimated: parsed.totalEstimated,
-                wasRunning: parsed.wasRunning,
-                timerStartTimestamp: parsed.timerStartTimestamp,
-                timerInitialRemaining: parsed.timerInitialRemaining,
-                timerInitialElapsed: parsed.timerInitialElapsed,
-              }
-            }
-
+            // 移除后台计算逻辑，计时器状态始终以暂停状态恢复
             return {
               timeRemaining: parsed.timeRemaining,
               totalElapsed: parsed.totalElapsed,
               totalEstimated: parsed.totalEstimated,
-              wasRunning: false,
+              wasRunning: false, // 总是以暂停状态恢复
             }
           } else {
             console.log('localStorage data expired, clearing')
@@ -179,7 +144,7 @@ function ModernTimer({
   const lastSaveTimeRef = useRef(0)
   const SAVE_THROTTLE_MS = 10000 // 10秒内最多保存一次
 
-  // 保存状态到localStorage（带节流控制）- 支持时间戳
+  // 保存状态到localStorage（移除时间戳逻辑）
   const saveToStorage = useCallback(
     (
       timeRemaining: number,
@@ -204,11 +169,8 @@ function ModernTimer({
           totalEstimated,
           taskId,
           lastSaveTime: now,
-          // 新增：保存时间戳信息
-          wasRunning: isRunning,
-          timerStartTimestamp: timerStartTimestamp,
-          timerInitialRemaining: timerInitialRemaining,
-          timerInitialElapsed: timerInitialElapsed,
+          // 移除时间戳信息，不再支持后台运行
+          wasRunning: false, // 始终保存为暂停状态
         }
 
         localStorage.setItem(storageKey, JSON.stringify(stateToSave))
@@ -218,13 +180,7 @@ function ModernTimer({
         console.error('Failed to save state to localStorage:', error)
       }
     },
-    [
-      taskId,
-      isRunning,
-      timerStartTimestamp,
-      timerInitialRemaining,
-      timerInitialElapsed,
-    ]
+    [taskId]
   )
 
   // 清除localStorage状态
@@ -264,29 +220,7 @@ function ModernTimer({
     setLocalTotalElapsed(initialValues.totalElapsed)
     setLocalTotalEstimated(initialValues.totalEstimated)
 
-    // 新增：恢复时间戳状态
-    if (
-      restoredState &&
-      restoredState.wasRunning &&
-      restoredState.timerStartTimestamp
-    ) {
-      console.log('🔄 Restoring background timer state')
-      setTimerStartTimestamp(restoredState.timerStartTimestamp)
-      setTimerInitialRemaining(restoredState.timerInitialRemaining)
-      setTimerInitialElapsed(restoredState.timerInitialElapsed)
-
-      // 如果计时器之前在运行且未完成，重新启动
-      if (initialValues.timeRemaining > 0) {
-        dispatch(startTimer())
-      } else {
-        // 如果已经完成，触发完成逻辑
-        console.log('🏁 Timer completed while in background')
-        dispatch(completeTimer())
-        setTimeout(() => {
-          onComplete?.()
-        }, 100)
-      }
-    }
+    // 移除自动恢复运行状态的逻辑，计时器总是以暂停状态开始
   }, [
     dispatch,
     taskId,
@@ -295,6 +229,33 @@ function ModernTimer({
     originalElapsed,
     onComplete,
   ])
+
+  // 页面可见性监听：当页面不可见时自动暂停
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isRunning) {
+        console.log('📱 页面切换/隐藏，自动暂停倒计时')
+        pauseTimerHandler()
+      }
+    }
+
+    const handlePageBlur = () => {
+      if (isRunning) {
+        console.log('🔄 页面失去焦点，自动暂停倒计时')
+        pauseTimerHandler()
+      }
+    }
+
+    // 监听页面可见性变化
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    // 监听页面失去焦点
+    window.addEventListener('blur', handlePageBlur)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('blur', handlePageBlur)
+    }
+  }, [isRunning])
 
   // 同步外部任务进度数据 - 改进版本，避免干扰用户操作
   useEffect(() => {
@@ -645,26 +606,12 @@ function ModernTimer({
     setLocalTotalElapsed(currentTotalElapsed)
     setLocalTotalEstimated(currentTotalEstimated)
 
-    // 新增：设置时间戳状态，支持后台运行
-    const startTimestamp = Date.now()
-    setTimerStartTimestamp(startTimestamp)
-    setTimerInitialRemaining(currentTimeRemaining)
-    setTimerInitialElapsed(currentTotalElapsed)
-
     dispatch(startTimer())
 
-    // 每秒更新本地状态，但使用时间戳计算确保精确性
+    // 每秒更新本地状态
     intervalRef.current = setInterval(() => {
-      const now = Date.now()
-      const elapsedSeconds = Math.floor((now - startTimestamp) / 1000)
-      const newTimeRemaining = Math.max(
-        0,
-        currentTimeRemaining - elapsedSeconds
-      )
-      const newTotalElapsed = currentTotalElapsed + elapsedSeconds
-
-      setLocalTimeRemaining(newTimeRemaining)
-      setLocalTotalElapsed(newTotalElapsed)
+      setLocalTimeRemaining((prev) => Math.max(0, prev - 1))
+      setLocalTotalElapsed((prev) => prev + 1)
     }, 1000)
   }, [
     dispatch,
@@ -754,18 +701,14 @@ function ModernTimer({
     }
   }, [isRunning, pauseTimerHandler, startTimerHandler])
 
-  // 页面离开确认 - 修改为支持后台运行
+  // 页面离开确认 - 修改为不支持后台运行
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isRunning) {
-        // 页面关闭时强制保存当前状态到localStorage
-        const currentTimeRemaining = isRunning
-          ? localTimeRemaining
-          : timeRemaining
-        const currentTotalElapsed = isRunning ? localTotalElapsed : totalElapsed
-        const currentTotalEstimated = isRunning
-          ? localTotalEstimated
-          : totalEstimated
+        // 页面关闭时强制保存当前状态到localStorage并暂停
+        const currentTimeRemaining = localTimeRemaining
+        const currentTotalElapsed = localTotalElapsed
+        const currentTotalEstimated = localTotalEstimated
 
         saveToStorage(
           currentTimeRemaining,
@@ -777,63 +720,24 @@ function ModernTimer({
         // 页面刷新/关闭时保存会话数据
         saveSessionData()
 
-        // 显示提示但不阻止页面关闭
+        // 显示提示
         e.preventDefault()
-        e.returnValue =
-          '计时器将在后台继续运行，下次打开focus页面可继续查看进度'
-        return '计时器将在后台继续运行，下次打开focus页面可继续查看进度'
+        e.returnValue = '倒计时正在运行中，离开页面将暂停倒计时'
+        return '倒计时正在运行中，离开页面将暂停倒计时'
       }
     }
 
     const handlePopState = async () => {
       if (isRunning) {
-        // 不再阻止导航，而是提示用户并保存状态
-        console.log(
-          '🔄 Timer running, saving state for background continuation'
-        )
+        console.log('📱 页面切换，自动暂停倒计时并保存状态')
 
-        // 页面切换时将本地状态同步到Redux并保存
-        const currentTimeRemaining = isRunning
-          ? localTimeRemaining
-          : timeRemaining
-        const currentTotalElapsed = isRunning ? localTotalElapsed : totalElapsed
-        const currentTotalEstimated = isRunning
-          ? localTotalEstimated
-          : totalEstimated
-
-        if (isRunning) {
-          dispatch(
-            updateTime({
-              remaining: localTimeRemaining,
-              elapsed: localTotalElapsed,
-            })
-          )
-        }
-
-        saveToStorage(
-          currentTimeRemaining,
-          currentTotalElapsed,
-          currentTotalEstimated,
-          true
-        )
-
-        // 页面切换时保存会话数据，但不暂停计时器
-        await saveSessionData()
-
-        // 显示友好提示
-        if (typeof window !== 'undefined') {
-          setTimeout(() => {
-            // 使用toast或简单alert通知用户
-            console.log('💡 Timer continues running in background')
-          }, 100)
-        }
+        // 页面切换时暂停计时器并保存状态
+        pauseTimerHandler()
       }
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     window.addEventListener('popstate', handlePopState)
-
-    // 不再阻止浏览器后退，允许正常导航
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
@@ -844,12 +748,9 @@ function ModernTimer({
     localTimeRemaining,
     localTotalElapsed,
     localTotalEstimated,
-    timeRemaining,
-    totalElapsed,
-    totalEstimated,
     saveToStorage,
     saveSessionData,
-    dispatch,
+    pauseTimerHandler,
   ])
 
   // 监听键盘快捷键
@@ -860,65 +761,17 @@ function ModernTimer({
         toggleTimer()
       } else if (e.code === 'Escape') {
         e.preventDefault()
-        // ESC键安全退出 - 支持后台运行
+        // ESC键安全退出 - 暂停倒计时
         if (isRunning) {
-          console.log(
-            '🔄 ESC pressed while timer running, saving state for background continuation'
-          )
-
-          // ESC退出时将本地状态同步到Redux并保存
-          if (isRunning) {
-            dispatch(
-              updateTime({
-                remaining: localTimeRemaining,
-                elapsed: localTotalElapsed,
-              })
-            )
-          }
-
-          const currentTimeRemaining = isRunning
-            ? localTimeRemaining
-            : timeRemaining
-          const currentTotalElapsed = isRunning
-            ? localTotalElapsed
-            : totalElapsed
-          const currentTotalEstimated = isRunning
-            ? localTotalEstimated
-            : totalEstimated
-
-          saveToStorage(
-            currentTimeRemaining,
-            currentTotalElapsed,
-            currentTotalEstimated,
-            true
-          )
-
-          // Save session data when exiting with ESC, but don't pause timer
-          await saveSessionData()
-
-          // 显示友好提示
-          if (typeof window !== 'undefined') {
-            alert('💡 计时器将在后台继续运行\n下次打开focus页面可继续查看进度')
-          }
+          console.log('🔄 ESC键退出，暂停倒计时并保存状态')
+          await pauseTimerHandler()
         }
 
-        // 直接退出，不需要确认
+        // 直接退出
         window.history.back()
       }
     },
-    [
-      isRunning,
-      localTimeRemaining,
-      localTotalElapsed,
-      localTotalEstimated,
-      timeRemaining,
-      totalElapsed,
-      totalEstimated,
-      toggleTimer,
-      saveToStorage,
-      saveSessionData,
-      dispatch,
-    ]
+    [isRunning, toggleTimer, pauseTimerHandler]
   )
 
   useEffect(() => {
