@@ -82,17 +82,91 @@ export default function TaskDetailCard({
     }
   }, [selectedItem])
 
-  // 批量加载所有TODO任务的数据
+  // 优化：智能批量加载任务数据
   useEffect(() => {
-    const todoTasks = timelineItems.filter((item) => item.type !== 'check-in')
-    todoTasks.forEach((task) => {
-      if (!taskProgressData.has(task.id)) {
-        loadTaskProgress(task.id)
+    const loadTasksOptimized = async () => {
+      const todoTasks = timelineItems.filter((item) => item.type !== 'check-in')
+
+      if (todoTasks.length === 0) return
+
+      // 检查哪些任务缺少数据
+      const missingProgressTasks = todoTasks.filter(
+        (task) => !taskProgressData.has(task.id)
+      )
+      const missingRemainingTasks = todoTasks.filter(
+        (task) => !taskRemainingData.has(task.id)
+      )
+
+      console.log(
+        `📊 需要加载进度数据的任务: ${missingProgressTasks.length} 个`
+      )
+      console.log(
+        `⏱️ 需要加载剩余时间的任务: ${missingRemainingTasks.length} 个`
+      )
+
+      // 并行批量请求，而不是串行
+      const promises: Promise<void>[] = []
+
+      // 批量获取进度数据
+      if (missingProgressTasks.length > 0) {
+        const progressPromise = taskProgressAPI
+          .getBatchTaskProgress(missingProgressTasks.map((task) => task.id))
+          .then((progressDataArray) => {
+            const newProgressData = new Map(taskProgressData)
+            progressDataArray.forEach((data) => {
+              if (data.taskId) {
+                newProgressData.set(data.taskId, data)
+              }
+            })
+            setTaskProgressData(newProgressData)
+            console.log(
+              `✅ 批量加载进度数据完成: ${progressDataArray.length} 个任务`
+            )
+          })
+          .catch((error) => {
+            console.error('批量加载进度数据失败:', error)
+            // 降级为单个请求
+            missingProgressTasks.forEach((task) => loadTaskProgress(task.id))
+          })
+
+        promises.push(progressPromise)
       }
-      if (!taskRemainingData.has(task.id)) {
-        loadTaskRemaining(task.id)
+
+      // 批量获取剩余时间数据
+      if (missingRemainingTasks.length > 0) {
+        const remainingPromise = taskRemainingAPI
+          .getBatchTaskRemaining(missingRemainingTasks.map((task) => task.id))
+          .then((remainingDataMap) => {
+            const newRemainingData = new Map(taskRemainingData)
+            remainingDataMap.forEach((data, taskId) => {
+              newRemainingData.set(taskId, data)
+            })
+            setTaskRemainingData(newRemainingData)
+            console.log(
+              `✅ 批量加载剩余时间完成: ${remainingDataMap.size} 个任务`
+            )
+          })
+          .catch((error) => {
+            console.error('批量加载剩余时间失败:', error)
+            // 降级为单个请求
+            missingRemainingTasks.forEach((task) => loadTaskRemaining(task.id))
+          })
+
+        promises.push(remainingPromise)
       }
-    })
+
+      // 等待所有批量请求完成
+      if (promises.length > 0) {
+        try {
+          await Promise.allSettled(promises)
+          console.log(`🎉 批量加载完成！`)
+        } catch (error) {
+          console.error('批量加载过程中出现错误:', error)
+        }
+      }
+    }
+
+    loadTasksOptimized()
   }, [timelineItems])
 
   // 处理打卡任务的完成/撤销操作

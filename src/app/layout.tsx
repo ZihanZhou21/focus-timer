@@ -3,6 +3,11 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import ClientProvider from '@/components/ClientProvider'
 
+// 在开发环境中导入内存泄漏检测器
+if (process.env.NODE_ENV === 'development') {
+  import('@/lib/memory-leak-detector')
+}
+
 const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin'],

@@ -12,6 +12,9 @@ const CHECK_INTERVAL = 60 * 1000 // 1分钟检查一次
 class AutoResetService {
   private state: AutoResetState
   private checkInterval: NodeJS.Timeout | null = null
+  // 新增：保存事件监听器引用以便清理
+  private visibilityChangeHandler: (() => void) | null = null
+  private focusHandler: (() => void) | null = null
 
   constructor() {
     this.state = this.loadState()
@@ -144,19 +147,41 @@ class AutoResetService {
       this.performResetCheck()
     }, CHECK_INTERVAL)
 
-    // 监听页面可见性变化，当页面重新可见时检查
-    document.addEventListener('visibilitychange', () => {
+    // 先清理已有的事件监听器（防止重复添加）
+    this.removeEventListeners()
+
+    // 创建事件处理函数
+    this.visibilityChangeHandler = () => {
       if (!document.hidden) {
         console.log('页面重新可见，执行重置检查')
         this.performResetCheck()
       }
-    })
+    }
 
-    // 监听焦点事件，当页面重新获得焦点时检查
-    window.addEventListener('focus', () => {
+    this.focusHandler = () => {
       console.log('页面重新获得焦点，执行重置检查')
       this.performResetCheck()
-    })
+    }
+
+    // 监听页面可见性变化，当页面重新可见时检查
+    document.addEventListener('visibilitychange', this.visibilityChangeHandler)
+    // 监听焦点事件，当页面重新获得焦点时检查
+    window.addEventListener('focus', this.focusHandler)
+  }
+
+  // 清理事件监听器
+  private removeEventListeners(): void {
+    if (this.visibilityChangeHandler) {
+      document.removeEventListener(
+        'visibilitychange',
+        this.visibilityChangeHandler
+      )
+      this.visibilityChangeHandler = null
+    }
+    if (this.focusHandler) {
+      window.removeEventListener('focus', this.focusHandler)
+      this.focusHandler = null
+    }
   }
 
   // 停止自动重置服务
@@ -167,6 +192,9 @@ class AutoResetService {
       clearInterval(this.checkInterval)
       this.checkInterval = null
     }
+
+    // 清理事件监听器
+    this.removeEventListeners()
   }
 
   // 手动触发重置
@@ -237,6 +265,9 @@ class AutoResetService {
 }
 
 // 创建全局实例
+import { cleanupManager } from './cleanup-manager'
+
+// 导出自动重置服务实例
 export const autoResetService = new AutoResetService()
 
 // 导出类型
@@ -244,6 +275,11 @@ export type { AutoResetState }
 
 // 在模块加载时自动启动（仅在客户端）
 if (typeof window !== 'undefined') {
+  // 注册清理函数
+  cleanupManager.register(() => {
+    autoResetService.stop()
+  })
+
   // 等待DOM加载完成后启动
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {

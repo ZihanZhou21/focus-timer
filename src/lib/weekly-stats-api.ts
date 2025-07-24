@@ -251,6 +251,34 @@ export const weeklyStatsAPI = new WeeklyStatsAPIService()
 export type { DayStats, WeeklyStatsResponse, WeekChartData }
 
 // 定期清理过期缓存
-setInterval(() => {
-  weeklyStatsAPI.clearExpiredCache()
-}, 60 * 1000) // 每分钟检查一次
+let weeklyStatsCleanupInterval: NodeJS.Timeout | null = null
+
+// 启动清理服务
+function startWeeklyStatsCleanup() {
+  if (weeklyStatsCleanupInterval) return // 避免重复启动
+
+  weeklyStatsCleanupInterval = setInterval(() => {
+    weeklyStatsAPI.clearExpiredCache()
+  }, 60 * 1000) // 每分钟检查一次
+}
+
+// 停止清理服务
+function stopWeeklyStatsCleanup() {
+  if (weeklyStatsCleanupInterval) {
+    clearInterval(weeklyStatsCleanupInterval)
+    weeklyStatsCleanupInterval = null
+  }
+}
+
+import { cleanupManager } from './cleanup-manager'
+
+// 在浏览器环境中自动启动
+if (typeof window !== 'undefined') {
+  startWeeklyStatsCleanup()
+
+  // 注册到全局清理管理器
+  cleanupManager.register(stopWeeklyStatsCleanup)
+}
+
+// 导出清理控制函数
+export { startWeeklyStatsCleanup, stopWeeklyStatsCleanup }

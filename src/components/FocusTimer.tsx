@@ -33,6 +33,7 @@ export default function FocusTimer({
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const nextAlertTimeRef = useRef<number | null>(null) // 使用ref替代state
   const menuRef = useRef<HTMLDivElement | null>(null) // 菜单引用
+  const breakEndTimeoutRef = useRef<NodeJS.Timeout | null>(null) // 播放结束音效的延时器
 
   // 请求通知权限
   useEffect(() => {
@@ -139,6 +140,12 @@ export default function FocusTimer({
     setTimeLeft(initialFocusTime * 60)
     nextAlertTimeRef.current = null
     setCompletedCycles(0)
+
+    // 清理未完成的超时器
+    if (breakEndTimeoutRef.current) {
+      clearTimeout(breakEndTimeoutRef.current)
+      breakEndTimeoutRef.current = null
+    }
   }
 
   // 计时器效果
@@ -231,11 +238,16 @@ export default function FocusTimer({
             nextAlertTimeRef.current <= 1
           ) {
             playAlert()
+            // 清理之前的timeout
+            if (breakEndTimeoutRef.current) {
+              clearTimeout(breakEndTimeoutRef.current)
+            }
             // 10秒后播放break_end.mp3
-            setTimeout(() => {
+            breakEndTimeoutRef.current = setTimeout(() => {
               new Audio('/break_end.mp3').play().catch(() => {
                 console.log('break_end.mp3播放失败')
               })
+              breakEndTimeoutRef.current = null
             }, 10000)
             // 设置下一次提示时间
             const randomTime = generateRandomTime()
@@ -261,6 +273,11 @@ export default function FocusTimer({
       if (timerRef.current) {
         clearInterval(timerRef.current)
         timerRef.current = null
+      }
+      // 清理未完成的超时器
+      if (breakEndTimeoutRef.current) {
+        clearTimeout(breakEndTimeoutRef.current)
+        breakEndTimeoutRef.current = null
       }
     }
   }, [isRunning, mode, initialFocusTime, initialBreakTime])

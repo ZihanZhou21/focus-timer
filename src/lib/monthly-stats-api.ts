@@ -258,6 +258,34 @@ export const monthlyStatsAPI = new MonthlyStatsAPIService()
 export type { DailyStats, MonthlyStatsResponse }
 
 // 定期清理过期缓存
-setInterval(() => {
-  monthlyStatsAPI.clearExpiredCache()
-}, 60 * 1000) // 每分钟检查一次
+let monthlyStatsCleanupInterval: NodeJS.Timeout | null = null
+
+// 启动清理服务
+function startMonthlyStatsCleanup() {
+  if (monthlyStatsCleanupInterval) return // 避免重复启动
+
+  monthlyStatsCleanupInterval = setInterval(() => {
+    monthlyStatsAPI.clearExpiredCache()
+  }, 60 * 1000) // 每分钟检查一次
+}
+
+// 停止清理服务
+function stopMonthlyStatsCleanup() {
+  if (monthlyStatsCleanupInterval) {
+    clearInterval(monthlyStatsCleanupInterval)
+    monthlyStatsCleanupInterval = null
+  }
+}
+
+import { cleanupManager } from './cleanup-manager'
+
+// 在浏览器环境中自动启动
+if (typeof window !== 'undefined') {
+  startMonthlyStatsCleanup()
+
+  // 注册到全局清理管理器
+  cleanupManager.register(stopMonthlyStatsCleanup)
+}
+
+// 导出清理控制函数
+export { startMonthlyStatsCleanup, stopMonthlyStatsCleanup }
