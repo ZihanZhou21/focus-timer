@@ -32,12 +32,26 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: '专注时光 - 让专注成为习惯',
-  description: '一个简洁优雅的专注计时器应用，帮助您培养专注习惯，提高工作效率',
-  keywords: ['专注', '计时器', '番茄钟', '效率', '专注力', '时间管理'],
-  authors: [{ name: '专注时光团队' }],
-  creator: '专注时光',
-  publisher: '专注时光',
+  // title: '专注时光 - 让专注成为习惯',
+  // description: '一个简洁优雅的专注计时器应用，帮助您培养专注习惯，提高工作效率',
+  // keywords: ['专注', '计时器', '番茄钟', '效率', '专注力', '时间管理'],
+  // authors: [{ name: '专注时光团队' }],
+  // creator: '专注时光',
+  // publisher: '专注时光',
+  title: 'Focus Time - Make Focus a Habit',
+  description:
+    'A clean and elegant focus timer app that helps you build a habit of focus and boost productivity',
+  keywords: [
+    'Focus',
+    'Timer',
+    'Pomodoro',
+    'Efficiency',
+    'Concentration',
+    'Time Management',
+  ],
+  authors: [{ name: 'Focus Time Team' }],
+  creator: 'Focus Time',
+  publisher: 'Focus Time',
   formatDetection: {
     email: false,
     address: false,
