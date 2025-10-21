@@ -127,12 +127,16 @@ export default function WeekChart({
     refreshWeekData()
   }, [refreshWeekData, endDate])
 
+  const weekDays = getWeekDays()
+
   return (
     <div className="flex flex-col h-full">
       {/* 头部，与 ActivityCalendar 对齐 */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-light text-slate-200">Past 7 Days</h3>
-        <div className="flex items-center space-x-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h3 className="text-lg font-light text-slate-200 whitespace-nowrap">
+          Past 7 Days
+        </h3>
+        <div className="flex items-center gap-2">
           {/* 上一个7天按钮 */}
           <button
             onClick={() => navigatePeriod('prev')}
@@ -152,7 +156,7 @@ export default function WeekChart({
             </svg>
           </button>
           {/* 期间范围标签 */}
-          <span className="text-sm text-slate-400 min-w-[6rem] text-center">
+          <span className="text-sm text-slate-400 min-w-[6rem] text-center whitespace-nowrap">
             {periodLabel}
           </span>
           {/* 下一个7天按钮 */}
@@ -206,38 +210,44 @@ export default function WeekChart({
           </div>
         ) : (
           <div className="flex-1 flex flex-col">
-            <div className="flex items-end justify-between gap-2 flex-1">
-              {getWeekDays().map((item, index) => (
-                <div
-                  key={index}
-                  className="flex-1 flex flex-col items-center h-full">
-                  <div className="relative w-full flex-1 bg-slate-700 rounded-lg overflow-hidden mb-2">
-                    <div
-                      className={`absolute bottom-0 left-0 right-0 transition-all duration-300 ${
-                        item.isToday
-                          ? 'bg-gradient-to-t from-amber-500 to-amber-400'
-                          : 'bg-gradient-to-t from-slate-500 to-slate-400'
-                      }`}
-                      style={{
-                        height: `${Math.max(
-                          (item.data.focus / maxFocus) * 100,
-                          4
-                        )}%`,
-                      }}></div>
-                  </div>
-                  <div className="text-center">
-                    <div
-                      className={`text-xs font-medium ${
-                        item.isToday ? 'text-amber-400' : 'text-slate-400'
-                      }`}>
-                      {item.day}
+            <div className="flex-1">
+              <div
+                className="grid h-full gap-3"
+                style={{
+                  gridTemplateColumns: `repeat(${weekDays.length || 1}, minmax(0, 1fr))`,
+                }}>
+                {weekDays.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex flex-col items-center h-full min-w-0">
+                    <div className="relative w-full flex-1 bg-slate-700 rounded-lg overflow-hidden mb-2">
+                      <div
+                        className={`absolute bottom-0 left-0 right-0 transition-all duration-300 ${
+                          item.isToday
+                            ? 'bg-gradient-to-t from-amber-500 to-amber-400'
+                            : 'bg-gradient-to-t from-slate-500 to-slate-400'
+                        }`}
+                        style={{
+                          height: `${Math.max(
+                            (item.data.focus / maxFocus) * 100,
+                            4
+                          )}%`,
+                        }}></div>
                     </div>
-                    <div className="text-xs text-slate-500">
-                      {item.data.focus}min
+                    <div className="text-center">
+                      <div
+                        className={`text-xs font-medium ${
+                          item.isToday ? 'text-amber-400' : 'text-slate-400'
+                        }`}>
+                        {item.day}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {item.data.focus}min
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
