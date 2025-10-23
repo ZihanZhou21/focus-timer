@@ -1,15 +1,9 @@
 'use client'
 
-import React, {
-  Suspense,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
+import React, { Suspense, useEffect, useRef, useCallback, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
-import { useDispatch, useSelector } from 'react-redux'
+import { batch, useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/app/store'
 import {
   initializeTimer,
@@ -25,8 +19,25 @@ import {
   updateTaskProgress,
   setLoading,
 } from '@/app/slices/taskInfoSlice'
+import {
+  clearFocusTimerState,
+  getFocusTimerStorageKey,
+  loadFocusTimerState,
+  saveFocusTimerState,
+} from '@/lib/focus-timer-storage'
+import TimerControlButton from '@/components/focus/TimerControlButton'
 
-function ModernTimer({
+const TimerProgressGrid = dynamic(
+  () => import('@/components/focus/TimerProgressGrid'),
+  {
+    loading: () => (
+      <div className="relative bg-slate-800/60 backdrop-blur-xl p-3 rounded-xl border border-slate-700/50 h-8 w-full" />
+    ),
+    ssr: false,
+  }
+)
+
+export function useFocusTimerLogic({
   initialTime = 25,
   originalRemaining = 0,
   originalElapsed = 0,
@@ -47,7 +58,13 @@ function ModernTimer({
     executedSeconds?: number
     estimatedSeconds?: number
   } | null
-}) {
+}): {
+  timeRemaining: number
+  currentProgress: number
+  isRunning: boolean
+  formatTime: (seconds: number) => string
+  toggleTimer: () => void
+} {
   const dispatch = useDispatch()
   const timerState = useSelector((state: RootState) => state.timer)
   const { isRunning, hasInitializedFromLiveData, lastSyncTime } = timerState
@@ -93,52 +110,26 @@ function ModernTimer({
     }
   }
 
-  // localStorage存储键
-  const getStorageKey = () =>
-    taskId ? `focus-timer-${taskId}` : 'focus-timer-practice'
+  const storageKey = useMemo(
+    () => getFocusTimerStorageKey(taskId),
+    [taskId]
+  )
 
   // 从localStorage恢复状态（移除后台计算功能）
-  const restoreFromStorage = () => {
-    if (typeof window === 'undefined') return null
-
-    try {
-      const storageKey = getStorageKey()
-      const savedState = localStorage.getItem(storageKey)
-
-      if (savedState) {
-        const parsed = JSON.parse(savedState)
-        console.log('Restored state from localStorage:', parsed)
-
-        // 验证数据完整性
-        if (
-          parsed.timeRemaining !== undefined &&
-          parsed.totalElapsed !== undefined &&
-          parsed.totalEstimated !== undefined &&
-          parsed.lastSaveTime
-        ) {
-          // 检查数据是否过期（超过24小时）
-          const hoursSinceLastSave =
-            (Date.now() - parsed.lastSaveTime) / (1000 * 60 * 60)
-          if (hoursSinceLastSave < 24) {
-            // 移除后台计算逻辑，计时器状态始终以暂停状态恢复
-            return {
-              timeRemaining: parsed.timeRemaining,
-              totalElapsed: parsed.totalElapsed,
-              totalEstimated: parsed.totalEstimated,
-              wasRunning: false, // 总是以暂停状态恢复
-            }
-          } else {
-            console.log('localStorage data expired, clearing')
-            localStorage.removeItem(storageKey)
-          }
-        }
+  const restoreFromStorage = useCallback(() => {
+    const stored = loadFocusTimerState(storageKey)
+    if (stored) {
+      console.log('Restored state from localStorage:', stored)
+      return {
+        timeRemaining: stored.timeRemaining,
+        totalElapsed: stored.totalElapsed,
+        totalEstimated: stored.totalEstimated,
+        wasRunning: stored.wasRunning ?? false,
       }
-    } catch (error) {
-      console.error('Failed to restore localStorage state:', error)
     }
 
     return null
-  }
+  }, [storageKey])
 
   // 节流控制：避免频繁写入localStorage
   const lastSaveTimeRef = useRef(0)
@@ -152,8 +143,6 @@ function ModernTimer({
       totalEstimated: number,
       force = false
     ) => {
-      if (typeof window === 'undefined') return
-
       const now = Date.now()
       // 节流控制：除非强制保存，否则10秒内最多保存一次
       if (!force && now - lastSaveTimeRef.current < SAVE_THROTTLE_MS) {
@@ -161,40 +150,27 @@ function ModernTimer({
         return
       }
 
-      try {
-        const storageKey = getStorageKey()
-        const stateToSave = {
-          timeRemaining,
-          totalElapsed,
-          totalEstimated,
-          taskId,
-          lastSaveTime: now,
-          // 移除时间戳信息，不再支持后台运行
-          wasRunning: false, // 始终保存为暂停状态
-        }
-
-        localStorage.setItem(storageKey, JSON.stringify(stateToSave))
-        lastSaveTimeRef.current = now
-        console.log('💾 State saved to localStorage:', stateToSave)
-      } catch (error) {
-        console.error('Failed to save state to localStorage:', error)
+      const stateToSave = {
+        timeRemaining,
+        totalElapsed,
+        totalEstimated,
+        lastSaveTime: now,
+        // 移除时间戳信息，不再支持后台运行
+        wasRunning: false, // 始终保存为暂停状态
       }
+
+      saveFocusTimerState(storageKey, stateToSave)
+      lastSaveTimeRef.current = now
+      console.log('💾 State saved to localStorage:', stateToSave)
     },
-    [taskId]
+    [storageKey]
   )
 
   // 清除localStorage状态
   const clearStorage = useCallback(() => {
-    if (typeof window === 'undefined') return
-
-    try {
-      const storageKey = getStorageKey()
-      localStorage.removeItem(storageKey)
-      console.log('Cleared localStorage state')
-    } catch (error) {
-      console.error('Failed to clear localStorage state:', error)
-    }
-  }, [taskId])
+    clearFocusTimerState(storageKey)
+    console.log('Cleared localStorage state')
+  }, [storageKey])
 
   // 初始化计时器状态
   useEffect(() => {
@@ -855,6 +831,48 @@ function ModernTimer({
     }
   }, [])
 
+  return {
+    timeRemaining,
+    currentProgress,
+    isRunning,
+    formatTime,
+    toggleTimer,
+  }
+
+}
+
+function ModernTimer({
+  initialTime = 25,
+  originalRemaining = 0,
+  originalElapsed = 0,
+  taskId,
+  onComplete,
+  liveTaskProgress,
+}: {
+  initialTime: number
+  originalRemaining?: number
+  originalElapsed?: number
+  taskId?: string | null
+  onComplete?: () => void
+  liveTaskProgress?: {
+    remainingMinutes: number
+    executedMinutes: number
+    progressPercentage: number
+    remainingSeconds?: number
+    executedSeconds?: number
+    estimatedSeconds?: number
+  } | null
+}) {
+  const { timeRemaining, currentProgress, isRunning, formatTime, toggleTimer } =
+    useFocusTimerLogic({
+      initialTime,
+      originalRemaining,
+      originalElapsed,
+      taskId,
+      onComplete,
+      liveTaskProgress,
+    })
+
   return (
     <div className="w-full max-w-6xl mx-auto flex flex-col h-full">
       {/* 上部区域 - 倒计时显示 */}
@@ -880,43 +898,7 @@ function ModernTimer({
             </div>
           </div>
 
-          {/* 进度条容器 */}
-          <div className="relative bg-slate-800/60 backdrop-blur-xl p-3 rounded-xl shadow-2xl border border-slate-700/50">
-            {/* 进度条内容区域 */}
-            <div className="relative h-8 bg-gray-800 flex gap-1">
-              {/* 20个独立方格 */}
-              {Array.from({ length: 20 }, (_, i) => {
-                const blockStart = i * 5 // 当前格子的起始百分比
-                const blockEnd = (i + 1) * 5 // 当前格子的结束百分比
-
-                // 计算当前格子的填充进度
-                let blockFillPercentage = 0
-                if (currentProgress > blockEnd) {
-                  // 如果总进度超过这个格子的范围，格子完全填满
-                  blockFillPercentage = 100
-                } else if (currentProgress > blockStart) {
-                  // 如果总进度在这个格子范围内，计算格子内的填充百分比
-                  blockFillPercentage =
-                    ((currentProgress - blockStart) / 5) * 100
-                }
-
-                return (
-                  <div
-                    key={i}
-                    className="relative flex-1 bg-gray-700 border border-gray-600"
-                    style={{ minHeight: '32px' }}>
-                    {/* 填充部分 */}
-                    <div
-                      className="bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-200 ease-out"
-                      style={{
-                        width: `${blockFillPercentage}%`,
-                        height: '100%',
-                      }}></div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+          <TimerProgressGrid progress={currentProgress} />
         </div>
       </div>
 
@@ -924,25 +906,7 @@ function ModernTimer({
       <div className="flex flex-col items-center mt-auto mb-12">
         {/* 主要控制按钮 */}
         <div className="flex items-center">
-          <button
-            onClick={toggleTimer}
-            className={`w-20 h-20 rounded-full transition-all duration-300 flex items-center justify-center text-3xl font-medium shadow-2xl relative overflow-hidden group ${
-              isRunning
-                ? 'bg-gradient-to-br from-slate-700 to-slate-800 text-white border-2 border-slate-600 hover:from-slate-600 hover:to-slate-700'
-                : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white border-2 border-blue-400 hover:from-blue-400 hover:to-blue-500 shadow-blue-500/25'
-            }`}>
-            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <span className="relative z-10">
-              {isRunning ? (
-                <div className="flex items-center justify-center">
-                  <div className="w-2 h-6 bg-current rounded-sm"></div>
-                  <div className="w-2 h-6 bg-current rounded-sm ml-1"></div>
-                </div>
-              ) : (
-                '▶'
-              )}
-            </span>
-          </button>
+          <TimerControlButton isRunning={isRunning} onToggle={toggleTimer} />
         </div>
       </div>
     </div>
@@ -976,105 +940,97 @@ function FocusContent() {
       }
 
       try {
-        // 并行获取任务基本信息和每日更新的进度数据
-        const [taskResponse, remainingResponse, progressResponse] =
+        const [taskResult, remainingResult, progressResult] =
           await Promise.allSettled([
             fetch(`/api/tasks/${taskId}`),
             fetch(`/api/tasks/${taskId}/remaining`),
             fetch(`/api/tasks/${taskId}/progress`),
           ])
 
-        // 处理任务基本信息
-        if (taskResponse.status === 'fulfilled' && taskResponse.value.ok) {
-          const task = await taskResponse.value.json()
-          console.log('📋 Retrieved task info:', task)
+        let nextTaskInfo: {
+          title: string
+          duration: string
+          status: string
+          completed: boolean
+        } | null = null
 
-          dispatch(
-            setTaskInfo({
-              title: task.title,
-              duration: task.estimatedDuration
-                ? `${Math.round(task.estimatedDuration / 60)}分钟`
-                : '25分钟',
-              status: task.status,
-              completed: task.status === 'completed' || task.completed === true,
-            })
-          )
+        if (taskResult.status === 'fulfilled' && taskResult.value.ok) {
+          const task = await taskResult.value.json()
+          console.log('📋 Retrieved task info:', task)
+          nextTaskInfo = {
+            title: task.title,
+            duration: task.estimatedDuration
+              ? `${Math.round(task.estimatedDuration / 60)}分钟`
+              : '25分钟',
+            status: task.status,
+            completed: task.status === 'completed' || task.completed === true,
+          }
         } else {
           console.warn('⚠️ Task does not exist or has been deleted')
-          dispatch(setTaskInfo(null))
         }
 
-        // 处理每日更新的剩余时间数据
-        if (
-          remainingResponse.status === 'fulfilled' &&
-          remainingResponse.value.ok
-        ) {
-          const remainingData = await remainingResponse.value.json()
+        const progressPayload: {
+          remainingMinutes?: number
+          executedMinutes?: number
+          progressPercentage?: number
+          remainingSeconds?: number
+          executedSeconds?: number
+          estimatedSeconds?: number
+        } = {}
+
+        if (remainingResult.status === 'fulfilled' && remainingResult.value.ok) {
+          const remainingData = await remainingResult.value.json()
           console.log(
             '⏰ Retrieved daily updated remaining time:',
             remainingData
           )
-
-          dispatch(
-            updateTaskProgress({
-              remainingMinutes: remainingData.remainingMinutes,
-              executedMinutes: remainingData.executedMinutes,
-              remainingSeconds: remainingData.remainingSeconds,
-              executedSeconds: remainingData.executedSeconds,
-              estimatedSeconds: remainingData.estimatedSeconds,
-            })
-          )
+          Object.assign(progressPayload, {
+            remainingMinutes: remainingData.remainingMinutes,
+            executedMinutes: remainingData.executedMinutes,
+            remainingSeconds: remainingData.remainingSeconds,
+            executedSeconds: remainingData.executedSeconds,
+            estimatedSeconds: remainingData.estimatedSeconds,
+          })
         } else {
           console.warn('⚠️ Failed to get remaining time, using URL parameters')
-          dispatch(
-            updateTaskProgress({
-              remainingMinutes: remainingMinutes,
-              executedMinutes: elapsedMinutes,
-            })
-          )
+          Object.assign(progressPayload, {
+            remainingMinutes: remainingMinutes,
+            executedMinutes: elapsedMinutes,
+          })
         }
 
-        // 处理每日更新的进度数据
-        if (
-          progressResponse.status === 'fulfilled' &&
-          progressResponse.value.ok
-        ) {
-          const progressData = await progressResponse.value.json()
+        if (progressResult.status === 'fulfilled' && progressResult.value.ok) {
+          const progressData = await progressResult.value.json()
           console.log('📊 获取到每日更新的进度:', progressData)
-
-          dispatch(
-            updateTaskProgress({
-              progressPercentage: progressData.progressPercentage,
-            })
-          )
+          progressPayload.progressPercentage = progressData.progressPercentage
         } else {
           console.warn('⚠️ 获取进度失败，使用默认值')
+          progressPayload.progressPercentage =
+            progressPayload.progressPercentage ?? 0
+        }
+
+        batch(() => {
+          dispatch(setTaskInfo(nextTaskInfo))
+          dispatch(updateTaskProgress(progressPayload))
+        })
+      } catch (error) {
+        console.error('获取任务信息失败:', error)
+        batch(() => {
+          dispatch(setTaskInfo(null))
           dispatch(
-            updateTaskProgress({
+            setTaskProgress({
+              remainingMinutes: remainingMinutes,
+              executedMinutes: elapsedMinutes,
               progressPercentage: 0,
             })
           )
-        }
-      } catch (error) {
-        console.error('获取任务信息失败:', error)
-        dispatch(setTaskInfo(null))
-        // 使用URL参数作为fallback
-        dispatch(
-          setTaskProgress({
-            remainingMinutes: remainingMinutes,
-            executedMinutes: elapsedMinutes,
-            progressPercentage: 0,
-          })
-        )
+        })
       } finally {
         dispatch(setLoading(false))
       }
     }
 
     fetchTaskInfo()
-
-    // 移除定时刷新，改为只在初始化时获取一次数据
-    // 专注时使用本地计时器，避免频繁API调用
   }, [taskId, remainingMinutes, elapsedMinutes, dispatch])
 
   // 解析时长字符串为分钟数，最短30秒
