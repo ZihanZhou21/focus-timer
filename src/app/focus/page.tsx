@@ -87,7 +87,7 @@ export function useFocusTimerLogic({
   const sessionStartTime = useRef<Date | null>(null)
 
   // 计算真实的总预估时间和已用时间
-  const calculateInitialValues = () => {
+  const calculateInitialValues = useCallback(() => {
     // 确保最短时间为30秒
     const minTimeInMinutes = 0.5 // 30秒 = 0.5分钟
 
@@ -108,7 +108,7 @@ export function useFocusTimerLogic({
         totalEstimated: adjustedInitialTime * 60,
       }
     }
-  }
+  }, [initialTime, originalRemaining, originalElapsed])
 
   const storageKey = useMemo(
     () => getFocusTimerStorageKey(taskId),
@@ -203,35 +203,9 @@ export function useFocusTimerLogic({
     initialTime,
     originalRemaining,
     originalElapsed,
-    onComplete,
+    calculateInitialValues,
+    restoreFromStorage,
   ])
-
-  // 页面可见性监听：当页面不可见时自动暂停
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden && isRunning) {
-        console.log('📱 页面切换/隐藏，自动暂停倒计时')
-        pauseTimerHandler()
-      }
-    }
-
-    const handlePageBlur = () => {
-      if (isRunning) {
-        console.log('🔄 页面失去焦点，自动暂停倒计时')
-        pauseTimerHandler()
-      }
-    }
-
-    // 监听页面可见性变化
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    // 监听页面失去焦点
-    window.addEventListener('blur', handlePageBlur)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('blur', handlePageBlur)
-    }
-  }, [isRunning])
 
   // 同步外部任务进度数据 - 改进版本，避免干扰用户操作
   useEffect(() => {
@@ -657,6 +631,8 @@ export function useFocusTimerLogic({
       // 手动暂停时保存会话数据
       await saveSessionData()
     }
+
+    sessionStartTime.current = null
   }, [
     dispatch,
     localTimeRemaining,
@@ -665,6 +641,31 @@ export function useFocusTimerLogic({
     saveToStorage,
     saveSessionData,
   ])
+
+  // 页面可见性监听：当页面不可见时自动暂停
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isRunning) {
+        console.log('📱 页面切换/隐藏，自动暂停倒计时')
+        pauseTimerHandler()
+      }
+    }
+
+    const handlePageBlur = () => {
+      if (isRunning) {
+        console.log('🔄 页面失去焦点，自动暂停倒计时')
+        pauseTimerHandler()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('blur', handlePageBlur)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('blur', handlePageBlur)
+    }
+  }, [isRunning, pauseTimerHandler])
 
   // 播放/暂停切换
   const toggleTimer = useCallback(() => {
@@ -829,7 +830,7 @@ export function useFocusTimerLogic({
         saveSessionData()
       }
     }
-  }, [])
+  }, [saveSessionData, saveToStorage])
 
   return {
     timeRemaining,
