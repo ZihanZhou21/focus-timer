@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import ClientProvider from '@/components/ClientProvider'
 
@@ -7,18 +6,6 @@ import ClientProvider from '@/components/ClientProvider'
 if (process.env.NODE_ENV === 'development') {
   import('@/lib/memory-leak-detector')
 }
-
-const inter = Inter({
-  variable: '--font-inter',
-  subsets: ['latin'],
-  display: 'swap',
-})
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: '--font-jetbrains-mono',
-  subsets: ['latin'],
-  display: 'swap',
-})
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -78,12 +65,6 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="专注时光" />
@@ -91,7 +72,7 @@ export default function RootLayout({
         <meta name="application-name" content="专注时光" />
       </head>
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased bg-slate-50 dark:bg-slate-950 selection:bg-amber-200 dark:selection:bg-amber-800 selection:text-amber-900 dark:selection:text-amber-100`}>
+        className="font-sans antialiased bg-slate-50 dark:bg-slate-950 selection:bg-amber-200 dark:selection:bg-amber-800 selection:text-amber-900 dark:selection:text-amber-100">
         <ClientProvider>{children}</ClientProvider>
       </body>
     </html>

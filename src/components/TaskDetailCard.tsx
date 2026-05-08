@@ -53,6 +53,7 @@ export default function TaskDetailCard({
   const timer = useSelector((state: RootState) => state.timer)
   const dispatch = useDispatch()
   const cardRef = useRef<HTMLDivElement>(null)
+  const loadedBatchKeyRef = useRef('')
 
   // 处理点击外部区域关闭任务详情
   useEffect(() => {
@@ -100,46 +101,48 @@ export default function TaskDetailCard({
       const todoTasks = timelineItems.filter((item) => item.type !== 'check-in')
       if (todoTasks.length === 0) return
 
-      const missingProgressTasks = todoTasks.filter((task) => !taskProgressData.has(task.id))
-      const missingRemainingTasks = todoTasks.filter((task) => !taskRemainingData.has(task.id))
+      const taskIds = todoTasks.map((task) => task.id)
+      const batchKey = [...taskIds].sort().join(',')
+      if (batchKey === loadedBatchKeyRef.current) return
+      loadedBatchKeyRef.current = batchKey
 
       const promises: Promise<void>[] = []
 
-      if (missingProgressTasks.length > 0) {
-        promises.push(
-          taskProgressAPI
-            .getBatchTaskProgress(missingProgressTasks.map((task) => task.id))
-            .then((progressDataArray) => {
-              const newProgressData = new Map(taskProgressData)
+      promises.push(
+        taskProgressAPI
+          .getBatchTaskProgress(taskIds)
+          .then((progressDataArray) => {
+            setTaskProgressData((prev) => {
+              const newProgressData = new Map(prev)
               progressDataArray.forEach((data) => {
                 if (data.taskId) newProgressData.set(data.taskId, data)
               })
-              setTaskProgressData(newProgressData)
+              return newProgressData
             })
-            .catch(() => missingProgressTasks.forEach((task) => loadTaskProgress(task.id)))
-        )
-      }
+          })
+          .catch(() => taskIds.forEach((taskId) => loadTaskProgress(taskId)))
+      )
 
-      if (missingRemainingTasks.length > 0) {
-        promises.push(
-          taskRemainingAPI
-            .getBatchTaskRemaining(missingRemainingTasks.map((task) => task.id))
-            .then((remainingDataMap) => {
-              const newRemainingData = new Map(taskRemainingData)
+      promises.push(
+        taskRemainingAPI
+          .getBatchTaskRemaining(taskIds)
+          .then((remainingDataMap) => {
+            setTaskRemainingData((prev) => {
+              const newRemainingData = new Map(prev)
               remainingDataMap.forEach((data, taskId) => {
                 newRemainingData.set(taskId, data)
               })
-              setTaskRemainingData(newRemainingData)
+              return newRemainingData
             })
-            .catch(() => missingRemainingTasks.forEach((task) => loadTaskRemaining(task.id)))
-        )
-      }
+          })
+          .catch(() => taskIds.forEach((taskId) => loadTaskRemaining(taskId)))
+      )
 
       if (promises.length > 0) await Promise.allSettled(promises)
     }
 
     loadTasksOptimized()
-  }, [timelineItems, taskProgressData, taskRemainingData, loadTaskProgress, loadTaskRemaining])
+  }, [timelineItems, loadTaskProgress, loadTaskRemaining])
 
   const handleCheckInToggle = async (task: ProjectItem) => {
     setIsUpdating(true)

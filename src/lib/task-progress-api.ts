@@ -108,8 +108,66 @@ class TaskProgressAPI {
    * @returns 任务进度数据数组
    */
   async getBatchTaskProgress(taskIds: string[]): Promise<TaskProgressData[]> {
-    const promises = taskIds.map((taskId) => this.getTaskProgress(taskId))
-    return Promise.all(promises)
+    const uniqueTaskIds = Array.from(new Set(taskIds))
+    const results: TaskProgressData[] = []
+    const missingTaskIds: string[] = []
+
+    uniqueTaskIds.forEach((taskId) => {
+      const cached = this.cache.get(taskId)
+      const cacheValid =
+        cached &&
+        Date.now() - cached.timestamp < this.CACHE_DURATION &&
+        !isNewDay(new Date(cached.timestamp).toISOString())
+
+      if (cacheValid) {
+        results.push(cached.data)
+      } else {
+        missingTaskIds.push(taskId)
+      }
+    })
+
+    if (missingTaskIds.length === 0) return results
+
+    try {
+      const response = await fetch('/api/tasks/batch/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskIds: missingTaskIds }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data: {
+        success: Record<
+          string,
+          Omit<TaskProgressData, 'dailyProgress'> & {
+            todayProgress?: TaskProgressData['todayProgress']
+          }
+        >
+      } = await response.json()
+
+      Object.values(data.success).forEach((item) => {
+        const progressData: TaskProgressData = {
+          ...item,
+          dailyProgress: item.todayProgress ? [item.todayProgress] : [],
+        }
+        this.cache.set(progressData.taskId, {
+          data: progressData,
+          timestamp: Date.now(),
+        })
+        results.push(progressData)
+      })
+
+      return results
+    } catch (error) {
+      console.error('批量获取任务进度失败，回退到单任务请求:', error)
+      const fallbackResults = await Promise.all(
+        missingTaskIds.map((taskId) => this.getTaskProgress(taskId))
+      )
+      return [...results, ...fallbackResults]
+    }
   }
 
   /**

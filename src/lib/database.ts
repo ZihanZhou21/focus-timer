@@ -1,4 +1,6 @@
 import { MongoClient, Db, Collection } from 'mongodb'
+import { readFile } from 'fs/promises'
+import path from 'path'
 import { Task } from './types'
 
 let client: MongoClient | null = null
@@ -21,7 +23,11 @@ export async function connectToDatabase(): Promise<Db> {
 
   connectionPromise = (async () => {
     console.log('Connecting to MongoDB...')
-    client = new MongoClient(MONGODB_URI)
+    client = new MongoClient(MONGODB_URI, {
+      connectTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 3000,
+      socketTimeoutMS: 5000,
+    })
     await client.connect()
     db = client.db(DB_NAME)
 
@@ -39,6 +45,19 @@ export async function connectToDatabase(): Promise<Db> {
     throw error
   } finally {
     connectionPromise = null
+  }
+}
+
+async function readLocalTasksData(): Promise<Task[]> {
+  try {
+    const filePath = path.join(process.cwd(), 'data', 'tasks.json')
+    const file = await readFile(filePath, 'utf8')
+    const tasks = JSON.parse(file) as Task[]
+    console.log(`Read ${tasks.length} tasks from local data file`)
+    return tasks
+  } catch (error) {
+    console.error('Failed to read local task data:', error)
+    return []
   }
 }
 
@@ -65,7 +84,7 @@ export async function readTasksData(): Promise<Task[]> {
     return tasks
   } catch (error) {
     console.error('Failed to read task data:', error)
-    return []
+    return readLocalTasksData()
   }
 }
 
@@ -90,7 +109,8 @@ export async function findTaskById(id: string): Promise<Task | null> {
     return await collection.findOne({ _id: id })
   } catch (error) {
     console.error(`Failed to find task (${id}):`, error)
-    return null
+    const tasks = await readLocalTasksData()
+    return tasks.find((task) => task._id === id) || null
   }
 }
 
@@ -140,7 +160,8 @@ export async function findUserTasks(userId: string): Promise<Task[]> {
     return tasks
   } catch (error) {
     console.error(`Failed to find user tasks (${userId}):`, error)
-    return []
+    const tasks = await readLocalTasksData()
+    return tasks.filter((task) => task.userId === userId)
   }
 }
 

@@ -1,0 +1,152 @@
+   ▲ Next.js 15.3.2
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.150:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1708ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1897ms (838 modules)
+AutoResetService 初始化: { lastResetDate: null, lastCheckTimestamp: 0, autoResetEnabled: true }
+Main page selectedItem: null
+ GET / 200 in 2285ms
+ ○ Compiling /api/tasks/today ...
+ ✓ Compiled /api/tasks/today in 979ms (851 modules)
+获取用户 user_001 过去7天的任务执行时间统计
+Connecting to MongoDB...
+正在获取用户 user_001 今天的任务...
+获取用户 user_001 2026年5月的月度统计
+使用自定义日期范围: 2026-04-26 到 2026-06-06
+ GET / 200 in 284ms
+Connected to MongoDB
+Found 8 tasks for user user_001
+ GET /api/tasks/weekly-stats?userId=user_001&days=7&endDate=2026-05-08 200 in 2329ms
+Found 8 tasks for user user_001
+用户 user_001 共有 8 个任务
+月度统计完成: 0分钟总时长, 3个完成任务
+ GET /api/tasks/monthly-stats?userId=user_001&year=2026&month=5&startDate=2026-04-26&endDate=2026-06-06 200 in 2473ms
+Read 8 tasks from MongoDB
+共读取到 8 个任务
+🔍 获取用户 user_001 的所有任务
+✅ 包含任务: Get Up Every Day (类型: check-in, 状态: in_progress)
+✅ 包含任务: 232 (类型: todo, 状态: pending)
+✅ 包含任务: Code Development (类型: todo, 状态: pending)
+✅ 包含任务: Morning Exercise (类型: check-in, 状态: in_progress)
+✅ 包含任务: wedsf (类型: todo, 状态: pending)
+✅ 包含任务: q'we (类型: todo, 状态: pending)
+✅ 包含任务: r'te'w'r (类型: todo, 状态: pending)
+✅ 包含任务: we'r (类型: todo, 状态: pending)
+📊 结果: 共 8 个任务
+获取到 8 个用户任务
+应用逻辑重置后的任务数量: 8
+ GET /api/tasks/today?userId=user_001&format=project-items 200 in 2481ms
+ ✓ Compiled /api/tasks/batch/remaining in 288ms (855 modules)
+Connecting to MongoDB...
+Connected to MongoDB
+ POST /api/tasks/batch/remaining 200 in 760ms
+ POST /api/tasks/batch/progress 200 in 895ms
+ ✓ Compiled /api/tasks/[id] in 177ms (857 modules)
+Connecting to MongoDB...
+Connected to MongoDB
+ PUT /api/tasks/task_1719399600000_abcdef123 200 in 1187ms
+AutoResetService 初始化: { lastResetDate: null, lastCheckTimestamp: 0, autoResetEnabled: true }
+Main page selectedItem: null
+ GET / 200 in 215ms
+Main page selectedItem: null
+ GET / 200 in 53ms
+Main page selectedItem: null
+ GET / 200 in 38ms
+获取用户 user_001 过去7天的任务执行时间统计
+获取用户 user_001 2026年5月的月度统计
+使用自定义日期范围: 2026-04-26 到 2026-06-06
+正在获取用户 user_001 今天的任务...
+Found 8 tasks for user user_001
+ GET /api/tasks/weekly-stats?userId=user_001&days=7&endDate=2026-05-08 200 in 28ms
+Found 8 tasks for user user_001
+用户 user_001 共有 8 个任务
+月度统计完成: 0分钟总时长, 4个完成任务
+ GET /api/tasks/monthly-stats?userId=user_001&year=2026&month=5&startDate=2026-04-26&endDate=2026-06-06 200 in 176ms
+Read 8 tasks from MongoDB
+共读取到 8 个任务
+🔍 获取用户 user_001 的所有任务
+✅ 包含任务: Get Up Every Day (类型: check-in, 状态: completed)
+✅ 包含任务: 232 (类型: todo, 状态: pending)
+✅ 包含任务: Code Development (类型: todo, 状态: pending)
+✅ 包含任务: Morning Exercise (类型: check-in, 状态: in_progress)
+✅ 包含任务: wedsf (类型: todo, 状态: pending)
+✅ 包含任务: q'we (类型: todo, 状态: pending)
+✅ 包含任务: r'te'w'r (类型: todo, 状态: pending)
+✅ 包含任务: we'r (类型: todo, 状态: pending)
+📊 结果: 共 8 个任务
+获取到 8 个用户任务
+应用逻辑重置后的任务数量: 8
+ GET /api/tasks/today?userId=user_001&format=project-items 200 in 183ms
+ POST /api/tasks/batch/remaining 200 in 112ms
+ POST /api/tasks/batch/progress 200 in 181ms
+ PUT /api/tasks/task_1719399600004_yzabcd345 200 in 43ms
+ ✓ Compiled /api/tasks/[id]/remaining in 207ms (859 modules)
+Connecting to MongoDB...
+Connected to MongoDB
+ GET /api/tasks/task_1778214283786_s970teo4f/remaining 200 in 1591ms
+ ✓ Compiled /focus in 238ms (886 modules)
+ GET /focus?id=task_1778214283786_s970teo4f&remaining=1&elapsed=0 200 in 354ms
+ ✓ Compiled /api/tasks/[id]/progress in 222ms (888 modules)
+Connecting to MongoDB...
+Connected to MongoDB
+ GET /api/tasks/task_1778214283786_s970teo4f/remaining 200 in 589ms
+ GET /api/tasks/task_1778214283786_s970teo4f/remaining 200 in 19ms
+ GET /api/tasks/task_1778214283786_s970teo4f 200 in 727ms
+ GET /api/tasks/task_1778214283786_s970teo4f/progress 200 in 1092ms
+ ✓ Compiled /calendar in 458ms (897 modules)
+Connecting to MongoDB...
+ GET /calendar 200 in 694ms
+获取用户 user_001 过去7天的任务执行时间统计
+Connected to MongoDB
+ GET /api/tasks/task_1778214283786_s970teo4f/progress 200 in 552ms
+Found 8 tasks for user user_001
+ GET /api/tasks/weekly-stats?userId=user_001&days=7 200 in 331ms
+ GET /api/tasks/task_1778214283786_s970teo4f 200 in 1049ms
+获取用户 user_001 过去7天的任务执行时间统计
+Found 8 tasks for user user_001
+ GET /api/tasks/weekly-stats?userId=user_001&days=7 200 in 21ms
+ GET /focus?id=task_1778214283786_s970teo4f&remaining=1&elapsed=0 200 in 18ms
+ GET /api/tasks/task_1778214283786_s970teo4f 200 in 32ms
+ GET /api/tasks/task_1778214283786_s970teo4f/remaining 200 in 37ms
+ GET /api/tasks/task_1778214283786_s970teo4f/progress 200 in 44ms
+ GET /api/tasks/task_1778214283786_s970teo4f 200 in 22ms
+ GET /api/tasks/task_1778214283786_s970teo4f/remaining 200 in 21ms
+ GET /api/tasks/task_1778214283786_s970teo4f/progress 200 in 23ms
+ GET / 200 in 22ms
+正在获取用户 user_001 今天的任务...
+Read 8 tasks from MongoDB
+共读取到 8 个任务
+🔍 获取用户 user_001 的所有任务
+✅ 包含任务: Get Up Every Day (类型: check-in, 状态: completed)
+✅ 包含任务: 232 (类型: todo, 状态: pending)
+✅ 包含任务: Code Development (类型: todo, 状态: pending)
+✅ 包含任务: Morning Exercise (类型: check-in, 状态: completed)
+✅ 包含任务: wedsf (类型: todo, 状态: pending)
+✅ 包含任务: q'we (类型: todo, 状态: pending)
+✅ 包含任务: r'te'w'r (类型: todo, 状态: pending)
+✅ 包含任务: we'r (类型: todo, 状态: pending)
+📊 结果: 共 8 个任务
+获取到 8 个用户任务
+应用逻辑重置后的任务数量: 8
+ GET /api/tasks/today?userId=user_001&format=project-items 200 in 40ms
+正在获取用户 user_001 今天的任务...
+Read 8 tasks from MongoDB
+共读取到 8 个任务
+🔍 获取用户 user_001 的所有任务
+✅ 包含任务: Get Up Every Day (类型: check-in, 状态: completed)
+✅ 包含任务: 232 (类型: todo, 状态: pending)
+✅ 包含任务: Code Development (类型: todo, 状态: pending)
+✅ 包含任务: Morning Exercise (类型: check-in, 状态: completed)
+✅ 包含任务: wedsf (类型: todo, 状态: pending)
+✅ 包含任务: q'we (类型: todo, 状态: pending)
+✅ 包含任务: r'te'w'r (类型: todo, 状态: pending)
+✅ 包含任务: we'r (类型: todo, 状态: pending)
+📊 结果: 共 8 个任务
+获取到 8 个用户任务
+应用逻辑重置后的任务数量: 8
+ GET /api/tasks/today?userId=user_001&format=project-items 200 in 36ms
+ POST /api/tasks/batch/remaining 200 in 158ms
