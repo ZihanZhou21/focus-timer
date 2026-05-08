@@ -218,10 +218,10 @@ export default function Home() {
                     <div key={item.id} className="relative flex items-start group">
                       {/* Left side: Time and Icon vertical stack */}
                       <div className="w-14 flex flex-col items-center flex-shrink-0 pt-0.5">
-                        <div className={`text-[10px] font-bold mb-1.5 px-1.5 py-0.5 rounded-md shadow-sm z-20 transition-colors ${
+                        <div className={`text-xs font-extrabold tracking-wide mb-2 px-2 py-1 rounded-md shadow-md z-20 transition-colors ${
                           item.completed 
-                            ? 'bg-slate-700/50 text-slate-400' 
-                            : 'bg-slate-800 text-slate-200 group-hover:bg-slate-700'
+                            ? 'bg-slate-700/70 text-slate-300' 
+                            : 'bg-slate-900 text-white ring-1 ring-slate-600/80 group-hover:bg-slate-700'
                         }`}>
                           {item.time}
                         </div>

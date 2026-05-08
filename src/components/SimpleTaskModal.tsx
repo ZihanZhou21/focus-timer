@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CheckInEntry } from '@/lib/types'
 
 interface SimpleTaskModalProps {
@@ -35,6 +35,13 @@ const COMMON_TAGS = [
   'Social',
 ]
 
+const getCurrentTime = () => {
+  const now = new Date()
+  return `${String(now.getHours()).padStart(2, '0')}:${String(
+    now.getMinutes()
+  ).padStart(2, '0')}`
+}
+
 export default function SimpleTaskModal({
   isOpen,
   onClose,
@@ -43,7 +50,7 @@ export default function SimpleTaskModal({
   const [taskType, setTaskType] = useState<'todo' | 'check-in'>('todo')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState([''])
-  const [plannedTime, setPlannedTime] = useState('')
+  const [plannedTime, setPlannedTime] = useState(getCurrentTime)
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium')
   const [tags, setTags] = useState<string[]>([])
   const [customTag, setCustomTag] = useState('')
@@ -102,7 +109,7 @@ export default function SimpleTaskModal({
     setTaskType('todo')
     setTitle('')
     setContent([''])
-    setPlannedTime('')
+    setPlannedTime(getCurrentTime())
     setPriority('medium')
     setTags([])
     setCustomTag('')
@@ -111,6 +118,12 @@ export default function SimpleTaskModal({
     setIsRecurring(false)
     setRecurringDays([])
   }
+
+  useEffect(() => {
+    if (isOpen) {
+      setPlannedTime(getCurrentTime())
+    }
+  }, [isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,7 +139,7 @@ export default function SimpleTaskModal({
         status: 'pending' as const,
         priority,
         tags,
-        plannedTime: plannedTime || '09:00',
+        plannedTime: plannedTime || getCurrentTime(),
       }
 
       let taskData: {
