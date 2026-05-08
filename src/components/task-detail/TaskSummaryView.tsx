@@ -10,12 +10,14 @@ interface TaskSummaryViewProps {
   timelineItems: ProjectItem[]
   onSelectItem: (item: ProjectItem) => void
   calculateProgress: (item: ProjectItem) => number
+  onAddTask?: () => void
 }
 
 export default function TaskSummaryView({
   timelineItems,
   onSelectItem,
   calculateProgress,
+  onAddTask,
 }: TaskSummaryViewProps) {
   const timer = useSelector((state: RootState) => state.timer)
   const dispatch = useDispatch()
@@ -139,7 +141,19 @@ export default function TaskSummaryView({
 
       {/* 今日统计 */}
       <div className="mb-6 flex flex-shrink-0 items-center justify-between">
-        <h3 className="text-xl font-light text-slate-200">Today&apos;s Projects</h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-xl font-light text-slate-200">Today&apos;s Projects</h3>
+          {onAddTask && (
+            <button
+              onClick={onAddTask}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700/70 text-slate-200 transition-colors hover:bg-slate-600"
+              aria-label="Create project"
+              title="Create project"
+            >
+              <span className="text-lg leading-none">+</span>
+            </button>
+          )}
+        </div>
         <div className="flex items-center space-x-2">
           <div className="text-2xl font-light text-amber-400">
             {timelineItems.filter((item) => item.completed).length}

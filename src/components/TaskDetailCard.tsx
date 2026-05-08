@@ -22,6 +22,7 @@ interface TaskDetailCardProps {
   onTaskUpdate?: (task: ProjectItem) => void
   onTaskDelete?: (taskId: string) => void
   onClose?: () => void
+  onAddTask?: () => void
 }
 
 export default function TaskDetailCard({
@@ -31,6 +32,7 @@ export default function TaskDetailCard({
   onTaskUpdate,
   onTaskDelete,
   onClose,
+  onAddTask,
 }: TaskDetailCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -402,6 +404,7 @@ export default function TaskDetailCard({
       timelineItems={timelineItems}
       onSelectItem={onSelectItem}
       calculateProgress={calculateProgress}
+      onAddTask={onAddTask}
     />
   )
 }

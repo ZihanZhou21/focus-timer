@@ -77,7 +77,7 @@ function ModernTimer({
             <div className="text-xl font-light text-slate-200 tracking-wider">
               Task Progress
             </div>
-            <div className="text-xl font-light text-green-400">
+            <div className="text-xl font-light text-[#7bbf9a]">
               {Math.round(currentProgress)}%
             </div>
           </div>
@@ -112,9 +112,12 @@ function FocusContent() {
   const isRepeat = searchParams.get('repeat') === 'true'
   const remainingMinutes = Number(searchParams.get('remaining')) || 0
   const elapsedMinutes = Number(searchParams.get('elapsed')) || 0
+  const hasUrlTimerParams = remainingMinutes > 0
 
   // 检查是否有关联该任务的活跃计时器（运行中或已暂停但有剩余时间）
-  const hasActiveSession = currentTimerTaskId === taskId && (isTimerRunning || timerRemaining > 0)
+  const hasActiveSession =
+    hasUrlTimerParams ||
+    (currentTimerTaskId === taskId && (isTimerRunning || timerRemaining > 0))
 
   // Debug info
   console.log('Focus page parameters:', {
@@ -171,7 +174,17 @@ function FocusContent() {
           estimatedSeconds?: number
         } = {}
 
-        if (remainingResult.status === 'fulfilled' && remainingResult.value.ok) {
+        if (hasUrlTimerParams) {
+          const remainingSeconds = Math.round(remainingMinutes * 60)
+          const executedSeconds = Math.round(elapsedMinutes * 60)
+          Object.assign(progressPayload, {
+            remainingMinutes,
+            executedMinutes: elapsedMinutes,
+            remainingSeconds,
+            executedSeconds,
+            estimatedSeconds: remainingSeconds + executedSeconds,
+          })
+        } else if (remainingResult.status === 'fulfilled' && remainingResult.value.ok) {
           const remainingData = await remainingResult.value.json()
           console.log(
             '⏰ Retrieved daily updated remaining time:',
@@ -192,7 +205,13 @@ function FocusContent() {
           })
         }
 
-        if (progressResult.status === 'fulfilled' && progressResult.value.ok) {
+        if (hasUrlTimerParams) {
+          const totalMinutes = remainingMinutes + elapsedMinutes
+          progressPayload.progressPercentage =
+            totalMinutes > 0
+              ? Math.min((elapsedMinutes / totalMinutes) * 100, 100)
+              : 0
+        } else if (progressResult.status === 'fulfilled' && progressResult.value.ok) {
           const progressData = await progressResult.value.json()
           console.log('📊 获取到每日更新的进度:', progressData)
           progressPayload.progressPercentage = progressData.progressPercentage
@@ -224,7 +243,7 @@ function FocusContent() {
     }
 
     fetchTaskInfo()
-  }, [taskId, remainingMinutes, elapsedMinutes, dispatch])
+  }, [taskId, remainingMinutes, elapsedMinutes, hasUrlTimerParams, dispatch])
 
   // 解析时长字符串为分钟数，最短30秒
   const parseDurationToMinutes = (durationStr: string): number => {

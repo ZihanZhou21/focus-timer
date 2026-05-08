@@ -169,11 +169,6 @@ export default function Home() {
                 {timelineItems.length} projects
               </span>
             </div>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors">
-              <span className="text-lg">+</span>
-            </button>
           </div>
 
           <div className="relative h-[calc(100vh-12rem)]">
@@ -388,6 +383,7 @@ export default function Home() {
                 onTaskUpdate={handleTaskUpdate}
                 onTaskDelete={handleTaskDelete}
                 onClose={handleCloseTaskDetail}
+                onAddTask={() => setIsAddModalOpen(true)}
               />
             </div>
           </div>

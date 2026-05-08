@@ -31,7 +31,7 @@ const TimerProgressGridComponent = ({ progress }: TimerProgressGridProps) => {
               className="relative flex-1 bg-gray-700 border border-gray-600"
               style={{ minHeight: '32px' }}>
               <div
-                className="bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-200 ease-out"
+                className="bg-[#6faf90] shadow-[0_0_10px_rgba(111,175,144,0.28)] transition-all duration-200 ease-out"
                 style={{
                   width: `${blockFillPercentage}%`,
                   height: '100%',
