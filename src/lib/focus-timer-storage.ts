@@ -4,6 +4,7 @@ export type StoredFocusTimerState = {
   timeRemaining: number
   totalElapsed: number
   totalEstimated: number
+  backendSyncedElapsed?: number
   lastSaveTime: number
   wasRunning?: boolean
   startTime?: number | null

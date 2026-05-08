@@ -196,6 +196,16 @@ export default function ActivityCalendar({
     refreshData()
   }, [refreshData])
 
+  useEffect(() => {
+    const handleStatsUpdated = () => {
+      monthlyStatsAPI.clearAllCache()
+      void refreshData()
+    }
+
+    window.addEventListener('focus-stats-updated', handleStatsUpdated)
+    return () => window.removeEventListener('focus-stats-updated', handleStatsUpdated)
+  }, [refreshData])
+
   // 头部组件
   const ActivityHeader = () => (
     <div className="flex items-center justify-between mb-4">

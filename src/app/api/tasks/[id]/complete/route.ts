@@ -41,8 +41,8 @@ export async function POST(
       updatedAt: new Date().toISOString(),
     }
 
-    // 如果是TODO任务且有时长数据，更新dailyTimeStats
-    if (task.type === 'todo' && duration && duration > 0) {
+    // 如果是TODO任务，更新dailyTimeStats
+    if (task.type === 'todo') {
       const todoTask = updatedTask as TodoTask
 
       // 初始化dailyTimeStats如果不存在
@@ -50,15 +50,19 @@ export async function POST(
         todoTask.dailyTimeStats = {}
       }
 
+      const existingTodayTime = todoTask.dailyTimeStats[today] || 0
+      const durationToAdd =
+        duration && duration > 0
+          ? duration
+          : Math.max(0, todoTask.estimatedDuration - existingTodayTime)
+
       // 更新今日时间统计
-      if (todoTask.dailyTimeStats[today]) {
-        todoTask.dailyTimeStats[today] += duration
-      } else {
-        todoTask.dailyTimeStats[today] = duration
+      if (durationToAdd > 0) {
+        todoTask.dailyTimeStats[today] = existingTodayTime + durationToAdd
       }
 
       console.log(
-        `📊 Updated dailyTimeStats for ${id}: added ${duration}s to ${today}, total: ${todoTask.dailyTimeStats[today]}s`
+        `📊 Updated dailyTimeStats for ${id}: added ${durationToAdd}s to ${today}, total: ${todoTask.dailyTimeStats[today] || 0}s`
       )
     }
 

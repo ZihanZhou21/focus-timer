@@ -127,6 +127,16 @@ export default function WeekChart({
     refreshWeekData()
   }, [refreshWeekData, endDate])
 
+  useEffect(() => {
+    const handleStatsUpdated = () => {
+      weeklyStatsAPI.clearAllCache()
+      void refreshWeekData()
+    }
+
+    window.addEventListener('focus-stats-updated', handleStatsUpdated)
+    return () => window.removeEventListener('focus-stats-updated', handleStatsUpdated)
+  }, [refreshWeekData])
+
   const weekDays = getWeekDays()
 
   return (

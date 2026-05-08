@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { findTaskById, updateTask, deleteTask } from '@/lib/database'
+import { TodoTask } from '@/lib/types'
 
 export async function GET(
   request: NextRequest,
@@ -35,6 +36,8 @@ export async function PUT(
     }
 
     // 特殊处理 completedAt 数组逻辑
+    let completedDate: string | null = null
+
     if (updates.hasOwnProperty('completedAt')) {
       const today = new Date().toISOString().split('T')[0]
       const currentCompletedAt = existingTask.completedAt || []
@@ -50,6 +53,7 @@ export async function PUT(
       } else if (typeof updates.completedAt === 'string') {
         // 如果传入字符串日期，添加到数组中（不重复）
         const dateToAdd = updates.completedAt
+        completedDate = dateToAdd
         if (!currentCompletedAt.includes(dateToAdd)) {
           updates.completedAt = [...currentCompletedAt, dateToAdd]
         } else {
@@ -59,6 +63,29 @@ export async function PUT(
     }
 
     // timeLog已弃用 - 改用session API直接更新dailyTimeStats
+
+    if (
+      existingTask.type === 'todo' &&
+      updates.status === 'completed' &&
+      completedDate
+    ) {
+      const todoTask = existingTask as TodoTask
+      const currentDailyStats = todoTask.dailyTimeStats || {}
+      const existingDuration = currentDailyStats[completedDate] || 0
+
+      if (existingDuration < todoTask.estimatedDuration) {
+        updates.dailyTimeStats = {
+          ...currentDailyStats,
+          [completedDate]: todoTask.estimatedDuration,
+        }
+      }
+
+      updates.completedCount = {
+        ...(existingTask.completedCount || {}),
+        [completedDate]:
+          ((existingTask.completedCount || {})[completedDate] || 0) + 1,
+      }
+    }
 
     const updatedTask = await updateTask(id, updates)
 

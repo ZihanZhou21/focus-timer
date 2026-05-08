@@ -8,6 +8,7 @@ import {
   startTimer,
   pauseTimer,
   syncLiveData,
+  markElapsedSynced,
 } from '@/app/slices/timerSlice'
 import {
   getFocusTimerStorageKey,
@@ -102,6 +103,7 @@ export function useFocusTimerLogic({
         timeRemaining: currentTimeRemaining,
         totalElapsed: currentTotalElapsed,
         totalEstimated: stored.totalEstimated,
+        backendSyncedElapsed: stored.backendSyncedElapsed,
         wasRunning: stored.wasRunning ?? false,
         startTime: stored.startTime,
         expectedEndTime: stored.expectedEndTime
@@ -133,6 +135,7 @@ export function useFocusTimerLogic({
         timeRemaining: timeRemainingValue,
         totalElapsed: totalElapsedValue,
         totalEstimated: totalEstimatedValue,
+        backendSyncedElapsed: timerState.backendSyncedElapsed,
         lastSaveTime: now,
         wasRunning: isRunning,
         startTime: timerState.startTime,
@@ -142,7 +145,13 @@ export function useFocusTimerLogic({
       saveFocusTimerState(storageKey, stateToSave)
       lastSaveTimeRef.current = now
     },
-    [storageKey, isRunning, timerState.startTime, timerState.expectedEndTime]
+    [
+      storageKey,
+      isRunning,
+      timerState.startTime,
+      timerState.expectedEndTime,
+      timerState.backendSyncedElapsed,
+    ]
   )
 
   // 初始化计时器状态
@@ -158,6 +167,7 @@ export function useFocusTimerLogic({
     // 优先从localStorage恢复，否则使用计算的初始值
     const restoredState = restoreFromStorage()
     const initialValues = restoredState || calculateInitialValues()
+    const backendSyncedElapsed = restoredState?.backendSyncedElapsed
 
     // 设置Redux状态
     dispatch(
@@ -171,6 +181,10 @@ export function useFocusTimerLogic({
         originalElapsed,
       })
     )
+
+    if (backendSyncedElapsed !== undefined) {
+      dispatch(markElapsedSynced(backendSyncedElapsed))
+    }
     
     // 如果恢复时是运行状态，则自动开始
     if (restoredState?.wasRunning) {
@@ -228,9 +242,22 @@ export function useFocusTimerLogic({
     saveToStorage(timeRemaining, totalElapsed, totalEstimated, true)
     
     // 手动暂停时保存会话数据
-    await saveSessionData()
+    const saved = await saveSessionData()
+    if (saved) {
+      dispatch(markElapsedSynced(totalElapsed))
+      saveFocusTimerState(storageKey, {
+        timeRemaining,
+        totalElapsed,
+        totalEstimated,
+        backendSyncedElapsed: totalElapsed,
+        lastSaveTime: Date.now(),
+        wasRunning: false,
+        startTime: null,
+        expectedEndTime: null,
+      })
+    }
     sessionStartTime.current = null
-  }, [dispatch, timeRemaining, totalElapsed, totalEstimated, saveToStorage, saveSessionData])
+  }, [dispatch, timeRemaining, totalElapsed, totalEstimated, saveToStorage, saveSessionData, storageKey])
 
   // 移除页面可见性监听相关的自动暂停逻辑
   // 计时器现在在 BackgroundManager 中全局运行

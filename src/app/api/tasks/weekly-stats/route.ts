@@ -155,6 +155,13 @@ function calculateDayStats(
 
       // 简化版本：直接使用dailyTimeStats
       dayDuration = todoTask.dailyTimeStats?.[targetDate] || 0
+      if (
+        dayDuration <= 0 &&
+        Array.isArray(todoTask.completedAt) &&
+        todoTask.completedAt.includes(targetDate)
+      ) {
+        dayDuration = todoTask.estimatedDuration
+      }
       if (dayDuration > 0) {
         isRelevantForDay = true
       }

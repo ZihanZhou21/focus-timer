@@ -35,7 +35,16 @@ function calculateTodoExecutionTime(
   task: TodoTask,
   targetDate: string
 ): number {
-  return task.dailyTimeStats?.[targetDate] || 0
+  const loggedDuration = task.dailyTimeStats?.[targetDate] || 0
+  if (loggedDuration > 0) {
+    return loggedDuration
+  }
+
+  if (Array.isArray(task.completedAt) && task.completedAt.includes(targetDate)) {
+    return task.estimatedDuration
+  }
+
+  return 0
 }
 
 // 检查任务是否在指定日期完成

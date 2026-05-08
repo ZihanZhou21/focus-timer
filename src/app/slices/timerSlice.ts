@@ -12,6 +12,7 @@ type TimerState = {
   initialTime: number
   originalRemaining: number
   originalElapsed: number
+  backendSyncedElapsed: number
   hasInitializedFromLiveData: boolean
   lastSyncTime: number
   startTime: number | null // 时间戳 (ms)
@@ -28,6 +29,7 @@ const initialState: TimerState = {
   initialTime: 25,
   originalRemaining: 0,
   originalElapsed: 0,
+  backendSyncedElapsed: 0,
   hasInitializedFromLiveData: false,
   lastSyncTime: 0,
   startTime: null,
@@ -69,6 +71,7 @@ export const timerSlice = createSlice({
       state.initialTime = initialTime
       state.originalRemaining = originalRemaining
       state.originalElapsed = originalElapsed
+      state.backendSyncedElapsed = Math.floor(originalElapsed * 60)
       // Don't reset isRunning if we are already running (could be a recovery)
       if (!state.isRunning) {
         state.startTime = null
@@ -105,6 +108,12 @@ export const timerSlice = createSlice({
         state.expectedEndTime = Date.now() + state.timeRemaining * 1000
       }
     },
+    markElapsedSynced: (state, action: PayloadAction<number | undefined>) => {
+      state.backendSyncedElapsed = Math.max(
+        state.backendSyncedElapsed,
+        Math.floor(action.payload ?? state.totalElapsed)
+      )
+    },
     tickTimer: (state) => {
       if (state.isRunning && state.expectedEndTime) {
         const now = Date.now()
@@ -138,6 +147,7 @@ export const timerSlice = createSlice({
       state.timeRemaining = Math.floor(remainingSeconds)
       state.totalElapsed = Math.floor(elapsedSeconds)
       state.totalEstimated = Math.floor(totalEstimated)
+      state.backendSyncedElapsed = Math.floor(elapsedSeconds)
       state.hasInitializedFromLiveData = true
       state.lastSyncTime = Date.now()
       
@@ -166,6 +176,7 @@ export const {
   updateTime,
   tickTimer,
   syncLiveData,
+  markElapsedSynced,
   completeTimer,
   resetTimer,
 } = timerSlice.actions

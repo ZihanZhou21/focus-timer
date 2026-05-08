@@ -179,6 +179,17 @@ export default function CalendarPage() {
     loadPeriodData()
   }, [loadPeriodData])
 
+  useEffect(() => {
+    const handleStatsUpdated = () => {
+      weeklyStatsAPI.clearAllCache()
+      monthlyStatsAPI.clearAllCache()
+      void loadPeriodData()
+    }
+
+    window.addEventListener('focus-stats-updated', handleStatsUpdated)
+    return () => window.removeEventListener('focus-stats-updated', handleStatsUpdated)
+  }, [loadPeriodData])
+
   // 导航函数
   const navigatePeriod = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate)

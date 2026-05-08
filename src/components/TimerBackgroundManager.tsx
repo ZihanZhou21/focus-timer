@@ -7,16 +7,19 @@ import { RootState } from '@/app/store'
 import { tickTimer, completeTimer } from '@/app/slices/timerSlice'
 import { updateTask, setSelectedItem } from '@/app/slices/tasksSlice'
 import { saveFocusTimerState, getFocusTimerStorageKey, clearFocusTimerState } from '@/lib/focus-timer-storage'
+import { weeklyStatsAPI } from '@/lib/weekly-stats-api'
+import { monthlyStatsAPI } from '@/lib/monthly-stats-api'
 
 export default function TimerBackgroundManager() {
   const dispatch = useDispatch()
   const router = useRouter()
   const pathname = usePathname()
   const timerState = useSelector((state: RootState) => state.timer)
-  const { isRunning, timeRemaining, taskId, expectedEndTime, totalElapsed, totalEstimated } = timerState
+  const { isRunning, timeRemaining, taskId, expectedEndTime, totalElapsed, totalEstimated, backendSyncedElapsed } = timerState
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const lastSyncRef = useRef<number>(0)
+  const completingTaskRef = useRef<string | null>(null)
 
   // 1. 核心计时逻辑 - 保持在后台运行
   useEffect(() => {
@@ -54,6 +57,7 @@ export default function TimerBackgroundManager() {
           timeRemaining,
           totalElapsed,
           totalEstimated,
+          backendSyncedElapsed,
           lastSaveTime: now,
           wasRunning: true,
           startTime: timerState.startTime,
@@ -62,9 +66,15 @@ export default function TimerBackgroundManager() {
         lastSyncRef.current = now
       }
     }
-  }, [isRunning, timeRemaining, totalElapsed, totalEstimated, taskId, timerState.startTime, timerState.expectedEndTime])
+  }, [isRunning, timeRemaining, totalElapsed, totalEstimated, backendSyncedElapsed, taskId, timerState.startTime, timerState.expectedEndTime])
 
   const handleCompletion = useCallback(async () => {
+    if (!taskId || completingTaskRef.current === taskId) {
+      return
+    }
+
+    completingTaskRef.current = taskId
+
     // 播放声音 (全局)
     try {
       const audio = new Audio('/alert.mp3')
@@ -74,14 +84,23 @@ export default function TimerBackgroundManager() {
     // 触发完成 API
     if (taskId) {
       try {
+        const unsyncedDuration = Math.max(
+          0,
+          Math.floor(totalElapsed - backendSyncedElapsed)
+        )
+
         const response = await fetch(`/api/tasks/${taskId}/complete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ duration: 0 }), // 最终时长计算可以在后端处理或这里累加
+          body: JSON.stringify({ duration: unsyncedDuration }),
         })
         
         if (response.ok) {
           const data = await response.json()
+          weeklyStatsAPI.clearAllCache()
+          monthlyStatsAPI.clearAllCache()
+          window.dispatchEvent(new CustomEvent('focus-stats-updated'))
+
           if (data.task) {
             // 同步任务状态到 Redux
             dispatch(updateTask({
@@ -107,7 +126,8 @@ export default function TimerBackgroundManager() {
     dispatch(completeTimer())
     const storageKey = getFocusTimerStorageKey(taskId)
     clearFocusTimerState(storageKey)
-  }, [taskId, dispatch, pathname, router])
+    completingTaskRef.current = null
+  }, [taskId, totalElapsed, backendSyncedElapsed, dispatch, pathname, router])
 
   // 3. 处理计时结束逻辑
   useEffect(() => {
