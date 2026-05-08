@@ -6,6 +6,8 @@ export type StoredFocusTimerState = {
   totalEstimated: number
   lastSaveTime: number
   wasRunning?: boolean
+  startTime?: number | null
+  expectedEndTime?: number | null
 }
 
 export const getFocusTimerStorageKey = (taskId?: string | null) => {

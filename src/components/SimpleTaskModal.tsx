@@ -319,8 +319,9 @@ export default function SimpleTaskModal({
                   type="number"
                   value={estimatedDuration}
                   onChange={(e) => setEstimatedDuration(Number(e.target.value))}
-                  min="5"
+                  min="1"
                   max="480"
+                  step="1"
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
                 />
               </div>

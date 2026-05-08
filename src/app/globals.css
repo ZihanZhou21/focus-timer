@@ -39,29 +39,28 @@ body {
 
 /* 自定义滚动条 */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--muted);
-  border-radius: 3px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--muted-foreground);
-  border-radius: 3px;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
   transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
+  background: rgba(148, 163, 184, 0.5);
 }
 
 /* Firefox滚动条 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--muted-foreground) var(--muted);
+  scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
 }
 
 /* 焦点环样式 */

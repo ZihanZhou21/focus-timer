@@ -21,10 +21,15 @@ export async function POST(
     const today = new Date().toISOString().split('T')[0] // 今天的日期
     const currentCompletedAt = task.completedAt || []
 
-    // 如果今天还没有完成记录，则添加
-    let updatedCompletedAt = currentCompletedAt
-    if (!currentCompletedAt.includes(today)) {
-      updatedCompletedAt = [...currentCompletedAt, today]
+    // 允许同一天多次完成
+    const updatedCompletedAt = [...currentCompletedAt, today]
+
+    // 更新完成次数
+    const currentCompletedCount = task.completedCount || {}
+    const newCount = (currentCompletedCount[today] || 0) + 1
+    const updatedCompletedCount = {
+      ...currentCompletedCount,
+      [today]: newCount,
     }
 
     // 更新基础任务信息
@@ -32,6 +37,7 @@ export async function POST(
       ...task,
       status: 'completed' as const,
       completedAt: updatedCompletedAt,
+      completedCount: updatedCompletedCount,
       updatedAt: new Date().toISOString(),
     }
 

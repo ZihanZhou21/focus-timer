@@ -222,14 +222,6 @@ export default function CalendarPage() {
     60
   )
 
-  if (isLoading) {
-    return (
-      <div className="h-screen bg-slate-900 text-white flex items-center justify-center">
-        <div className="text-slate-400">Loading...</div>
-      </div>
-    )
-  }
-
   return (
     <div className="h-screen bg-slate-900 text-white flex flex-col">
       {/* 顶部导航栏 */}
@@ -313,26 +305,37 @@ export default function CalendarPage() {
 
           {/* 统计卡片 */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatsCard
-              title="Total Focus Time"
-              value={formatTimeInHours(periodStats.totalFocusTime)}
-              color="amber"
-            />
-            <StatsCard
-              title="Completed Cycles"
-              value={periodStats.completedCycles}
-              color="emerald"
-            />
-            <StatsCard
-              title="Average Duration"
-              value={formatTimeInHours(periodStats.averageSessionLength)}
-              color="blue"
-            />
-            <StatsCard
-              title="Streak Days"
-              value={periodStats.streakDays}
-              color="purple"
-            />
+            {isLoading
+              ? Array.from({ length: 4 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-28 rounded-3xl bg-slate-800 border border-slate-700/50 animate-pulse"
+                  />
+                ))
+              : (
+                  <>
+                    <StatsCard
+                      title="Total Focus Time"
+                      value={formatTimeInHours(periodStats.totalFocusTime)}
+                      color="amber"
+                    />
+                    <StatsCard
+                      title="Completed Cycles"
+                      value={periodStats.completedCycles}
+                      color="emerald"
+                    />
+                    <StatsCard
+                      title="Average Duration"
+                      value={formatTimeInHours(periodStats.averageSessionLength)}
+                      color="blue"
+                    />
+                    <StatsCard
+                      title="Streak Days"
+                      value={periodStats.streakDays}
+                      color="purple"
+                    />
+                  </>
+                )}
           </div>
 
           {/* 专注趋势图 */}

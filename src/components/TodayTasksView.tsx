@@ -130,7 +130,7 @@ export default function TodayTasksView() {
                   )}
                 </div>
 
-                <div className="ml-4 text-right">
+                <div className="ml-4 text-right flex flex-col items-end gap-2">
                   <span
                     className={`px-3 py-1 text-sm rounded-full ${
                       task.status === 'completed'
@@ -140,7 +140,18 @@ export default function TodayTasksView() {
                         : 'bg-gray-100 text-gray-800'
                     }`}>
                     {todayTasksService.getTaskStatusText(task.status)}
+                    {task.status === 'completed' && task.completedCount?.[todaysData.date] && task.completedCount[todaysData.date] > 1 && (
+                      <span className="ml-1 font-bold">x{task.completedCount[todaysData.date]}</span>
+                    )}
                   </span>
+                  {task.status === 'completed' && task.type !== 'check-in' && (
+                    <button
+                      onClick={() => (window.location.href = `/focus?id=${task._id}&repeat=true`)}
+                      className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors"
+                    >
+                      Repeat
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

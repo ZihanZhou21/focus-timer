@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Task, TodoTask, CheckInTask } from '@/lib/types'
-import { readTasksData } from '@/lib/database'
+import { findUserTasks } from '@/lib/database'
 
 interface DayStats {
   date: string
@@ -50,9 +50,9 @@ export async function GET(request: NextRequest) {
     console.log(`获取用户 ${userId} 过去${days}天的任务执行时间统计`)
 
     // 读取任务数据
-    const allTasks: Task[] = await readTasksData()
+    const userTasks: Task[] = await findUserTasks(userId)
 
-    if (allTasks.length === 0) {
+    if (userTasks.length === 0) {
       console.log('没有任务数据，返回空统计')
       return NextResponse.json({
         startDate: startDate.toISOString().split('T')[0],
@@ -68,8 +68,6 @@ export async function GET(request: NextRequest) {
     }
 
     // 过滤用户任务
-    const userTasks = allTasks.filter((task) => task.userId === userId)
-
     // 生成每日统计
     const dailyStats: DayStats[] = []
     const currentDate = new Date(startDate)

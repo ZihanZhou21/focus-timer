@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Task, TodoTask } from '@/lib/types'
-import { readTasksData } from '@/lib/database'
+import { findUserTasks } from '@/lib/database'
 
 // 日常统计数据接口
 interface DailyStats {
@@ -87,10 +87,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 读取任务数据
-    const allTasks = await readTasksData()
+    const userTasks = await findUserTasks(userId)
 
     // 过滤用户任务
-    const userTasks = allTasks.filter((task) => task.userId === userId)
     console.log(`用户 ${userId} 共有 ${userTasks.length} 个任务`)
 
     // 生成每日统计

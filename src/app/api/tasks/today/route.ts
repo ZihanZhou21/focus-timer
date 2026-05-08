@@ -77,10 +77,12 @@ interface ProjectItem {
   priority?: string
   status?: string
   type?: string
+  repetitionsToday?: number
 }
 
 // 将新数据结构转换为旧的ProjectItem格式（用于兼容现有UI）
 function convertToProjectItems(tasks: Task[]): ProjectItem[] {
+  const today = new Date().toISOString().split('T')[0]
   return tasks.map((task) => {
     // 使用真实的计划时间，如果没有则提供默认值
     const time = task.plannedTime || '00:00'
@@ -98,6 +100,9 @@ function convertToProjectItems(tasks: Task[]): ProjectItem[] {
 
     // 确定分类和图标
     const icon = task.type === 'todo' ? '📝' : '💪'
+
+    // 获取今日重复次数
+    const repetitionsToday = task.completedCount ? task.completedCount[today] || 0 : 0
 
     return {
       id: task._id,
@@ -119,6 +124,7 @@ function convertToProjectItems(tasks: Task[]): ProjectItem[] {
       priority: task.priority,
       status: task.status,
       type: task.type,
+      repetitionsToday: repetitionsToday,
     }
   })
 }

@@ -11,6 +11,7 @@ export interface BaseTask {
   createdAt: string
   updatedAt: string
   completedAt: string[] // 完成日期数组，格式: ["YYYY-MM-DD", "YYYY-MM-DD"]
+  completedCount?: Record<string, number> // 新增：每日完成次数统计，格式: {"YYYY-MM-DD": 2}
   plannedTime?: string // 计划时间，格式: HH:MM
 }
 

@@ -3,6 +3,18 @@ import { Task, TodoTask, CheckInTask, CheckInEntry } from '@/lib/types'
 import { TaskType } from '@/lib/constants'
 
 // 兼容旧系统的ProjectItem类型
+type CreateTaskResponse = {
+  id?: string
+  _id?: string
+}
+
+type ProjectTaskFields = {
+  id?: string
+  icon?: string
+  iconColor?: string
+  details?: string[]
+}
+
 export interface ProjectItem {
   id: string
   userId: string
@@ -19,6 +31,7 @@ export interface ProjectItem {
   status?: string
   type: TaskType
   // 重复任务相关字段
+  repetitionsToday?: number
   isRecurring?: boolean
   recurringDays?: number[]
   recurringWeeks?: number
@@ -58,7 +71,7 @@ export class TaskService {
   // 创建TODO任务
   async createTodoTask(
     taskData: Omit<TodoTask, '_id' | 'createdAt' | 'updatedAt'>
-  ): Promise<TodoTask> {
+  ): Promise<TodoTask & ProjectTaskFields> {
     const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -70,13 +83,21 @@ export class TaskService {
 
     if (!response.ok)
       throw new Error(`创建TODO任务失败: ${response.statusText}`)
-    return response.json()
+    const created = (await response.json()) as CreateTaskResponse
+    const now = new Date().toISOString()
+    return {
+      ...taskData,
+      ...created,
+      _id: created._id || created.id || '',
+      createdAt: now,
+      updatedAt: now,
+    }
   }
 
   // 创建打卡任务
   async createCheckInTask(
     taskData: Omit<CheckInTask, '_id' | 'createdAt' | 'updatedAt'>
-  ): Promise<CheckInTask> {
+  ): Promise<CheckInTask & ProjectTaskFields> {
     const response = await fetch(this.baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -88,7 +109,15 @@ export class TaskService {
 
     if (!response.ok)
       throw new Error(`创建打卡任务失败: ${response.statusText}`)
-    return response.json()
+    const created = (await response.json()) as CreateTaskResponse
+    const now = new Date().toISOString()
+    return {
+      ...taskData,
+      ...created,
+      _id: created._id || created.id || '',
+      createdAt: now,
+      updatedAt: now,
+    }
   }
 
   // 更新任务

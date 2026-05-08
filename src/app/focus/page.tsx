@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { batch, useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/app/store'
 import {
@@ -98,19 +98,28 @@ function ModernTimer({
 }
 
 function FocusContent() {
+  const router = useRouter()
   const dispatch = useDispatch()
   const { taskInfo, taskProgress, isLoading } = useSelector(
     (state: RootState) => state.taskInfo
   )
+  const { isRunning: isTimerRunning, timeRemaining: timerRemaining, taskId: currentTimerTaskId } = useSelector(
+    (state: RootState) => state.timer
+  )
 
   const searchParams = useSearchParams()
   const taskId = searchParams.get('id')
+  const isRepeat = searchParams.get('repeat') === 'true'
   const remainingMinutes = Number(searchParams.get('remaining')) || 0
   const elapsedMinutes = Number(searchParams.get('elapsed')) || 0
+
+  // 检查是否有关联该任务的活跃计时器（运行中或已暂停但有剩余时间）
+  const hasActiveSession = currentTimerTaskId === taskId && (isTimerRunning || timerRemaining > 0)
 
   // Debug info
   console.log('Focus page parameters:', {
     taskId,
+    isRepeat,
     remainingMinutes,
     elapsedMinutes,
   })
@@ -273,19 +282,21 @@ function FocusContent() {
     }
   }
 
-  // 处理导航点击，添加确认逻辑
+  // 处理导航点击
   const handleNavigation = (url: string) => {
-    // 这里可以检查计时器状态，但由于计时器在子组件中，
-    // 我们依赖子组件的页面离开确认逻辑
-    window.location.href = url
+    router.push(url)
   }
 
   // 返回主页面
   const handleBackToHome = () => {
-    window.location.href = '/'
+    router.push('/')
   }
 
-  if (isLoading) {
+  // 只有在没有提供taskId，或者没有任何乐观数据时才显示全屏加载
+  // 这样当从仪表盘带参数跳转过来时，可以立即渲染计时器UI
+  const shouldShowLoading = isLoading && !hasActiveSession && (!taskId || (!remainingMinutes && !elapsedMinutes))
+
+  if (shouldShowLoading) {
     return (
       <div className="h-screen bg-slate-900 text-white flex items-center justify-center">
         <div className="flex flex-col items-center space-y-3">
@@ -350,8 +361,8 @@ function FocusContent() {
       {/* 主要内容区域 */}
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-4xl">
-          {/* 检查任务是否已完成 */}
-          {taskInfo && taskInfo.completed ? (
+          {/* 检查任务是否已完成 (如果开启重复模式，或者当前有关联该任务的活跃计时器，则忽略完成状态) */}
+          {taskInfo && taskInfo.completed && !isRepeat && !hasActiveSession ? (
             // 任务已完成的显示
             <div className="text-center">
               <div className="mb-8">

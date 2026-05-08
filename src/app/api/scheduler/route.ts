@@ -34,6 +34,12 @@ async function performDailyReset(userId: string = 'user_001') {
       }
     }
 
+    // 清理每日完成次数统计中的今日记录
+    if (task.completedCount && task.completedCount[today]) {
+      delete task.completedCount[today]
+      wasReset = true
+    }
+
     // 针对TODO任务的特殊处理
     if (task.type === 'todo') {
       const todoTask = task as TodoTask

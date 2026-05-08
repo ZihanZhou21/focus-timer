@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { ProjectItem } from '@/lib/api'
 import { todayTasksService } from '@/lib/today-api'
 import { taskTypeConfig, DEFAULT_USER_ID } from '@/lib/constants'
@@ -24,6 +25,7 @@ import '@/lib/auto-reset'
 
 export default function Home() {
   // Local state management - unified use of ProjectItem
+  const router = useRouter()
   const dispatch = useDispatch()
   const { timelineItems, selectedItem, isLoading } = useSelector(
     (state: RootState) => state.tasks
@@ -122,14 +124,6 @@ export default function Home() {
     }
   }, [dispatch])
 
-  if (isLoading) {
-    return (
-      <div className="h-screen bg-slate-900 text-white flex items-center justify-center">
-        <div className="text-slate-400">Loading...</div>
-      </div>
-    )
-  }
-
   return (
     <div className="h-screen bg-slate-900 text-white flex flex-col">
       {/* Top navigation bar */}
@@ -186,7 +180,16 @@ export default function Home() {
             <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-slate-900 to-transparent z-20"></div>
 
             <div className="h-full overflow-y-auto">
-              {timelineItems.length === 0 ? (
+              {isLoading ? (
+                <div className="flex flex-col justify-center h-full gap-4 px-2">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="h-24 rounded-3xl bg-slate-800 border border-slate-700/50 animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : timelineItems.length === 0 ? (
                 // Empty state display
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <div className="w-16 h-16 bg-slate-700/50 rounded-full flex items-center justify-center mb-4">
@@ -212,35 +215,41 @@ export default function Home() {
                     className="absolute left-7 top-0 w-0.5 bg-slate-700"
                     style={{ height: 'calc(100% + 400px)' }}></div>
                   {timelineItems.map((item) => (
-                    <div key={item.id} className="relative flex items-start">
-                      <div className="text-slate-400 text-sm font-mono w-16 pt-2 text-right pr-2">
-                        {item.time}
-                      </div>
-
-                      <div
-                        className={`w-10 h-10 rounded-full ${
-                          taskTypeConfig[item.type].color
-                        } flex items-center justify-center text-white relative z-10 mx-2 flex-shrink-0 shadow-lg ${
-                          item.completed ? 'opacity-75' : ''
+                    <div key={item.id} className="relative flex items-start group">
+                      {/* Left side: Time and Icon vertical stack */}
+                      <div className="w-14 flex flex-col items-center flex-shrink-0 pt-0.5">
+                        <div className={`text-[10px] font-bold mb-1.5 px-1.5 py-0.5 rounded-md shadow-sm z-20 transition-colors ${
+                          item.completed 
+                            ? 'bg-slate-700/50 text-slate-400' 
+                            : 'bg-slate-800 text-slate-200 group-hover:bg-slate-700'
                         }`}>
-                        <span className="text-base">{item.icon}</span>
-                        {item.completed && (
-                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                            <svg
-                              className="w-2.5 h-2.5 text-white"
-                              fill="currentColor"
-                              viewBox="0 0 20 20">
-                              <path
-                                fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </div>
-                        )}
+                          {item.time}
+                        </div>
+                        <div
+                          className={`w-10 h-10 rounded-full ${
+                            taskTypeConfig[item.type].color
+                          } flex items-center justify-center text-white relative z-10 shadow-lg ${
+                            item.completed ? 'opacity-75' : ''
+                          }`}>
+                          <span className="text-base">{item.icon}</span>
+                          {item.completed && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                              <svg
+                                className="w-2.5 h-2.5 text-white"
+                                fill="currentColor"
+                                viewBox="0 0 20 20">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 ml-2">
                         <div
                           onClick={() => {
                             console.log(
@@ -250,7 +259,7 @@ export default function Home() {
                             )
                             dispatch(setSelectedItem(item))
                           }}
-                          className={`relative rounded-3xl p-4 mr-4 transition-all duration-200 cursor-pointer group ${
+                          className={`relative rounded-3xl p-4 mr-4 transition-all duration-200 cursor-pointer group/card ${
                             item.completed
                               ? 'bg-slate-700/50 border-slate-600/50 opacity-80'
                               : 'bg-slate-800 border-slate-600 hover:border-slate-500'
@@ -314,16 +323,29 @@ export default function Home() {
                                   </span>
                                   {item.completed && (
                                     <span className="text-green-400 text-xs font-normal">
-                                      · Completed
+                                      · Completed {item.repetitionsToday && item.repetitionsToday > 1 ? `x${item.repetitionsToday}` : ''}
                                     </span>
                                   )}
                                 </div>
                               </div>
-                              {item.durationMinutes > 0 && (
-                                <span className="text-slate-400 text-xs bg-slate-700/80 backdrop-blur-sm px-2 py-1 rounded-md ml-2">
-                                  {formatDuration(item.durationMinutes)}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-2">
+                                {item.completed && item.type !== 'check-in' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(`/focus?id=${item.id}&repeat=true`);
+                                    }}
+                                    className="text-[10px] bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/30 px-2 py-1 rounded-md transition-colors"
+                                  >
+                                    Repeat
+                                  </button>
+                                )}
+                                {item.durationMinutes > 0 && (
+                                  <span className="text-slate-400 text-xs bg-slate-700/80 backdrop-blur-sm px-2 py-1 rounded-md ml-2">
+                                    {formatDuration(item.durationMinutes)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             {item.details && (

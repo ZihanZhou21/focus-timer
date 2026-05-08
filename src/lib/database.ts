@@ -3,6 +3,7 @@ import { Task } from './types'
 
 let client: MongoClient | null = null
 let db: Db | null = null
+let connectionPromise: Promise<Db> | null = null
 
 const MONGODB_URI =
   process.env.MONGODB_URI ||
@@ -11,30 +12,33 @@ const DB_NAME = process.env.DB_NAME || 'focus-timer'
 
 export async function connectToDatabase(): Promise<Db> {
   if (db && client) {
-    try {
-      // 测试连接是否有效
-      await db.admin().ping()
-      return db
-    } catch {
-      console.log('现有连接无效，重新连接...')
-      client = null
-      db = null
-    }
+    return db
   }
 
-  try {
-    console.log('正在连接到 MongoDB...')
+  if (connectionPromise) {
+    return connectionPromise
+  }
+
+  connectionPromise = (async () => {
+    console.log('Connecting to MongoDB...')
     client = new MongoClient(MONGODB_URI)
     await client.connect()
     db = client.db(DB_NAME)
 
-    // 测试连接
     await db.admin().ping()
-    console.log('成功连接到 MongoDB')
+    console.log('Connected to MongoDB')
     return db
+  })()
+
+  try {
+    return await connectionPromise
   } catch (error) {
-    console.error('MongoDB 连接失败:', error)
+    console.error('MongoDB connection failed:', error)
+    client = null
+    db = null
     throw error
+  } finally {
+    connectionPromise = null
   }
 }
 
@@ -43,25 +47,24 @@ export async function getTasksCollection(): Promise<Collection<Task>> {
   return database.collection<Task>('tasks')
 }
 
-// 关闭数据库连接
 export async function closeConnection(): Promise<void> {
   if (client) {
     await client.close()
     client = null
     db = null
-    console.log('MongoDB 连接已关闭')
+    connectionPromise = null
+    console.log('MongoDB connection closed')
   }
 }
 
-// 新的数据访问函数 - 替换原有的文件操作
 export async function readTasksData(): Promise<Task[]> {
   try {
     const collection = await getTasksCollection()
     const tasks = await collection.find({}).toArray()
-    console.log(`从 MongoDB 读取了 ${tasks.length} 个任务`)
+    console.log(`Read ${tasks.length} tasks from MongoDB`)
     return tasks
   } catch (error) {
-    console.error('读取任务数据失败:', error)
+    console.error('Failed to read task data:', error)
     return []
   }
 }
@@ -70,25 +73,23 @@ export async function writeTasksData(tasks: Task[]): Promise<void> {
   try {
     const collection = await getTasksCollection()
 
-    // 清空现有数据并插入新数据
     await collection.deleteMany({})
     if (tasks.length > 0) {
       await collection.insertMany(tasks)
     }
-    console.log(`成功写入 ${tasks.length} 个任务到 MongoDB`)
+    console.log(`Wrote ${tasks.length} tasks to MongoDB`)
   } catch (error) {
-    console.error('写入任务数据失败:', error)
-    throw new Error('写入任务数据失败')
+    console.error('Failed to write task data:', error)
+    throw new Error('Failed to write task data')
   }
 }
 
-// 单任务操作函数
 export async function findTaskById(id: string): Promise<Task | null> {
   try {
     const collection = await getTasksCollection()
     return await collection.findOne({ _id: id })
   } catch (error) {
-    console.error(`查找任务失败 (${id}):`, error)
+    console.error(`Failed to find task (${id}):`, error)
     return null
   }
 }
@@ -113,7 +114,7 @@ export async function updateTask(
 
     return result || null
   } catch (error) {
-    console.error(`更新任务失败 (${id}):`, error)
+    console.error(`Failed to update task (${id}):`, error)
     return null
   }
 }
@@ -123,10 +124,10 @@ export async function insertTask(task: Task): Promise<string> {
     const collection = await getTasksCollection()
 
     await collection.insertOne(task)
-    console.log(`成功插入任务: ${task._id}`)
+    console.log(`Inserted task: ${task._id}`)
     return task._id
   } catch (error) {
-    console.error('插入任务失败:', error)
+    console.error('Failed to insert task:', error)
     throw error
   }
 }
@@ -135,10 +136,10 @@ export async function findUserTasks(userId: string): Promise<Task[]> {
   try {
     const collection = await getTasksCollection()
     const tasks = await collection.find({ userId }).toArray()
-    console.log(`找到用户 ${userId} 的 ${tasks.length} 个任务`)
+    console.log(`Found ${tasks.length} tasks for user ${userId}`)
     return tasks
   } catch (error) {
-    console.error(`查找用户任务失败 (${userId}):`, error)
+    console.error(`Failed to find user tasks (${userId}):`, error)
     return []
   }
 }
@@ -163,12 +164,12 @@ export async function bulkUpdateTasks(
 
     if (bulkOps.length > 0) {
       const result = await collection.bulkWrite(bulkOps)
-      console.log(`批量更新完成: 修改了 ${result.modifiedCount} 个任务`)
+      console.log(`Bulk update complete: modified ${result.modifiedCount} tasks`)
     }
 
     return true
   } catch (error) {
-    console.error('批量更新任务失败:', error)
+    console.error('Failed to bulk update tasks:', error)
     return false
   }
 }
@@ -179,12 +180,11 @@ export async function deleteTask(id: string): Promise<boolean> {
     const result = await collection.deleteOne({ _id: id })
     return result.deletedCount > 0
   } catch (error) {
-    console.error(`删除任务失败 (${id}):`, error)
+    console.error(`Failed to delete task (${id}):`, error)
     return false
   }
 }
 
-// 创建必要的索引
 export async function createIndexes(): Promise<void> {
   try {
     const collection = await getTasksCollection()
@@ -197,8 +197,8 @@ export async function createIndexes(): Promise<void> {
     await collection.createIndex({ userId: 1, type: 1 })
     await collection.createIndex({ userId: 1, status: 1 })
 
-    console.log('数据库索引创建完成')
+    console.log('Database indexes created')
   } catch (error) {
-    console.error('创建索引失败:', error)
+    console.error('Failed to create indexes:', error)
   }
 }
