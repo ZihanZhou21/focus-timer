@@ -3,6 +3,11 @@
 import Layout from '@/components/Layout'
 import { useState, useEffect } from 'react'
 import { autoResetService, AutoResetState } from '@/lib/auto-reset'
+import { DEFAULT_USER_ID } from '@/lib/constants'
+import {
+  useGetResetDailyStatusQuery,
+  useResetDailyMutation,
+} from '@/lib/services/tasks-api'
 
 export default function SettingsPage() {
   // 设置状态
@@ -15,22 +20,26 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto')
 
   // 每日重置相关状态
-  const [resetStatus, setResetStatus] = useState({
+  const defaultResetStatus = {
     totalTasks: 0,
     completedCheckIns: 0,
     completedTodos: 0,
     todosWithProgress: 0,
     canReset: false,
-  })
-  const [isResetting, setIsResetting] = useState(false)
+  }
   const [lastResetTime, setLastResetTime] = useState<string | null>(null)
   const [autoResetStatus, setAutoResetStatus] = useState<
     (AutoResetState & { todayDate: string; needsReset: boolean }) | null
   >(null)
+  const {
+    data: resetStatusData,
+    refetch: refetchResetStatus,
+  } = useGetResetDailyStatusQuery(DEFAULT_USER_ID)
+  const [resetDaily, { isLoading: isResetting }] = useResetDailyMutation()
+  const resetStatus = resetStatusData ?? defaultResetStatus
 
   // 加载重置状态
   useEffect(() => {
-    loadResetStatus()
     loadAutoResetStatus()
   }, [])
 
@@ -44,59 +53,27 @@ export default function SettingsPage() {
     }
   }
 
-  // 获取重置状态
-  const loadResetStatus = async () => {
-    try {
-      const response = await fetch('/api/tasks/reset-daily?userId=user_001')
-      if (response.ok) {
-        const data = await response.json()
-        setResetStatus({
-          totalTasks: data.totalTasks,
-          completedCheckIns: data.completedCheckIns,
-          completedTodos: data.completedTodos,
-          todosWithProgress: data.todosWithProgress,
-          canReset: data.canReset,
-        })
-      }
-    } catch (error) {
-      console.error('获取重置状态失败:', error)
-    }
-  }
-
   // 手动执行重置
   const handleManualReset = async () => {
-    setIsResetting(true)
     try {
-      const response = await fetch('/api/tasks/reset-daily?userId=user_001', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
+      const result = await resetDaily(DEFAULT_USER_ID).unwrap()
+      setLastResetTime(new Date().toISOString())
+      await refetchResetStatus()
 
-      if (response.ok) {
-        const result = await response.json()
-        setLastResetTime(new Date().toISOString())
-        await loadResetStatus() // 重新加载状态
-
-        if (result.success) {
-          alert(result.message || '重置完成')
-          // 触发页面数据刷新
-          window.dispatchEvent(
-            new CustomEvent('daily-reset-completed', {
-              detail: result,
-            })
-          )
-        } else {
-          alert(result.message || '没有需要重置的数据')
-        }
+      if (result.success) {
+        alert(result.message || '重置完成')
+        // 触发页面数据刷新
+        window.dispatchEvent(
+          new CustomEvent('daily-reset-completed', {
+            detail: result,
+          })
+        )
       } else {
-        const errorData = await response.json()
-        alert(errorData.error || '重置失败，请稍后重试')
+        alert(result.message || '没有需要重置的数据')
       }
     } catch (error) {
       console.error('手动重置失败:', error)
       alert('重置失败，请稍后重试')
-    } finally {
-      setIsResetting(false)
     }
   }
 

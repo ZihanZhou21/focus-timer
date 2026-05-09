@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProjectItem } from '@/lib/api'
 import { taskTypeConfig, DEFAULT_USER_ID } from '@/lib/constants'
@@ -17,12 +17,7 @@ import {
 } from '@/lib/services/tasks-api'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/app/store'
-import {
-  setTimelineItems,
-  setSelectedItem,
-  updateTask,
-  deleteTask,
-} from '@/app/slices/tasksSlice'
+import { setSelectedItem, updateTask, deleteTask } from '@/app/slices/tasksSlice'
 // 导入自动重置服务（自动启动）
 import '@/lib/auto-reset'
 
@@ -30,16 +25,16 @@ export default function Home() {
   // Local state management - unified use of ProjectItem
   const router = useRouter()
   const dispatch = useDispatch()
-  const { timelineItems, selectedItem, isLoading } = useSelector(
-    (state: RootState) => state.tasks
-  )
+  const selectedItem = useSelector((state: RootState) => state.tasks.selectedItem)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [deleteTaskMutation] = useDeleteTaskMutation()
   const {
     data: todayProjectItems,
     isError: isTodayTasksError,
+    isLoading,
     refetch: refetchTodayTasks,
   } = useGetTodayProjectItemsQuery(DEFAULT_USER_ID)
+  const timelineItems = isTodayTasksError ? [] : todayProjectItems ?? []
 
   // Handle new task addition
   const handleTaskAdded = async () => {
@@ -77,12 +72,20 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (todayProjectItems) {
-      dispatch(setTimelineItems(todayProjectItems))
-    } else if (isTodayTasksError) {
-      dispatch(setTimelineItems([]))
+    if (!selectedItem || !todayProjectItems) {
+      return
     }
-  }, [dispatch, isTodayTasksError, todayProjectItems])
+
+    const freshSelectedItem = todayProjectItems.find(
+      (item) => item.id === selectedItem.id
+    )
+
+    if (freshSelectedItem && freshSelectedItem !== selectedItem) {
+      dispatch(setSelectedItem(freshSelectedItem))
+    } else if (!freshSelectedItem) {
+      dispatch(setSelectedItem(null))
+    }
+  }, [dispatch, selectedItem, todayProjectItems])
 
   // Initialize data
   useEffect(() => {

@@ -131,6 +131,36 @@ export interface CompleteTaskResponse {
   todayTotal: number
 }
 
+export interface ResetDailyStatusResponse {
+  success: boolean
+  totalTasks: number
+  completedCheckIns: number
+  completedTodos: number
+  todosWithProgress: number
+  canReset: boolean
+  date: string
+  message: string
+}
+
+export interface ResetDailyResponse {
+  success: boolean
+  message: string
+  result?: {
+    resetCount: number
+    resetDetails: {
+      statusResets: number
+      completedAtResets: number
+      timeStatsResets: number
+      checkInResets: number
+    }
+    resetDate: string
+    timestamp: string
+  }
+  beforeStatus?: Omit<ResetDailyStatusResponse, 'success' | 'message'>
+  afterStatus?: Omit<ResetDailyStatusResponse, 'success' | 'message'>
+  status?: Omit<ResetDailyStatusResponse, 'success' | 'message'>
+}
+
 const invalidateStats = (dispatch: (action: unknown) => unknown) => {
   dispatch(statsApi.util.invalidateTags(['WeeklyStats', 'MonthlyStats']))
 }
@@ -138,7 +168,7 @@ const invalidateStats = (dispatch: (action: unknown) => unknown) => {
 export const tasksApi = createApi({
   reducerPath: 'tasksApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api/tasks' }),
-  tagTypes: ['Task', 'TaskProgress', 'TaskRemaining', 'TodayTasks'],
+  tagTypes: ['Task', 'TaskProgress', 'TaskRemaining', 'TodayTasks', 'ResetDaily'],
   endpoints: (builder) => ({
     getTodayProjectItems: builder.query<ProjectItem[], string | undefined>({
       query: (userId = 'user_001') =>
@@ -188,6 +218,16 @@ export const tasksApi = createApi({
         ]),
       ],
       keepUnusedDataFor: 120,
+    }),
+    getResetDailyStatus: builder.query<
+      ResetDailyStatusResponse,
+      string | undefined
+    >({
+      query: (userId = 'user_001') =>
+        `reset-daily?userId=${encodeURIComponent(userId)}`,
+      providesTags: (_result, _error, userId = 'user_001') => [
+        { type: 'ResetDaily', id: userId },
+      ],
     }),
     createTask: builder.mutation<CreateTaskResponse, CreateTaskInput>({
       query: (task) => ({
@@ -270,6 +310,23 @@ export const tasksApi = createApi({
         invalidateStats(dispatch)
       },
     }),
+    resetDaily: builder.mutation<ResetDailyResponse, string | undefined>({
+      query: (userId = 'user_001') => ({
+        url: `reset-daily?userId=${encodeURIComponent(userId)}`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_result, _error, userId = 'user_001') => [
+        { type: 'TodayTasks', id: userId },
+        { type: 'ResetDaily', id: userId },
+        'Task',
+        'TaskProgress',
+        'TaskRemaining',
+      ],
+      async onQueryStarted(_userId, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        invalidateStats(dispatch)
+      },
+    }),
   }),
 })
 
@@ -278,10 +335,12 @@ export const {
   useCreateTaskMutation,
   useDeleteTaskMutation,
   useGetBatchTaskInfoQuery,
+  useGetResetDailyStatusQuery,
   useGetTaskQuery,
   useGetTaskProgressQuery,
   useGetTaskRemainingQuery,
   useSaveTaskSessionMutation,
+  useResetDailyMutation,
   useUpdateTaskMutation,
   useGetTodayTasksQuery,
   useGetTodayProjectItemsQuery,
