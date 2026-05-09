@@ -15,6 +15,7 @@ import {
   loadFocusTimerState,
   saveFocusTimerState,
 } from '@/lib/focus-timer-storage'
+import { useSaveTaskSessionMutation } from '@/lib/services/tasks-api'
 
 export function useFocusTimerLogic({
   initialTime = 25,
@@ -47,7 +48,17 @@ export function useFocusTimerLogic({
 } {
   const dispatch = useDispatch()
   const timerState = useSelector((state: RootState) => state.timer)
-  const { isRunning, hasInitializedFromLiveData, lastSyncTime, timeRemaining, totalElapsed, totalEstimated } = timerState
+  const {
+    isRunning,
+    hasInitializedFromLiveData,
+    lastSyncTime,
+    timeRemaining,
+    totalElapsed,
+    totalEstimated,
+    taskId: activeTaskId,
+    timeRemaining: activeTimeRemaining,
+  } = timerState
+  const [saveTaskSession] = useSaveTaskSessionMutation()
 
   const sessionStartTime = useRef<Date | null>(null)
 
@@ -158,7 +169,7 @@ export function useFocusTimerLogic({
   useEffect(() => {
     // 检查是否已经为该任务初始化过（或者当前正在运行该任务）
     // 如果 taskId 匹配且已经有剩余时间（不是初始的 0），则跳过初始化
-    if (timerState.taskId === taskId && (timerState.timeRemaining > 0 || isRunning)) {
+    if (activeTaskId === taskId && (activeTimeRemaining > 0 || isRunning)) {
       return
     }
 
@@ -198,8 +209,9 @@ export function useFocusTimerLogic({
     originalElapsed,
     calculateInitialValues,
     restoreFromStorage,
-    // Note: We deliberately exclude isRunning and timerState from deps to avoid re-init loops,
-    // but we use them inside the effect for the guard condition.
+    activeTaskId,
+    activeTimeRemaining,
+    isRunning,
   ])
 
   // 保存当前会话数据到后端
@@ -214,17 +226,13 @@ export function useFocusTimerLogic({
 
     const endpoint = `/api/tasks/${taskId}/session`
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration: sessionDuration }),
-      })
-      return response.ok
+      await saveTaskSession({ id: taskId, duration: sessionDuration }).unwrap()
+      return true
     } catch (error) {
       console.warn(`⚠️ Session save request failed ${endpoint}:`, error)
       return false
     }
-  }, [taskId])
+  }, [saveTaskSession, taskId])
 
   // 开始计时器
   const startTimerHandler = useCallback(() => {

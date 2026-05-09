@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useCreateTaskMutation } from '@/lib/services/tasks-api'
 import type { CheckInEntry } from '@/lib/types'
 
 interface SimpleTaskModalProps {
@@ -59,6 +60,7 @@ export default function SimpleTaskModal({
   const [isRecurring, setIsRecurring] = useState(false)
   const [recurringDays, setRecurringDays] = useState<number[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [createTask] = useCreateTaskMutation()
 
   const weekDays = [
     { value: 1, label: 'Mon' },
@@ -179,19 +181,10 @@ export default function SimpleTaskModal({
         }
       }
 
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(taskData),
-      })
-
-      if (response.ok) {
-        resetForm()
-        onTaskAdded()
-        onClose()
-      } else {
-        console.error('Failed to create task')
-      }
+      await createTask(taskData).unwrap()
+      resetForm()
+      onTaskAdded()
+      onClose()
     } catch (error) {
       console.error('Error creating task:', error)
     } finally {

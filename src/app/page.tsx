@@ -12,6 +12,7 @@ import TaskDetailCard from '@/components/TaskDetailCard'
 import WeekChart from '@/components/WeekChart'
 import {
   tasksApi,
+  useDeleteTaskMutation,
   useGetTodayProjectItemsQuery,
 } from '@/lib/services/tasks-api'
 import { useDispatch, useSelector } from 'react-redux'
@@ -33,6 +34,7 @@ export default function Home() {
     (state: RootState) => state.tasks
   )
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [deleteTaskMutation] = useDeleteTaskMutation()
   const {
     data: todayProjectItems,
     isError: isTodayTasksError,
@@ -60,27 +62,9 @@ export default function Home() {
   // Handle task deletion
   const handleTaskDelete = async (taskId: string) => {
     try {
-      // First call backend API to delete task
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        // After successful API deletion, remove task from local state
-        dispatch(deleteTask(taskId))
-        dispatch(
-          tasksApi.util.invalidateTags([
-            { type: 'TodayTasks', id: DEFAULT_USER_ID },
-            { type: 'Task', id: taskId },
-            { type: 'TaskProgress', id: taskId },
-            { type: 'TaskRemaining', id: taskId },
-          ])
-        )
-        console.log(`Task ${taskId} successfully deleted`)
-      } else {
-        console.error('Failed to delete task:', response.status)
-        // Can add user notification here
-      }
+      await deleteTaskMutation(taskId).unwrap()
+      dispatch(deleteTask(taskId))
+      console.log(`Task ${taskId} successfully deleted`)
     } catch (error) {
       console.error('Error deleting task:', error)
       // Can add user notification here

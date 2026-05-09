@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Task, TodoTask, CheckInTask } from '@/lib/types'
-import { findUserTasks } from '@/lib/database'
+import { findUserTasksForStats } from '@/lib/database'
+import {
+  formatValidationError,
+  weeklyStatsQuerySchema,
+} from '@/lib/api-validation'
 
 interface DayStats {
   date: string
@@ -28,6 +32,18 @@ interface WeeklyStatsResponse {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const parsedQuery = weeklyStatsQuerySchema.safeParse({
+      userId: searchParams.get('userId') ?? undefined,
+      days: searchParams.get('days') ?? undefined,
+      endDate: searchParams.get('endDate') ?? undefined,
+    })
+    if (!parsedQuery.success) {
+      return NextResponse.json(
+        { error: formatValidationError(parsedQuery.error) },
+        { status: 400 }
+      )
+    }
+
     const userId = searchParams.get('userId') || 'user_001'
     const days = parseInt(searchParams.get('days') || '7') // 默认7天
     const endDateParam = searchParams.get('endDate') // 可选的结束日期
@@ -50,7 +66,14 @@ export async function GET(request: NextRequest) {
     console.log(`获取用户 ${userId} 过去${days}天的任务执行时间统计`)
 
     // 读取任务数据
-    const userTasks: Task[] = await findUserTasks(userId)
+    const statsDates: string[] = []
+    const statsDateCursor = new Date(startDate)
+    while (statsDateCursor <= endDate) {
+      statsDates.push(statsDateCursor.toISOString().split('T')[0])
+      statsDateCursor.setDate(statsDateCursor.getDate() + 1)
+    }
+
+    const userTasks: Task[] = await findUserTasksForStats(userId, statsDates)
 
     if (userTasks.length === 0) {
       console.log('没有任务数据，返回空统计')

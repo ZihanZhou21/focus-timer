@@ -1,15 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TodoTask } from '@/lib/types'
 import { findTaskById, updateTask } from '@/lib/database'
+import {
+  completeTaskSchema,
+  formatValidationError,
+  taskIdParamSchema,
+} from '@/lib/api-validation'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
-    const body = await request.json()
-    const { duration } = body as { duration?: number }
+    const parsedParams = taskIdParamSchema.safeParse(await params)
+    if (!parsedParams.success) {
+      return NextResponse.json(
+        { error: formatValidationError(parsedParams.error) },
+        { status: 400 }
+      )
+    }
+
+    const parsedBody = completeTaskSchema.safeParse(await request.json())
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: formatValidationError(parsedBody.error) },
+        { status: 400 }
+      )
+    }
+
+    const { id } = parsedParams.data
+    const { duration } = parsedBody.data
 
     const task = await findTaskById(id)
 

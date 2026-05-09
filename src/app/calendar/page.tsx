@@ -1,12 +1,20 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { taskTypeConfig, DEFAULT_USER_ID, TimePeriod } from '@/lib/constants'
-import { formatTimeInHours, getDateRange } from '@/lib/utils'
-import { weeklyStatsAPI } from '@/lib/weekly-stats-api'
-import { monthlyStatsAPI } from '@/lib/monthly-stats-api'
+import { useEffect, useMemo, useState } from 'react'
+import { useAppDispatch } from '@/app/hooks'
 import AppNavigation from '@/components/AppNavigation'
 import StatsCard from '@/components/StatsCard'
+import { DEFAULT_USER_ID, taskTypeConfig, TimePeriod } from '@/lib/constants'
+import {
+  statsApi,
+  useGetMonthlyStatsQuery,
+  useGetWeeklyStatsQuery,
+  useGetYearlyStatsQuery,
+  type MonthlyStatsResponse,
+  type WeeklyStatsResponse,
+  type YearlyStatsResponse,
+} from '@/lib/services/stats-api'
+import { formatTimeInHours, getDateRange } from '@/lib/utils'
 
 interface DayData {
   date: string
@@ -29,168 +37,178 @@ interface PeriodStats {
   dailyData: DayData[]
 }
 
+interface Segment {
+  type: 'todo' | 'check-in'
+  height: number
+  value: number
+}
+
+const formatDateParam = (date: Date) => {
+  const year = date.getFullYear()
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+const getDailyData = (
+  selectedPeriod: TimePeriod,
+  year: number,
+  weeklyStats?: WeeklyStatsResponse,
+  monthlyStats?: MonthlyStatsResponse,
+  yearlyStats?: YearlyStatsResponse
+): DayData[] => {
+  if (selectedPeriod === 'week') {
+    return (
+      weeklyStats?.dailyStats.map((day) => ({
+        date: day.date,
+        day: day.dayLabel,
+        totalFocusTime: day.todoTime,
+        completedCycles: day.completedCount,
+        totalProjects: day.taskCount,
+        completedProjects: day.completedCount,
+        categoryBreakdown: {
+          todo: day.todoTime,
+          'check-in': 0,
+        },
+      })) ?? []
+    )
+  }
+
+  if (selectedPeriod === 'month') {
+    return (
+      monthlyStats?.dailyStats.map((day) => ({
+        date: day.date,
+        day: new Date(day.date).getDate().toString(),
+        totalFocusTime: day.todoTime,
+        completedCycles: day.completedCount,
+        totalProjects: day.taskCount,
+        completedProjects: day.completedCount,
+        categoryBreakdown: {
+          todo: day.todoTime,
+          'check-in': 0,
+        },
+      })) ?? []
+    )
+  }
+
+  return (
+    yearlyStats?.monthlyStats.map((monthStats) => {
+      const monthTotalTime = monthStats.dailyStats.reduce(
+        (sum, day) => sum + day.todoTime,
+        0
+      )
+      const monthCompletedCount = monthStats.dailyStats.reduce(
+        (sum, day) => sum + day.completedCount,
+        0
+      )
+      const monthTaskCount = monthStats.dailyStats.reduce(
+        (sum, day) => sum + day.taskCount,
+        0
+      )
+
+      return {
+        date: `${year}-${monthStats.month.toString().padStart(2, '0')}`,
+        day: `Month ${monthStats.month}`,
+        totalFocusTime: monthTotalTime,
+        completedCycles: monthCompletedCount,
+        totalProjects: monthTaskCount,
+        completedProjects: monthCompletedCount,
+        categoryBreakdown: {
+          todo: monthTotalTime,
+          'check-in': 0,
+        },
+      }
+    }) ?? []
+  )
+}
+
 export default function CalendarPage() {
+  const dispatch = useAppDispatch()
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('week')
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [periodStats, setPeriodStats] = useState<PeriodStats>({
-    totalFocusTime: 0,
-    completedCycles: 0,
-    averageSessionLength: 0,
-    streakDays: 0,
-    dailyData: [],
-  })
-  const [isLoading, setIsLoading] = useState(true)
 
-  // 加载数据 - 使用新的统计API
-  const loadPeriodData = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      let dailyData: DayData[] = []
+  const weekRange = useMemo(() => getDateRange(currentDate, 'week'), [currentDate])
+  const weekEndDate = useMemo(
+    () => formatDateParam(weekRange.end),
+    [weekRange.end]
+  )
 
-      if (selectedPeriod === 'week') {
-        // 使用周度统计API
-        console.log('Using weekly stats API to get data')
-        const weeklyStats = await weeklyStatsAPI.getLast7DaysStats(
-          DEFAULT_USER_ID
-        )
+  const weeklyQuery = useGetWeeklyStatsQuery(
+    { days: 7, endDate: weekEndDate, userId: DEFAULT_USER_ID },
+    { skip: selectedPeriod !== 'week' }
+  )
+  const monthlyQuery = useGetMonthlyStatsQuery(
+    {
+      year: currentDate.getFullYear(),
+      month: currentDate.getMonth() + 1,
+      userId: DEFAULT_USER_ID,
+    },
+    { skip: selectedPeriod !== 'month' }
+  )
+  const yearlyQuery = useGetYearlyStatsQuery(
+    { year: currentDate.getFullYear(), userId: DEFAULT_USER_ID },
+    { skip: selectedPeriod !== 'year' }
+  )
 
-        dailyData = weeklyStats.dailyStats.map((day) => ({
-          date: day.date,
-          day: day.dayLabel,
-          totalFocusTime: day.todoTime, // 只统计TODO任务时间
-          completedCycles: day.completedCount,
-          totalProjects: day.taskCount,
-          completedProjects: day.completedCount,
-          categoryBreakdown: {
-            todo: day.todoTime,
-            'check-in': 0,
-          },
-        }))
-      } else if (selectedPeriod === 'month') {
-        // 使用月度统计API
-        console.log('Using monthly stats API to get data')
-        const monthlyStats = await monthlyStatsAPI.getMonthlyStats(
-          currentDate.getFullYear(),
-          currentDate.getMonth() + 1,
-          DEFAULT_USER_ID
-        )
+  const periodStats = useMemo<PeriodStats>(() => {
+    const dailyData = getDailyData(
+      selectedPeriod,
+      currentDate.getFullYear(),
+      weeklyQuery.data,
+      monthlyQuery.data,
+      yearlyQuery.data
+    )
+    const totalFocusTime = dailyData.reduce(
+      (sum, day) => sum + day.totalFocusTime,
+      0
+    )
+    const completedCycles = dailyData.reduce(
+      (sum, day) => sum + day.completedCycles,
+      0
+    )
+    const averageSessionLength =
+      completedCycles > 0 ? Math.round(totalFocusTime / completedCycles) : 0
 
-        dailyData = monthlyStats.dailyStats.map((day) => ({
-          date: day.date,
-          day: new Date(day.date).getDate().toString(),
-          totalFocusTime: day.todoTime, // 只统计TODO任务时间
-          completedCycles: day.completedCount,
-          totalProjects: day.taskCount,
-          completedProjects: day.completedCount,
-          categoryBreakdown: {
-            todo: day.todoTime,
-            'check-in': 0,
-          },
-        }))
+    let streakDays = 0
+    for (let i = dailyData.length - 1; i >= 0; i--) {
+      if (dailyData[i].totalFocusTime > 0) {
+        streakDays++
       } else {
-        // 年视图：使用多个月度API
-        console.log('Using multiple monthly APIs to get yearly data')
-        const year = currentDate.getFullYear()
-        const monthlyPromises = []
-
-        for (let month = 1; month <= 12; month++) {
-          monthlyPromises.push(
-            monthlyStatsAPI.getMonthlyStats(year, month, DEFAULT_USER_ID)
-          )
-        }
-
-        const monthlyResults = await Promise.all(monthlyPromises)
-
-        dailyData = monthlyResults.map((monthlyStats, index) => {
-          const monthTotalTime = monthlyStats.dailyStats.reduce(
-            (sum, day) => sum + day.todoTime,
-            0
-          )
-          const monthCompletedCount = monthlyStats.dailyStats.reduce(
-            (sum, day) => sum + day.completedCount,
-            0
-          )
-          const monthTaskCount = monthlyStats.dailyStats.reduce(
-            (sum, day) => sum + day.taskCount,
-            0
-          )
-
-          return {
-            date: `${year}-${(index + 1).toString().padStart(2, '0')}`,
-            day: `Month ${index + 1}`,
-            totalFocusTime: monthTotalTime,
-            completedCycles: monthCompletedCount,
-            totalProjects: monthTaskCount,
-            completedProjects: monthCompletedCount,
-            categoryBreakdown: {
-              todo: monthTotalTime,
-              'check-in': 0,
-            },
-          }
-        })
+        break
       }
-
-      // 计算总体统计
-      const totalFocusTime = dailyData.reduce(
-        (sum, day) => sum + day.totalFocusTime,
-        0
-      )
-      const completedCycles = dailyData.reduce(
-        (sum, day) => sum + day.completedCycles,
-        0
-      )
-      const averageSessionLength =
-        completedCycles > 0 ? Math.round(totalFocusTime / completedCycles) : 0
-
-      // 计算连续天数
-      let streakDays = 0
-      for (let i = dailyData.length - 1; i >= 0; i--) {
-        if (dailyData[i].totalFocusTime > 0) {
-          streakDays++
-        } else {
-          break
-        }
-      }
-
-      setPeriodStats({
-        totalFocusTime,
-        completedCycles,
-        averageSessionLength,
-        streakDays,
-        dailyData,
-      })
-    } catch (error) {
-      console.error('Failed to load period data:', error)
-      // 设置空数据以避免界面崩溃
-      setPeriodStats({
-        totalFocusTime: 0,
-        completedCycles: 0,
-        averageSessionLength: 0,
-        streakDays: 0,
-        dailyData: [],
-      })
-    } finally {
-      setIsLoading(false)
     }
-  }, [selectedPeriod, currentDate])
 
-  // 监听时间段和日期变化
-  useEffect(() => {
-    loadPeriodData()
-  }, [loadPeriodData])
+    return {
+      totalFocusTime,
+      completedCycles,
+      averageSessionLength,
+      streakDays,
+      dailyData,
+    }
+  }, [
+    currentDate,
+    monthlyQuery.data,
+    selectedPeriod,
+    weeklyQuery.data,
+    yearlyQuery.data,
+  ])
+
+  const isLoading =
+    (selectedPeriod === 'week' && weeklyQuery.isLoading) ||
+    (selectedPeriod === 'month' && monthlyQuery.isLoading) ||
+    (selectedPeriod === 'year' && yearlyQuery.isLoading)
 
   useEffect(() => {
     const handleStatsUpdated = () => {
-      weeklyStatsAPI.clearAllCache()
-      monthlyStatsAPI.clearAllCache()
-      void loadPeriodData()
+      dispatch(statsApi.util.invalidateTags(['WeeklyStats', 'MonthlyStats']))
     }
 
     window.addEventListener('focus-stats-updated', handleStatsUpdated)
-    return () => window.removeEventListener('focus-stats-updated', handleStatsUpdated)
-  }, [loadPeriodData])
+    return () =>
+      window.removeEventListener('focus-stats-updated', handleStatsUpdated)
+  }, [dispatch])
 
-  // 导航函数
   const navigatePeriod = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate)
 
@@ -211,14 +229,14 @@ export default function CalendarPage() {
     setCurrentDate(newDate)
   }
 
-  // 获取当前时间段标题
   const getPeriodTitle = () => {
     switch (selectedPeriod) {
-      case 'week':
+      case 'week': {
         const { start, end } = getDateRange(currentDate, 'week')
         return `${start.getMonth() + 1}/${start.getDate()} - ${
           end.getMonth() + 1
         }/${end.getDate()}`
+      }
       case 'month':
         return `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1)
           .toString()
@@ -235,7 +253,6 @@ export default function CalendarPage() {
 
   return (
     <div className="h-screen bg-slate-900 text-white flex flex-col">
-      {/* 顶部导航栏 */}
       <header className="flex items-center justify-between px-8 pt-6 flex-shrink-0">
         <div className="flex items-center space-x-4">
           <div className="text-xl font-bold text-slate-300">Focus Timer</div>
@@ -251,10 +268,8 @@ export default function CalendarPage() {
         </div>
       </header>
 
-      {/* 主内容区域 */}
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto">
-          {/* 时间段选择器 */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center space-x-4">
               <button
@@ -314,42 +329,40 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          {/* 统计卡片 */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {isLoading
-              ? Array.from({ length: 4 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-28 rounded-3xl bg-slate-800 border border-slate-700/50 animate-pulse"
-                  />
-                ))
-              : (
-                  <>
-                    <StatsCard
-                      title="Total Focus Time"
-                      value={formatTimeInHours(periodStats.totalFocusTime)}
-                      color="amber"
-                    />
-                    <StatsCard
-                      title="Completed Cycles"
-                      value={periodStats.completedCycles}
-                      color="emerald"
-                    />
-                    <StatsCard
-                      title="Average Duration"
-                      value={formatTimeInHours(periodStats.averageSessionLength)}
-                      color="blue"
-                    />
-                    <StatsCard
-                      title="Streak Days"
-                      value={periodStats.streakDays}
-                      color="purple"
-                    />
-                  </>
-                )}
+            {isLoading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-28 rounded-3xl bg-slate-800 border border-slate-700/50 animate-pulse"
+                />
+              ))
+            ) : (
+              <>
+                <StatsCard
+                  title="Total Focus Time"
+                  value={formatTimeInHours(periodStats.totalFocusTime)}
+                  color="amber"
+                />
+                <StatsCard
+                  title="Completed Cycles"
+                  value={periodStats.completedCycles}
+                  color="emerald"
+                />
+                <StatsCard
+                  title="Average Duration"
+                  value={formatTimeInHours(periodStats.averageSessionLength)}
+                  color="blue"
+                />
+                <StatsCard
+                  title="Streak Days"
+                  value={periodStats.streakDays}
+                  color="purple"
+                />
+              </>
+            )}
           </div>
 
-          {/* 专注趋势图 */}
           <div className="bg-slate-800 rounded-3xl p-8 border border-slate-700/50">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-xl font-light text-slate-200">Focus Trend</h2>
@@ -370,8 +383,6 @@ export default function CalendarPage() {
               <div className="flex items-end h-80 gap-2 min-w-full w-full">
                 {periodStats.dailyData.map((data, index) => {
                   const { categoryBreakdown } = data
-
-                  // 计算每个类型的高度百分比
                   const todoHeight =
                     maxFocusTime > 0
                       ? (categoryBreakdown.todo / maxFocusTime) * 100
@@ -381,22 +392,22 @@ export default function CalendarPage() {
                       ? (categoryBreakdown['check-in'] / maxFocusTime) * 100
                       : 0
 
-                  // 创建显示的分段数组
-                  const segments = []
-                  if (categoryBreakdown.todo > 0)
+                  const segments: Segment[] = []
+                  if (categoryBreakdown.todo > 0) {
                     segments.push({
                       type: 'todo',
                       height: todoHeight,
                       value: categoryBreakdown.todo,
                     })
-                  if (categoryBreakdown['check-in'] > 0)
+                  }
+                  if (categoryBreakdown['check-in'] > 0) {
                     segments.push({
                       type: 'check-in',
                       height: checkInHeight,
                       value: categoryBreakdown['check-in'],
                     })
+                  }
 
-                  // 设置最小柱子宽度
                   const minBarWidth =
                     selectedPeriod === 'month'
                       ? 20
@@ -406,26 +417,24 @@ export default function CalendarPage() {
 
                   return (
                     <div
-                      key={index}
+                      key={data.date || index}
                       className="flex flex-col items-center justify-end h-full group cursor-pointer"
                       style={{
                         minWidth: `${minBarWidth}px`,
                         flex: '1',
                       }}>
-                      {/* 悬停时显示总时间 */}
                       <div className="mb-2 text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                         {formatTimeInHours(data.totalFocusTime)}
                       </div>
 
-                      {/* 堆叠柱状图 */}
                       <div className="w-full flex flex-col justify-end h-full min-h-[20px]">
                         {segments.length > 0 ? (
                           segments.map((segment, segmentIndex) => {
-                            const colors: { [key: string]: string } = {
+                            const colors = {
                               todo: 'bg-blue-400/70 hover:bg-blue-400/90',
                               'check-in': 'bg-gray-400/70 hover:bg-gray-400/90',
                             }
-                            const names: { [key: string]: string } = {
+                            const names = {
                               todo: 'Todo',
                               'check-in': 'Check-in',
                             }
@@ -454,7 +463,6 @@ export default function CalendarPage() {
                         )}
                       </div>
 
-                      {/* 日期标签 */}
                       <div className="mt-3 text-xs text-slate-400 text-center whitespace-nowrap">
                         {data.day}
                       </div>

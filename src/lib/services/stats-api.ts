@@ -58,6 +58,23 @@ export interface MonthlyStatsQueryArgs {
   endDate?: string
 }
 
+export interface YearlyStatsQueryArgs {
+  year: number
+  userId?: string
+}
+
+export interface YearlyMonthStats {
+  year: number
+  month: number
+  dailyStats: MonthlyDailyStats[]
+  summary: MonthlyStatsResponse['summary']
+}
+
+export interface YearlyStatsResponse {
+  year: number
+  monthlyStats: YearlyMonthStats[]
+}
+
 export const statsApi = createApi({
   reducerPath: 'statsApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api/tasks' }),
@@ -124,7 +141,67 @@ export const statsApi = createApi({
       ],
       keepUnusedDataFor: 600,
     }),
+    getYearlyStats: builder.query<YearlyStatsResponse, YearlyStatsQueryArgs>({
+      async queryFn(
+        { year, userId = 'user_001' },
+        _queryApi,
+        _extraOptions,
+        fetchWithBQ
+      ) {
+        const results = await Promise.all(
+          Array.from({ length: 12 }, async (_, index) => {
+            const month = index + 1
+            const params = new URLSearchParams({
+              userId,
+              year: year.toString(),
+              month: month.toString(),
+            })
+
+            const result = await fetchWithBQ(
+              `monthly-stats?${params.toString()}`
+            )
+
+            if (result.error) {
+              return result
+            }
+
+            return {
+              data: result.data as MonthlyStatsResponse,
+            }
+          })
+        )
+
+        const failedResult = results.find((result) => 'error' in result)
+        if (failedResult && 'error' in failedResult) {
+          return { error: failedResult.error }
+        }
+
+        return {
+          data: {
+            year,
+            monthlyStats: results.map((result) => {
+              const monthlyStats = result.data as MonthlyStatsResponse
+              return {
+                year: monthlyStats.year,
+                month: monthlyStats.month,
+                dailyStats: monthlyStats.dailyStats,
+                summary: monthlyStats.summary,
+              }
+            }),
+          },
+        }
+      },
+      providesTags: (_result, _error, { year, userId = 'user_001' }) => [
+        { type: 'MonthlyStats', id: `${userId}-${year}` },
+        'MonthlyStats',
+      ],
+      keepUnusedDataFor: 600,
+    }),
   }),
 })
 
-export const { useGetMonthlyStatsQuery, useGetWeeklyStatsQuery } = statsApi
+export const {
+  useGetMonthlyStatsQuery,
+  useGetWeeklyStatsQuery,
+  useGetYearlyStatsQuery,
+} = statsApi

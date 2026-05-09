@@ -10,6 +10,7 @@ import {
 } from '@/components/watchfaces'
 import { useFocusTimerLogic } from '@/hooks/useFocusTimerLogic'
 import { resetTimer as resetTimerAction } from '@/app/slices/timerSlice'
+import { useCreateTaskMutation } from '@/lib/services/tasks-api'
 
 interface FocusTimerProps {
   showSettings?: boolean
@@ -28,6 +29,7 @@ export default function FocusTimer({
   const [mode, setMode] = useState<'focus' | 'break'>('focus') // 当前模式：专注/休息
   const [completedCycles, setCompletedCycles] = useState<number>(0) // 完成的循环次数
   const [watchFaceType, setWatchFaceType] = useState<WatchFaceType>('arc')
+  const [createTask] = useCreateTaskMutation()
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false) // 菜单开关状态
 
   // 引用
@@ -113,11 +115,7 @@ export default function FocusTimer({
         },
       }
 
-      fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(focusTaskData),
-      }).catch((error) => {
+      createTask(focusTaskData).unwrap().catch((error) => {
         console.error('Failed to save focus session:', error)
       })
 

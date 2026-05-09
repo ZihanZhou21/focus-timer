@@ -6,8 +6,8 @@ import { RootState } from '@/app/store'
 import { completeTimer } from '@/app/slices/timerSlice'
 import { ProjectItem } from '@/lib/api'
 import {
-  tasksApi,
   useGetBatchTaskInfoQuery,
+  useUpdateTaskMutation,
 } from '@/lib/services/tasks-api'
 
 import TaskHeaderSection from './task-detail/TaskHeaderSection'
@@ -54,6 +54,7 @@ export default function TaskDetailCard({
   const timer = useSelector((state: RootState) => state.timer)
   const dispatch = useDispatch()
   const cardRef = useRef<HTMLDivElement>(null)
+  const [updateTaskMutation] = useUpdateTaskMutation()
 
   const todoTaskIds = useMemo(
     () =>
@@ -89,40 +90,25 @@ export default function TaskDetailCard({
     }
   }, [selectedItem, onClose])
 
-  const invalidateTaskCache = (taskId: string) => {
-    dispatch(
-      tasksApi.util.invalidateTags([
-        { type: 'Task', id: taskId },
-        { type: 'TaskProgress', id: taskId },
-        { type: 'TaskRemaining', id: taskId },
-      ])
-    )
-  }
-
   const getBatchItem = (taskId: string) => batchTaskInfo?.success[taskId]
 
   const handleCheckInToggle = async (task: ProjectItem) => {
     setIsUpdating(true)
     try {
-      const response = await fetch(`/api/tasks/${task.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await updateTaskMutation({
+        id: task.id,
+        updates: {
           status: task.completed ? 'in_progress' : 'completed',
           completedAt: task.completed
             ? null
             : new Date().toISOString().split('T')[0],
-        }),
-      })
+        },
+      }).unwrap()
+      const updatedTask = { ...task, completed: !task.completed }
+      onTaskUpdate?.(updatedTask)
 
-      if (response.ok) {
-        const updatedTask = { ...task, completed: !task.completed }
-        onTaskUpdate?.(updatedTask)
-        invalidateTaskCache(task.id)
-
-        if (!task.completed && task.id === timer.taskId) {
-          dispatch(completeTimer())
-        }
+      if (!task.completed && task.id === timer.taskId) {
+        dispatch(completeTimer())
       }
     } catch (error) {
       console.error('Failed to update task:', error)
@@ -176,15 +162,11 @@ export default function TaskDetailCard({
     updatedDetails[editingDetail] = editingText
 
     try {
-      const response = await fetch(`/api/tasks/${selectedItem.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ details: updatedDetails }),
-      })
-      if (response.ok) {
-        onTaskUpdate?.({ ...selectedItem, details: updatedDetails })
-        invalidateTaskCache(selectedItem.id)
-      }
+      await updateTaskMutation({
+        id: selectedItem.id,
+        updates: { details: updatedDetails },
+      }).unwrap()
+      onTaskUpdate?.({ ...selectedItem, details: updatedDetails })
     } catch (error) {
       console.error('Failed to update task details:', error)
     }
@@ -197,15 +179,11 @@ export default function TaskDetailCard({
     const updatedDetails =
       selectedItem.details?.filter((_, i) => i !== index) || []
     try {
-      const response = await fetch(`/api/tasks/${selectedItem.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ details: updatedDetails }),
-      })
-      if (response.ok) {
-        onTaskUpdate?.({ ...selectedItem, details: updatedDetails })
-        invalidateTaskCache(selectedItem.id)
-      }
+      await updateTaskMutation({
+        id: selectedItem.id,
+        updates: { details: updatedDetails },
+      }).unwrap()
+      onTaskUpdate?.({ ...selectedItem, details: updatedDetails })
     } catch (error) {
       console.error('Failed to delete task details:', error)
     }
@@ -216,17 +194,13 @@ export default function TaskDetailCard({
     const newDetail = 'New task item'
     const updatedDetails = [...(selectedItem.details || []), newDetail]
     try {
-      const response = await fetch(`/api/tasks/${selectedItem.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ details: updatedDetails }),
-      })
-      if (response.ok) {
-        onTaskUpdate?.({ ...selectedItem, details: updatedDetails })
-        invalidateTaskCache(selectedItem.id)
-        setEditingDetail(updatedDetails.length - 1)
-        setEditingText(newDetail)
-      }
+      await updateTaskMutation({
+        id: selectedItem.id,
+        updates: { details: updatedDetails },
+      }).unwrap()
+      onTaskUpdate?.({ ...selectedItem, details: updatedDetails })
+      setEditingDetail(updatedDetails.length - 1)
+      setEditingText(newDetail)
     } catch (error) {
       console.error('Failed to add task details:', error)
     }
@@ -236,27 +210,23 @@ export default function TaskDetailCard({
     if (!selectedItem) return
     setIsUpdating(true)
     try {
-      const response = await fetch(`/api/tasks/${selectedItem.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await updateTaskMutation({
+        id: selectedItem.id,
+        updates: {
           title: editingTaskData.title,
           plannedTime: editingTaskData.time,
           tags: editingTaskData.tags,
           estimatedDuration: editingTaskData.durationMinutes * 60,
-        }),
+        },
+      }).unwrap()
+      onTaskUpdate?.({
+        ...selectedItem,
+        title: editingTaskData.title,
+        time: editingTaskData.time,
+        tags: editingTaskData.tags,
+        durationMinutes: editingTaskData.durationMinutes,
       })
-      if (response.ok) {
-        onTaskUpdate?.({
-          ...selectedItem,
-          title: editingTaskData.title,
-          time: editingTaskData.time,
-          tags: editingTaskData.tags,
-          durationMinutes: editingTaskData.durationMinutes,
-        })
-        invalidateTaskCache(selectedItem.id)
-        setIsEditingTask(false)
-      }
+      setIsEditingTask(false)
     } catch (error) {
       console.error('Error updating task:', error)
     } finally {
@@ -268,19 +238,13 @@ export default function TaskDetailCard({
     if (!selectedItem || !onTaskDelete) return
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/tasks/${selectedItem.id}`, {
-        method: 'DELETE',
-      })
-      if (response.ok) {
-        onTaskDelete(selectedItem.id)
-        invalidateTaskCache(selectedItem.id)
+      await onTaskDelete(selectedItem.id)
 
-        if (selectedItem.id === timer.taskId) {
-          dispatch(completeTimer())
-        }
-
-        onClose?.()
+      if (selectedItem.id === timer.taskId) {
+        dispatch(completeTimer())
       }
+
+      onClose?.()
     } catch (error) {
       console.error('Error deleting task:', error)
     } finally {

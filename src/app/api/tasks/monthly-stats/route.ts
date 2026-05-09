@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Task, TodoTask } from '@/lib/types'
-import { findUserTasks } from '@/lib/database'
+import { findUserTasksForStats } from '@/lib/database'
+import {
+  formatValidationError,
+  monthlyStatsQuerySchema,
+} from '@/lib/api-validation'
 
 // 日常统计数据接口
 interface DailyStats {
@@ -61,6 +65,20 @@ function isTaskCompletedOnDate(task: Task, targetDate: string): boolean {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const parsedQuery = monthlyStatsQuerySchema.safeParse({
+      userId: searchParams.get('userId') ?? undefined,
+      year: searchParams.get('year') ?? undefined,
+      month: searchParams.get('month') ?? undefined,
+      startDate: searchParams.get('startDate') ?? undefined,
+      endDate: searchParams.get('endDate') ?? undefined,
+    })
+    if (!parsedQuery.success) {
+      return NextResponse.json(
+        { error: formatValidationError(parsedQuery.error) },
+        { status: 400 }
+      )
+    }
+
     const userId = searchParams.get('userId') || 'user_001'
     const year = parseInt(
       searchParams.get('year') || new Date().getFullYear().toString()
@@ -96,7 +114,14 @@ export async function GET(request: NextRequest) {
     }
 
     // 读取任务数据
-    const userTasks = await findUserTasks(userId)
+    const statsDates: string[] = []
+    const statsDateCursor = new Date(startDate)
+    while (statsDateCursor <= endDate) {
+      statsDates.push(getLocalDateString(statsDateCursor))
+      statsDateCursor.setDate(statsDateCursor.getDate() + 1)
+    }
+
+    const userTasks = await findUserTasksForStats(userId, statsDates)
 
     // 过滤用户任务
     console.log(`用户 ${userId} 共有 ${userTasks.length} 个任务`)

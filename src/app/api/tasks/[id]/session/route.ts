@@ -1,26 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { TodoTask } from '@/lib/types'
 import { findTaskById, updateTask } from '@/lib/database'
+import {
+  formatValidationError,
+  taskIdParamSchema,
+  taskSessionSchema,
+} from '@/lib/api-validation'
+import { TodoTask } from '@/lib/types'
 
-// POST /api/tasks/[id]/session - 简化版本：只记录今日执行时间
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
-    const body = await request.json()
-    const { duration } = body as {
-      duration?: number // 执行时间（秒）
-    }
-
-    if (!duration || duration <= 0) {
+    const parsedParams = taskIdParamSchema.safeParse(await params)
+    if (!parsedParams.success) {
       return NextResponse.json(
-        { error: 'Missing or invalid duration' },
+        { error: formatValidationError(parsedParams.error) },
         { status: 400 }
       )
     }
 
+    const parsedBody = taskSessionSchema.safeParse(await request.json())
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: formatValidationError(parsedBody.error) },
+        { status: 400 }
+      )
+    }
+
+    const { id } = parsedParams.data
+    const { duration } = parsedBody.data
     const task = await findTaskById(id)
 
     if (!task) {
@@ -35,22 +44,14 @@ export async function POST(
     }
 
     const todoTask = task as TodoTask
-
-    // 获取今日日期
     const today = new Date().toISOString().split('T')[0]
 
-    // 初始化dailyTimeStats如果不存在
     if (!todoTask.dailyTimeStats) {
       todoTask.dailyTimeStats = {}
     }
 
-    // 直接更新今日执行时间
-    if (todoTask.dailyTimeStats[today]) {
-      todoTask.dailyTimeStats[today] += duration
-    } else {
-      todoTask.dailyTimeStats[today] = duration
-    }
-
+    todoTask.dailyTimeStats[today] =
+      (todoTask.dailyTimeStats[today] || 0) + duration
     todoTask.updatedAt = new Date().toISOString()
 
     await updateTask(id, todoTask)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Task } from '@/lib/types'
 import { findUserTasks, insertTask, bulkUpdateTasks } from '@/lib/database'
+import { createTaskSchema, formatValidationError } from '@/lib/api-validation'
 
 // 获取用户任务
 export async function GET(request: NextRequest) {
@@ -20,9 +21,18 @@ export async function GET(request: NextRequest) {
 // 创建新任务
 export async function POST(request: NextRequest) {
   try {
-    const taskData = await request.json()
+    const parsed = createTaskSchema.safeParse(await request.json())
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: formatValidationError(parsed.error) },
+        { status: 400 }
+      )
+    }
 
-    const newTask: Task = {
+    const taskData = parsed.data
+
+    const newTask = {
+      ...taskData,
       _id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       userId: taskData.userId || 'user_001',
       type: taskData.type,
@@ -34,9 +44,8 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       completedAt: taskData.completedAt || [],
-      plannedTime: taskData.plannedTime || null,
-      ...taskData,
-    }
+      plannedTime: taskData.plannedTime || undefined,
+    } as Task
 
     const id = await insertTask(newTask)
 

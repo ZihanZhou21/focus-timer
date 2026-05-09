@@ -190,6 +190,64 @@ export async function findUserTasks(userId: string): Promise<Task[]> {
   }
 }
 
+export async function findUserTasksForStats(
+  userId: string,
+  dates: string[]
+): Promise<Task[]> {
+  const uniqueDates = Array.from(new Set(dates)).sort()
+
+  if (uniqueDates.length === 0) {
+    return []
+  }
+
+  try {
+    const collection = await getTasksCollection()
+    const dateFieldChecks = uniqueDates.map((date) => ({
+      [`dailyTimeStats.${date}`]: { $exists: true },
+    }))
+
+    const tasks = await collection
+      .find({
+        userId,
+        $or: [
+          { completedAt: { $in: uniqueDates } },
+          { 'checkInHistory.date': { $in: uniqueDates } },
+          { dueDate: { $gte: uniqueDates[0], $lte: uniqueDates.at(-1) } },
+          { 'recurrence.frequency': { $in: ['daily', 'weekly'] } },
+          ...dateFieldChecks,
+        ],
+      })
+      .toArray()
+
+    console.log(
+      `Found ${tasks.length} stats-relevant tasks for user ${userId}`
+    )
+    return tasks
+  } catch (error) {
+    console.error(`Failed to find stats tasks (${userId}):`, error)
+    const tasks = await readLocalTasksData()
+    const dateSet = new Set(uniqueDates)
+
+    return tasks.filter((task) => {
+      if (task.userId !== userId) return false
+      if (task.completedAt?.some((date) => dateSet.has(date))) return true
+      if (task.type === 'todo') {
+        const hasDailyStats = Object.keys(task.dailyTimeStats || {}).some(
+          (date) => dateSet.has(date)
+        )
+        const dueDate = task.dueDate?.split('T')[0]
+        return hasDailyStats || (dueDate ? dateSet.has(dueDate) : false)
+      }
+
+      return (
+        task.checkInHistory?.some((entry) => dateSet.has(entry.date)) ||
+        task.recurrence.frequency === 'daily' ||
+        task.recurrence.frequency === 'weekly'
+      )
+    })
+  }
+}
+
 export async function bulkUpdateTasks(
   updates: Array<{ _id: string; updates: Partial<Task> }>
 ): Promise<boolean> {
@@ -242,6 +300,10 @@ export async function createIndexes(): Promise<void> {
     await collection.createIndex({ updatedAt: 1 })
     await collection.createIndex({ userId: 1, type: 1 })
     await collection.createIndex({ userId: 1, status: 1 })
+    await collection.createIndex({ userId: 1, completedAt: 1 })
+    await collection.createIndex({ userId: 1, dueDate: 1 })
+    await collection.createIndex({ userId: 1, 'checkInHistory.date': 1 })
+    await collection.createIndex({ userId: 1, 'recurrence.frequency': 1 })
 
     console.log('Database indexes created')
   } catch (error) {

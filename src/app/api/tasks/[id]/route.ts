@@ -1,13 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { findTaskById, updateTask, deleteTask } from '@/lib/database'
 import { TodoTask } from '@/lib/types'
+import {
+  formatValidationError,
+  taskIdParamSchema,
+  updateTaskSchema,
+} from '@/lib/api-validation'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
+    const parsedParams = taskIdParamSchema.safeParse(await params)
+    if (!parsedParams.success) {
+      return NextResponse.json(
+        { error: formatValidationError(parsedParams.error) },
+        { status: 400 }
+      )
+    }
+
+    const { id } = parsedParams.data
     const task = await findTaskById(id)
 
     if (!task) {
@@ -26,8 +39,24 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
-    const updates = await request.json()
+    const parsedParams = taskIdParamSchema.safeParse(await params)
+    if (!parsedParams.success) {
+      return NextResponse.json(
+        { error: formatValidationError(parsedParams.error) },
+        { status: 400 }
+      )
+    }
+
+    const parsedBody = updateTaskSchema.safeParse(await request.json())
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: formatValidationError(parsedBody.error) },
+        { status: 400 }
+      )
+    }
+
+    const { id } = parsedParams.data
+    const updates = parsedBody.data
 
     // 先获取现有任务
     const existingTask = await findTaskById(id)
@@ -87,7 +116,7 @@ export async function PUT(
       }
     }
 
-    const updatedTask = await updateTask(id, updates)
+    const updatedTask = await updateTask(id, updates as Partial<TodoTask>)
 
     if (!updatedTask) {
       return NextResponse.json(
@@ -111,7 +140,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
+    const parsedParams = taskIdParamSchema.safeParse(await params)
+    if (!parsedParams.success) {
+      return NextResponse.json(
+        { error: formatValidationError(parsedParams.error) },
+        { status: 400 }
+      )
+    }
+
+    const { id } = parsedParams.data
 
     // 先获取任务信息以便返回
     const existingTask = await findTaskById(id)

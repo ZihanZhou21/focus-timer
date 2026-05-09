@@ -1,46 +1,64 @@
-// 今日任务视图组件
-import React, { useState, useEffect } from 'react'
-import { todayTasksService, TodayTasksResponse } from '@/lib/today-api'
+'use client'
+
+import { DEFAULT_USER_ID } from '@/lib/constants'
+import {
+  useGetTodayTasksQuery,
+  type TodayTasksResponse,
+} from '@/lib/services/tasks-api'
+import type { Task } from '@/lib/types'
+
+const getTaskStatusText = (status: Task['status']) => {
+  const statusMap = {
+    pending: 'Pending',
+    in_progress: 'In Progress',
+    completed: 'Completed',
+    archived: 'Archived',
+  }
+
+  return statusMap[status] || status
+}
+
+const getPriorityText = (priority: Task['priority']) => {
+  const priorityMap = {
+    high: 'High Priority',
+    medium: 'Medium Priority',
+    low: 'Low Priority',
+  }
+
+  return priorityMap[priority] || priority
+}
+
+const formatTaskTime = (task: Task) => {
+  if (task.type !== 'todo' || !task.dueDate) {
+    return ''
+  }
+
+  return new Date(task.dueDate).toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
 export default function TodayTasksView() {
-  const [todaysData, setTodaysData] = useState<TodayTasksResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const {
+    data: todaysData,
+    error,
+    isLoading,
+    refetch,
+  } = useGetTodayTasksQuery(DEFAULT_USER_ID)
 
-  // 获取今天的任务
-  async function loadTodaysTasks() {
-    try {
-      setLoading(true)
-      setError(null)
-
-      // 前端只需要调用这一个方法，所有复杂逻辑由后端处理
-      const data = await todayTasksService.getTodaysTasks()
-      setTodaysData(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // 组件挂载时加载数据
-  useEffect(() => {
-    loadTodaysTasks()
-  }, [])
-
-  // 下拉刷新
   const handleRefresh = () => {
-    loadTodaysTasks()
+    void refetch()
   }
 
-  if (loading) {
+  if (isLoading) {
     return <div className="text-center py-8">Loading today&apos;s tasks...</div>
   }
 
   if (error) {
     return (
       <div className="text-center py-8 text-red-500">
-        <p>Failed to fetch tasks: {error}</p>
+        <p>Failed to fetch tasks</p>
         <button
           onClick={handleRefresh}
           className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
@@ -54,11 +72,20 @@ export default function TodayTasksView() {
     return <div className="text-center py-8">No data</div>
   }
 
+  return <TodayTasksContent todaysData={todaysData} onRefresh={handleRefresh} />
+}
+
+function TodayTasksContent({
+  todaysData,
+  onRefresh,
+}: {
+  todaysData: TodayTasksResponse
+  onRefresh: () => void
+}) {
   const { tasks, stats } = todaysData
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      {/* 头部信息 */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">
           Today&apos;s Tasks ({todaysData.date})
@@ -71,7 +98,6 @@ export default function TodayTasksView() {
         </div>
       </div>
 
-      {/* 任务列表 */}
       {tasks.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
           <p className="text-lg">No tasks for today</p>
@@ -105,23 +131,21 @@ export default function TodayTasksView() {
                     </span>
 
                     <span className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-800">
-                      {todayTasksService.getPriorityText(task.priority)}
+                      {getPriorityText(task.priority)}
                     </span>
 
-                    {task.type === 'todo' &&
-                      'dueDate' in task &&
-                      task.dueDate && (
-                        <span className="px-2 py-1 text-xs rounded bg-orange-100 text-orange-800">
-                          {todayTasksService.formatTaskTime(task)}
-                        </span>
-                      )}
+                    {task.type === 'todo' && task.dueDate && (
+                      <span className="px-2 py-1 text-xs rounded bg-orange-100 text-orange-800">
+                        {formatTaskTime(task)}
+                      </span>
+                    )}
                   </div>
 
                   {task.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {task.tags.map((tag, index) => (
+                      {task.tags.map((tag) => (
                         <span
-                          key={index}
+                          key={tag}
                           className="px-2 py-1 text-xs rounded bg-gray-200 text-gray-700">
                           #{tag}
                         </span>
@@ -139,16 +163,21 @@ export default function TodayTasksView() {
                         ? 'bg-blue-100 text-blue-800'
                         : 'bg-gray-100 text-gray-800'
                     }`}>
-                    {todayTasksService.getTaskStatusText(task.status)}
-                    {task.status === 'completed' && task.completedCount?.[todaysData.date] && task.completedCount[todaysData.date] > 1 && (
-                      <span className="ml-1 font-bold">x{task.completedCount[todaysData.date]}</span>
-                    )}
+                    {getTaskStatusText(task.status)}
+                    {task.status === 'completed' &&
+                      task.completedCount?.[todaysData.date] &&
+                      task.completedCount[todaysData.date] > 1 && (
+                        <span className="ml-1 font-bold">
+                          x{task.completedCount[todaysData.date]}
+                        </span>
+                      )}
                   </span>
                   {task.status === 'completed' && task.type !== 'check-in' && (
                     <button
-                      onClick={() => (window.location.href = `/focus?id=${task._id}&repeat=true`)}
-                      className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors"
-                    >
+                      onClick={() =>
+                        (window.location.href = `/focus?id=${task._id}&repeat=true`)
+                      }
+                      className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors">
                       Repeat
                     </button>
                   )}
@@ -159,10 +188,9 @@ export default function TodayTasksView() {
         </div>
       )}
 
-      {/* 刷新按钮 */}
       <div className="mt-8 text-center">
         <button
-          onClick={handleRefresh}
+          onClick={onRefresh}
           className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
           Refresh Tasks
         </button>

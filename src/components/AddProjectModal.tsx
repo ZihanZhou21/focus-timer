@@ -9,7 +9,8 @@ import {
   taskTypeConfig,
   DEFAULT_USER_ID,
 } from '@/lib/constants'
-import { ProjectItem, taskService } from '@/lib/api'
+import { ProjectItem } from '@/lib/api'
+import { useCreateTaskMutation } from '@/lib/services/tasks-api'
 import { CheckInTask, TodoTask } from '@/lib/types'
 import VisualPicker from './add-project/VisualPicker'
 import { FormField } from './add-project/FormHelpers'
@@ -53,6 +54,7 @@ export default function AddProjectModal({
 
   const [newDetail, setNewDetail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [createTask] = useCreateTaskMutation()
 
   if (!isOpen) return null
 
@@ -116,14 +118,15 @@ export default function AddProjectModal({
         })
       }
 
-      const result = formData.type === 'todo'
-        ? await taskService.createTodoTask({
+      const taskPayload =
+        formData.type === 'todo'
+          ? ({
             ...newTaskData,
             type: 'todo',
             dueDate: null,
             dailyTimeStats: {},
           } satisfies Omit<TodoTask, '_id' | 'createdAt' | 'updatedAt'>)
-        : await taskService.createCheckInTask({
+          : ({
             ...newTaskData,
             type: 'check-in',
             checkInHistory: [],
@@ -132,6 +135,8 @@ export default function AddProjectModal({
               daysOfWeek: formData.recurringDays,
             },
           } satisfies Omit<CheckInTask, '_id' | 'createdAt' | 'updatedAt'>)
+
+      const result = await createTask(taskPayload).unwrap()
 
       // Convert back to ProjectItem for UI
       const projectItem: ProjectItem = {
