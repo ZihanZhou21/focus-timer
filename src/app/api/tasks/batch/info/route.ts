@@ -1,24 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { findTaskById } from '@/lib/database'
+import { TodoTask } from '@/lib/types'
+import { findTasksByIds } from '@/lib/database'
+import {
+  batchTaskIdsSchema,
+  formatValidationError,
+} from '@/lib/api-validation'
 
-// 批量获取任务基本信息（整合progress + remaining + info）
 export async function POST(request: NextRequest) {
   try {
-    const { taskIds } = await request.json()
+    const parsed = batchTaskIdsSchema.safeParse(await request.json())
 
-    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'taskIds must be a non-empty array' },
+        { error: formatValidationError(parsed.error) },
         { status: 400 }
       )
     }
 
-    if (taskIds.length > 50) {
-      return NextResponse.json(
-        { error: 'Maximum 50 tasks per batch request' },
-        { status: 400 }
-      )
-    }
+    const { taskIds } = parsed.data
 
     const today = new Date().toISOString().split('T')[0]
     interface TaskResult {
@@ -53,85 +52,71 @@ export async function POST(request: NextRequest) {
 
     const taskResults = new Map<string, TaskResult>()
     const errors = new Map<string, string>()
+    const uniqueTaskIds = Array.from(new Set(taskIds as string[]))
+    const tasks = await findTasksByIds(uniqueTaskIds)
+    const tasksById = new Map(tasks.map((task) => [task._id, task]))
 
-    // 并行处理所有任务
-    await Promise.allSettled(
-      taskIds.map(async (taskId: string) => {
-        try {
-          const task = await findTaskById(taskId)
+    for (const taskId of uniqueTaskIds) {
+      const task = tasksById.get(taskId)
 
-          if (!task) {
-            errors.set(taskId, 'Task not found')
-            return
-          }
+      if (!task) {
+        errors.set(taskId, 'Task not found')
+        continue
+      }
 
-          // 基本任务信息
-          const basicInfo = {
-            _id: task._id,
-            title: task.title,
-            status: task.status,
-            type: task.type,
-            priority: task.priority,
-            tags: task.tags,
-            createdAt: task.createdAt,
-            updatedAt: task.updatedAt,
-          }
+      const basicInfo = {
+        _id: task._id,
+        title: task.title,
+        status: task.status,
+        type: task.type,
+        priority: task.priority,
+        tags: task.tags,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+      }
 
-          // 如果是TODO任务，添加时间相关信息
-          if (task.type === 'todo') {
-            const todoTask = task as import('@/lib/types').TodoTask
-            const todayExecutedSeconds = todoTask.dailyTimeStats?.[today] || 0
-            const estimatedSeconds = todoTask.estimatedDuration || 25 * 60
+      if (task.type !== 'todo') {
+        taskResults.set(taskId, basicInfo)
+        continue
+      }
 
-            const remainingSeconds = Math.max(
-              0,
-              estimatedSeconds - todayExecutedSeconds
-            )
-            const progressPercentage = Math.min(
-              100,
-              Math.round((todayExecutedSeconds / estimatedSeconds) * 100)
-            )
+      const todoTask = task as TodoTask
+      const todayExecutedSeconds = todoTask.dailyTimeStats?.[today] || 0
+      const estimatedSeconds = todoTask.estimatedDuration || 25 * 60
+      const remainingSeconds = Math.max(
+        0,
+        estimatedSeconds - todayExecutedSeconds
+      )
+      const progressPercentage = Math.min(
+        100,
+        Math.round((todayExecutedSeconds / estimatedSeconds) * 100)
+      )
 
-            const timeInfo = {
-              // 进度信息
-              progress: {
-                totalExecutedTime: todayExecutedSeconds,
-                estimatedDuration: estimatedSeconds,
-                progressPercentage,
-                isCompleted: task.status === 'completed',
-                todayProgress: {
-                  date: today,
-                  duration: todayExecutedSeconds,
-                  minutes: Math.round(todayExecutedSeconds / 60),
-                },
-              },
-              // 剩余时间信息
-              remaining: {
-                executedMinutes:
-                  Math.round((todayExecutedSeconds / 60) * 100) / 100,
-                remainingMinutes:
-                  Math.round((remainingSeconds / 60) * 100) / 100,
-                estimatedMinutes:
-                  Math.round((estimatedSeconds / 60) * 100) / 100,
-                executedSeconds: todayExecutedSeconds,
-                remainingSeconds,
-                estimatedSeconds,
-              },
-            }
-
-            taskResults.set(taskId, { ...basicInfo, ...timeInfo })
-          } else {
-            // 非TODO任务只返回基本信息
-            taskResults.set(taskId, basicInfo)
-          }
-        } catch (error) {
-          console.error(`Error processing task ${taskId}:`, error)
-          errors.set(taskId, 'Internal processing error')
-        }
+      taskResults.set(taskId, {
+        ...basicInfo,
+        progress: {
+          totalExecutedTime: todayExecutedSeconds,
+          estimatedDuration: estimatedSeconds,
+          progressPercentage,
+          isCompleted: task.status === 'completed',
+          todayProgress: {
+            date: today,
+            duration: todayExecutedSeconds,
+            minutes: Math.round(todayExecutedSeconds / 60),
+          },
+        },
+        remaining: {
+          executedMinutes: Math.round((todayExecutedSeconds / 60) * 100) / 100,
+          remainingMinutes: Math.round((remainingSeconds / 60) * 100) / 100,
+          estimatedMinutes: Math.round((estimatedSeconds / 60) * 100) / 100,
+          executedSeconds: todayExecutedSeconds,
+          remainingSeconds,
+          estimatedSeconds,
+        },
       })
-    )
+    }
 
-    const response = {
+    return NextResponse.json({
       success: Object.fromEntries(taskResults),
       errors: Object.fromEntries(errors),
       count: {
@@ -140,9 +125,7 @@ export async function POST(request: NextRequest) {
         failed: errors.size,
       },
       timestamp: new Date().toISOString(),
-    }
-
-    return NextResponse.json(response)
+    })
   } catch (error) {
     console.error('Batch info API error:', error)
     return NextResponse.json(

@@ -1,26 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TodoTask } from '@/lib/types'
-import { findTaskById } from '@/lib/database'
+import { findTasksByIds } from '@/lib/database'
+import {
+  batchTaskIdsSchema,
+  formatValidationError,
+} from '@/lib/api-validation'
 
-// 批量获取任务剩余时间
 export async function POST(request: NextRequest) {
   try {
-    const { taskIds } = await request.json()
+    const parsed = batchTaskIdsSchema.safeParse(await request.json())
 
-    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'taskIds must be a non-empty array' },
+        { error: formatValidationError(parsed.error) },
         { status: 400 }
       )
     }
 
-    // 限制批量大小，防止过载
-    if (taskIds.length > 50) {
-      return NextResponse.json(
-        { error: 'Maximum 50 tasks per batch request' },
-        { status: 400 }
-      )
-    }
+    const { taskIds } = parsed.data
 
     const today = new Date().toISOString().split('T')[0]
     interface RemainingResult {
@@ -38,66 +35,49 @@ export async function POST(request: NextRequest) {
 
     const remainingResults = new Map<string, RemainingResult>()
     const errors = new Map<string, string>()
+    const uniqueTaskIds = Array.from(new Set(taskIds as string[]))
+    const tasks = await findTasksByIds(uniqueTaskIds)
+    const tasksById = new Map(tasks.map((task) => [task._id, task]))
 
-    // 并行处理所有任务
-    await Promise.allSettled(
-      taskIds.map(async (taskId: string) => {
-        try {
-          const task = await findTaskById(taskId)
+    for (const taskId of uniqueTaskIds) {
+      const task = tasksById.get(taskId)
 
-          if (!task) {
-            errors.set(taskId, 'Task not found')
-            return
-          }
+      if (!task) {
+        errors.set(taskId, 'Task not found')
+        continue
+      }
 
-          if (task.type !== 'todo') {
-            errors.set(taskId, 'Only TODO tasks have remaining time')
-            return
-          }
+      if (task.type !== 'todo') {
+        errors.set(taskId, 'Only TODO tasks have remaining time')
+        continue
+      }
 
-          const todoTask = task as TodoTask
+      const todoTask = task as TodoTask
+      const todayExecutedSeconds = todoTask.dailyTimeStats?.[today] || 0
+      const estimatedSeconds = todoTask.estimatedDuration || 25 * 60
+      const remainingSeconds = Math.max(
+        0,
+        estimatedSeconds - todayExecutedSeconds
+      )
 
-          // 计算今日剩余时间
-          const todayExecutedSeconds = todoTask.dailyTimeStats?.[today] || 0
-          const estimatedSeconds = todoTask.estimatedDuration || 25 * 60
-
-          const remainingSeconds = Math.max(
-            0,
-            estimatedSeconds - todayExecutedSeconds
-          )
-
-          // 转换为分钟，保持精度
-          const executedMinutes =
-            Math.round((todayExecutedSeconds / 60) * 100) / 100
-          const estimatedMinutes =
-            Math.round((estimatedSeconds / 60) * 100) / 100
-          const remainingMinutes =
-            Math.round((remainingSeconds / 60) * 100) / 100
-
-          remainingResults.set(taskId, {
-            taskId,
-            executedMinutes,
-            remainingMinutes,
-            estimatedMinutes,
-            executedSeconds: todayExecutedSeconds,
-            remainingSeconds,
-            estimatedSeconds,
-            progressPercentage: Math.min(
-              100,
-              Math.round((todayExecutedSeconds / estimatedSeconds) * 100)
-            ),
-            isCompleted: task.status === 'completed',
-            todayOnly: true,
-          })
-        } catch (error) {
-          console.error(`Error processing task ${taskId}:`, error)
-          errors.set(taskId, 'Internal processing error')
-        }
+      remainingResults.set(taskId, {
+        taskId,
+        executedMinutes: Math.round((todayExecutedSeconds / 60) * 100) / 100,
+        remainingMinutes: Math.round((remainingSeconds / 60) * 100) / 100,
+        estimatedMinutes: Math.round((estimatedSeconds / 60) * 100) / 100,
+        executedSeconds: todayExecutedSeconds,
+        remainingSeconds,
+        estimatedSeconds,
+        progressPercentage: Math.min(
+          100,
+          Math.round((todayExecutedSeconds / estimatedSeconds) * 100)
+        ),
+        isCompleted: task.status === 'completed',
+        todayOnly: true,
       })
-    )
+    }
 
-    // 构建响应
-    const response = {
+    return NextResponse.json({
       success: Object.fromEntries(remainingResults),
       errors: Object.fromEntries(errors),
       count: {
@@ -105,9 +85,7 @@ export async function POST(request: NextRequest) {
         successful: remainingResults.size,
         failed: errors.size,
       },
-    }
-
-    return NextResponse.json(response)
+    })
   } catch (error) {
     console.error('Batch remaining API error:', error)
     return NextResponse.json(

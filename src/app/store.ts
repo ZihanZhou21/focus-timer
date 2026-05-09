@@ -5,21 +5,22 @@ import tasksReducer from './slices/tasksSlice'
 import timerReducer from './slices/timerSlice'
 import taskInfoReducer from './slices/taskInfoSlice'
 import statsReducer from './slices/statsSlice'
+import { statsApi } from '@/lib/services/stats-api'
+import { tasksApi } from '@/lib/services/tasks-api'
 
-// 临时 root reducer，后续添加 slices
 const rootReducer = {
   tasks: tasksReducer,
   timer: timerReducer,
   taskInfo: taskInfoReducer,
   stats: statsReducer,
+  [statsApi.reducerPath]: statsApi.reducer,
+  [tasksApi.reducerPath]: tasksApi.reducer,
 }
 
 export const store = configureStore({
   reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: false, // 如果需要非序列化状态
-    }),
+    getDefaultMiddleware().concat(statsApi.middleware, tasksApi.middleware),
 })
 
 export type RootState = ReturnType<typeof store.getState>

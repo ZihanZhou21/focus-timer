@@ -1,26 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { TodoTask } from '@/lib/types'
-import { findTaskById } from '@/lib/database'
+import { findTasksByIds } from '@/lib/database'
+import {
+  batchTaskIdsSchema,
+  formatValidationError,
+} from '@/lib/api-validation'
 
-// 批量获取任务进度
 export async function POST(request: NextRequest) {
   try {
-    const { taskIds } = await request.json()
+    const parsed = batchTaskIdsSchema.safeParse(await request.json())
 
-    if (!Array.isArray(taskIds) || taskIds.length === 0) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'taskIds must be a non-empty array' },
+        { error: formatValidationError(parsed.error) },
         { status: 400 }
       )
     }
 
-    // 限制批量大小，防止过载
-    if (taskIds.length > 50) {
-      return NextResponse.json(
-        { error: 'Maximum 50 tasks per batch request' },
-        { status: 400 }
-      )
-    }
+    const { taskIds } = parsed.data
 
     const today = new Date().toISOString().split('T')[0]
     interface ProgressResult {
@@ -39,58 +36,47 @@ export async function POST(request: NextRequest) {
 
     const progressResults = new Map<string, ProgressResult>()
     const errors = new Map<string, string>()
+    const uniqueTaskIds = Array.from(new Set(taskIds as string[]))
+    const tasks = await findTasksByIds(uniqueTaskIds)
+    const tasksById = new Map(tasks.map((task) => [task._id, task]))
 
-    // 并行处理所有任务
-    await Promise.allSettled(
-      taskIds.map(async (taskId: string) => {
-        try {
-          const task = await findTaskById(taskId)
+    for (const taskId of uniqueTaskIds) {
+      const task = tasksById.get(taskId)
 
-          if (!task) {
-            errors.set(taskId, 'Task not found')
-            return
-          }
+      if (!task) {
+        errors.set(taskId, 'Task not found')
+        continue
+      }
 
-          if (task.type !== 'todo') {
-            errors.set(taskId, 'Only TODO tasks have progress')
-            return
-          }
+      if (task.type !== 'todo') {
+        errors.set(taskId, 'Only TODO tasks have progress')
+        continue
+      }
 
-          const todoTask = task as TodoTask
+      const todoTask = task as TodoTask
+      const todayExecutedTime = todoTask.dailyTimeStats?.[today] || 0
+      const estimatedDuration = todoTask.estimatedDuration || 25 * 60
+      const progressPercentage = Math.min(
+        100,
+        Math.round((todayExecutedTime / estimatedDuration) * 100)
+      )
 
-          // 计算今日进度
-          const todayExecutedTime = todoTask.dailyTimeStats?.[today] || 0
-          const estimatedDuration = todoTask.estimatedDuration || 25 * 60
-
-          const progressPercentage = Math.min(
-            100,
-            Math.round((todayExecutedTime / estimatedDuration) * 100)
-          )
-
-          const todayProgress = {
-            date: today,
-            duration: todayExecutedTime,
-            minutes: Math.round(todayExecutedTime / 60),
-          }
-
-          progressResults.set(taskId, {
-            taskId,
-            totalExecutedTime: todayExecutedTime,
-            estimatedDuration,
-            progressPercentage,
-            isCompleted: task.status === 'completed',
-            todayProgress,
-            todayOnly: true,
-          })
-        } catch (error) {
-          console.error(`Error processing task ${taskId}:`, error)
-          errors.set(taskId, 'Internal processing error')
-        }
+      progressResults.set(taskId, {
+        taskId,
+        totalExecutedTime: todayExecutedTime,
+        estimatedDuration,
+        progressPercentage,
+        isCompleted: task.status === 'completed',
+        todayProgress: {
+          date: today,
+          duration: todayExecutedTime,
+          minutes: Math.round(todayExecutedTime / 60),
+        },
+        todayOnly: true,
       })
-    )
+    }
 
-    // 构建响应
-    const response = {
+    return NextResponse.json({
       success: Object.fromEntries(progressResults),
       errors: Object.fromEntries(errors),
       count: {
@@ -98,9 +84,7 @@ export async function POST(request: NextRequest) {
         successful: progressResults.size,
         failed: errors.size,
       },
-    }
-
-    return NextResponse.json(response)
+    })
   } catch (error) {
     console.error('Batch progress API error:', error)
     return NextResponse.json(

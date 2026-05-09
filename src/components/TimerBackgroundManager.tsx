@@ -7,8 +7,9 @@ import { RootState } from '@/app/store'
 import { tickTimer, completeTimer } from '@/app/slices/timerSlice'
 import { updateTask, setSelectedItem } from '@/app/slices/tasksSlice'
 import { saveFocusTimerState, getFocusTimerStorageKey, clearFocusTimerState } from '@/lib/focus-timer-storage'
-import { weeklyStatsAPI } from '@/lib/weekly-stats-api'
 import { monthlyStatsAPI } from '@/lib/monthly-stats-api'
+import { statsApi } from '@/lib/services/stats-api'
+import { tasksApi } from '@/lib/services/tasks-api'
 
 export default function TimerBackgroundManager() {
   const dispatch = useDispatch()
@@ -97,7 +98,15 @@ export default function TimerBackgroundManager() {
         
         if (response.ok) {
           const data = await response.json()
-          weeklyStatsAPI.clearAllCache()
+          dispatch(statsApi.util.invalidateTags(['WeeklyStats', 'MonthlyStats']))
+          dispatch(
+            tasksApi.util.invalidateTags([
+              { type: 'Task', id: taskId },
+              { type: 'TaskProgress', id: taskId },
+              { type: 'TaskRemaining', id: taskId },
+              { type: 'TodayTasks', id: 'user_001' },
+            ])
+          )
           monthlyStatsAPI.clearAllCache()
           window.dispatchEvent(new CustomEvent('focus-stats-updated'))
 

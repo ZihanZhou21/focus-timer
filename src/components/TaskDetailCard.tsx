@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/app/store'
 import { completeTimer } from '@/app/slices/timerSlice'
 import { ProjectItem } from '@/lib/api'
-import { taskProgressAPI, TaskProgressData } from '@/lib/task-progress-api'
-import { taskRemainingAPI, TaskRemainingData } from '@/lib/task-remaining-api'
+import {
+  tasksApi,
+  useGetBatchTaskInfoQuery,
+} from '@/lib/services/tasks-api'
 
-// Import sub-components
 import TaskHeaderSection from './task-detail/TaskHeaderSection'
 import TaskProgressTracker from './task-detail/TaskProgressTracker'
 import TaskChecklist from './task-detail/TaskChecklist'
@@ -39,9 +40,9 @@ export default function TaskDetailCard({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [editingDetail, setEditingDetail] = useState<number | null>(null)
   const [editingText, setEditingText] = useState('')
-  const [completedDetails, setCompletedDetails] = useState<Set<number>>(new Set())
-
-  // 任务基本信息编辑状态
+  const [completedDetails, setCompletedDetails] = useState<Set<number>>(
+    new Set()
+  )
   const [isEditingTask, setIsEditingTask] = useState(false)
   const [editingTaskData, setEditingTaskData] = useState({
     title: '',
@@ -49,18 +50,35 @@ export default function TaskDetailCard({
     tags: [] as string[],
     durationMinutes: 0,
   })
-  const [taskProgressData, setTaskProgressData] = useState<Map<string, TaskProgressData>>(new Map())
-  const [taskRemainingData, setTaskRemainingData] = useState<Map<string, TaskRemainingData>>(new Map())
 
   const timer = useSelector((state: RootState) => state.timer)
   const dispatch = useDispatch()
   const cardRef = useRef<HTMLDivElement>(null)
-  const loadedBatchKeyRef = useRef('')
 
-  // 处理点击外部区域关闭任务详情
+  const todoTaskIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          timelineItems
+            .filter((item) => item.type !== 'check-in')
+            .map((item) => item.id)
+        )
+      ).sort(),
+    [timelineItems]
+  )
+
+  const { data: batchTaskInfo } = useGetBatchTaskInfoQuery(todoTaskIds, {
+    skip: todoTaskIds.length === 0,
+  })
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (selectedItem && cardRef.current && !cardRef.current.contains(event.target as Node) && onClose) {
+      if (
+        selectedItem &&
+        cardRef.current &&
+        !cardRef.current.contains(event.target as Node) &&
+        onClose
+      ) {
         onClose()
       }
     }
@@ -71,80 +89,17 @@ export default function TaskDetailCard({
     }
   }, [selectedItem, onClose])
 
-  // 加载选中任务的数据
-  const loadTaskProgress = useCallback(async (taskId: string) => {
-    try {
-      const progressData = await taskProgressAPI.getTaskProgress(taskId)
-      setTaskProgressData((prev) => new Map(prev.set(taskId, progressData)))
-    } catch (error) {
-      console.error(`Failed to load task progress (${taskId}):`, error)
-    }
-  }, [])
+  const invalidateTaskCache = (taskId: string) => {
+    dispatch(
+      tasksApi.util.invalidateTags([
+        { type: 'Task', id: taskId },
+        { type: 'TaskProgress', id: taskId },
+        { type: 'TaskRemaining', id: taskId },
+      ])
+    )
+  }
 
-  const loadTaskRemaining = useCallback(async (taskId: string) => {
-    try {
-      const remainingData = await taskRemainingAPI.getTaskRemaining(taskId)
-      setTaskRemainingData((prev) => new Map(prev.set(taskId, remainingData)))
-    } catch (error) {
-      console.error(`Failed to load task remaining time (${taskId}):`, error)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (selectedItem && selectedItem.type !== 'check-in') {
-      loadTaskProgress(selectedItem.id)
-      loadTaskRemaining(selectedItem.id)
-    }
-  }, [selectedItem, loadTaskProgress, loadTaskRemaining])
-
-  // 优化：智能批量加载任务数据
-  useEffect(() => {
-    const loadTasksOptimized = async () => {
-      const todoTasks = timelineItems.filter((item) => item.type !== 'check-in')
-      if (todoTasks.length === 0) return
-
-      const taskIds = todoTasks.map((task) => task.id)
-      const batchKey = [...taskIds].sort().join(',')
-      if (batchKey === loadedBatchKeyRef.current) return
-      loadedBatchKeyRef.current = batchKey
-
-      const promises: Promise<void>[] = []
-
-      promises.push(
-        taskProgressAPI
-          .getBatchTaskProgress(taskIds)
-          .then((progressDataArray) => {
-            setTaskProgressData((prev) => {
-              const newProgressData = new Map(prev)
-              progressDataArray.forEach((data) => {
-                if (data.taskId) newProgressData.set(data.taskId, data)
-              })
-              return newProgressData
-            })
-          })
-          .catch(() => taskIds.forEach((taskId) => loadTaskProgress(taskId)))
-      )
-
-      promises.push(
-        taskRemainingAPI
-          .getBatchTaskRemaining(taskIds)
-          .then((remainingDataMap) => {
-            setTaskRemainingData((prev) => {
-              const newRemainingData = new Map(prev)
-              remainingDataMap.forEach((data, taskId) => {
-                newRemainingData.set(taskId, data)
-              })
-              return newRemainingData
-            })
-          })
-          .catch(() => taskIds.forEach((taskId) => loadTaskRemaining(taskId)))
-      )
-
-      if (promises.length > 0) await Promise.allSettled(promises)
-    }
-
-    loadTasksOptimized()
-  }, [timelineItems, loadTaskProgress, loadTaskRemaining])
+  const getBatchItem = (taskId: string) => batchTaskInfo?.success[taskId]
 
   const handleCheckInToggle = async (task: ProjectItem) => {
     setIsUpdating(true)
@@ -154,15 +109,17 @@ export default function TaskDetailCard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: task.completed ? 'in_progress' : 'completed',
-          completedAt: task.completed ? null : new Date().toISOString().split('T')[0],
+          completedAt: task.completed
+            ? null
+            : new Date().toISOString().split('T')[0],
         }),
       })
 
       if (response.ok) {
         const updatedTask = { ...task, completed: !task.completed }
         onTaskUpdate?.(updatedTask)
+        invalidateTaskCache(task.id)
 
-        // 如果当前完成的任务是正在计时的任务，则完成计时器
         if (!task.completed && task.id === timer.taskId) {
           dispatch(completeTimer())
         }
@@ -177,39 +134,40 @@ export default function TaskDetailCard({
   const calculateProgress = (task: ProjectItem): number => {
     if (task.type === 'check-in' || task.completed) return 100
 
-    // 如果是当前正在计时的任务，从 Redux 获取实时进度
     if (task.id === timer.taskId && timer.totalEstimated > 0) {
       return Math.min((timer.totalElapsed / timer.totalEstimated) * 100, 100)
     }
 
-    const progressData = taskProgressData.get(task.id)
-    return progressData ? progressData.progressPercentage : 0
+    return getBatchItem(task.id)?.progress?.progressPercentage ?? 0
   }
 
   const getExecutedTime = (task: ProjectItem): number => {
     if (task.type === 'check-in') return 0
 
-    // 如果是当前正在计时的任务，从 Redux 获取实时执行时长
     if (task.id === timer.taskId) {
       return Math.floor(timer.totalElapsed / 60)
     }
 
-    const remainingData = taskRemainingData.get(task.id)
-    if (remainingData) return remainingData.executedMinutes
-    const progressData = taskProgressData.get(task.id)
-    return progressData ? Math.floor(progressData.totalExecutedTime / 60) : 0
+    const batchItem = getBatchItem(task.id)
+    if (batchItem?.remaining) return batchItem.remaining.executedMinutes
+    if (batchItem?.progress) {
+      return Math.floor(batchItem.progress.totalExecutedTime / 60)
+    }
+    return 0
   }
 
   const getRemainingTime = (task: ProjectItem): number => {
     if (task.type === 'check-in') return 0
 
-    // 如果是当前正在计时的任务，从 Redux 获取实时剩余时长
     if (task.id === timer.taskId) {
       return Math.floor(timer.timeRemaining / 60)
     }
 
-    const remainingData = taskRemainingData.get(task.id)
-    return remainingData ? remainingData.remainingMinutes : task.durationMinutes || 25
+    return (
+      getBatchItem(task.id)?.remaining?.remainingMinutes ||
+      task.durationMinutes ||
+      25
+    )
   }
 
   const handleSaveEdit = async () => {
@@ -225,6 +183,7 @@ export default function TaskDetailCard({
       })
       if (response.ok) {
         onTaskUpdate?.({ ...selectedItem, details: updatedDetails })
+        invalidateTaskCache(selectedItem.id)
       }
     } catch (error) {
       console.error('Failed to update task details:', error)
@@ -235,7 +194,8 @@ export default function TaskDetailCard({
 
   const handleDeleteDetail = async (index: number) => {
     if (!selectedItem) return
-    const updatedDetails = selectedItem.details?.filter((_, i) => i !== index) || []
+    const updatedDetails =
+      selectedItem.details?.filter((_, i) => i !== index) || []
     try {
       const response = await fetch(`/api/tasks/${selectedItem.id}`, {
         method: 'PUT',
@@ -244,6 +204,7 @@ export default function TaskDetailCard({
       })
       if (response.ok) {
         onTaskUpdate?.({ ...selectedItem, details: updatedDetails })
+        invalidateTaskCache(selectedItem.id)
       }
     } catch (error) {
       console.error('Failed to delete task details:', error)
@@ -252,7 +213,7 @@ export default function TaskDetailCard({
 
   const handleAddNewDetail = async () => {
     if (!selectedItem) return
-    const newDetail = '新任务项'
+    const newDetail = 'New task item'
     const updatedDetails = [...(selectedItem.details || []), newDetail]
     try {
       const response = await fetch(`/api/tasks/${selectedItem.id}`, {
@@ -262,6 +223,7 @@ export default function TaskDetailCard({
       })
       if (response.ok) {
         onTaskUpdate?.({ ...selectedItem, details: updatedDetails })
+        invalidateTaskCache(selectedItem.id)
         setEditingDetail(updatedDetails.length - 1)
         setEditingText(newDetail)
       }
@@ -292,6 +254,7 @@ export default function TaskDetailCard({
           tags: editingTaskData.tags,
           durationMinutes: editingTaskData.durationMinutes,
         })
+        invalidateTaskCache(selectedItem.id)
         setIsEditingTask(false)
       }
     } catch (error) {
@@ -305,11 +268,13 @@ export default function TaskDetailCard({
     if (!selectedItem || !onTaskDelete) return
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/tasks/${selectedItem.id}`, { method: 'DELETE' })
+      const response = await fetch(`/api/tasks/${selectedItem.id}`, {
+        method: 'DELETE',
+      })
       if (response.ok) {
         onTaskDelete(selectedItem.id)
+        invalidateTaskCache(selectedItem.id)
 
-        // 如果删除的是当前正在计时的任务，需要清除计时器状态
         if (selectedItem.id === timer.taskId) {
           dispatch(completeTimer())
         }
@@ -344,8 +309,17 @@ export default function TaskDetailCard({
           }}
           onSaveTaskEdit={handleSaveTaskEdit}
           onCancelTaskEdit={() => setIsEditingTask(false)}
-          onRemoveTag={(index) => setEditingTaskData(p => ({ ...p, tags: p.tags.filter((_, i) => i !== index) }))}
-          onAddTag={(tag) => { if (tag && !editingTaskData.tags.includes(tag)) setEditingTaskData(p => ({ ...p, tags: [...p.tags, tag] })) }}
+          onRemoveTag={(index) =>
+            setEditingTaskData((p) => ({
+              ...p,
+              tags: p.tags.filter((_, i) => i !== index),
+            }))
+          }
+          onAddTag={(tag) => {
+            if (tag && !editingTaskData.tags.includes(tag)) {
+              setEditingTaskData((p) => ({ ...p, tags: [...p.tags, tag] }))
+            }
+          }}
           onHandleCheckInToggle={handleCheckInToggle}
           getRemainingTime={getRemainingTime}
           getExecutedTime={getExecutedTime}
@@ -365,23 +339,37 @@ export default function TaskDetailCard({
           editingDetail={editingDetail}
           editingText={editingText}
           completedDetails={completedDetails}
-          onStartEditing={(index, text) => { setEditingDetail(index); setEditingText(text); }}
+          onStartEditing={(index, text) => {
+            setEditingDetail(index)
+            setEditingText(text)
+          }}
           onSaveEdit={handleSaveEdit}
           onCancelEdit={() => {
-            if (selectedItem.details?.[editingDetail!] === '新任务项') handleDeleteDetail(editingDetail!)
-            setEditingDetail(null); setEditingText('');
+            if (editingDetail !== null) {
+              const currentText = selectedItem.details?.[editingDetail]
+              if (currentText === 'New task item') {
+                handleDeleteDetail(editingDetail)
+              }
+            }
+            setEditingDetail(null)
+            setEditingText('')
           }}
           onDeleteDetail={handleDeleteDetail}
-          onToggleDetail={(index) => setCompletedDetails(prev => {
-            if (selectedItem.details?.[index] === '新任务项') { handleDeleteDetail(index); return prev; }
-            const next = new Set(prev);
-            if (next.has(index)) {
-              next.delete(index);
-            } else {
-              next.add(index);
-            }
-            return next;
-          })}
+          onToggleDetail={(index) =>
+            setCompletedDetails((prev) => {
+              if (selectedItem.details?.[index] === 'New task item') {
+                handleDeleteDetail(index)
+                return prev
+              }
+              const next = new Set(prev)
+              if (next.has(index)) {
+                next.delete(index)
+              } else {
+                next.add(index)
+              }
+              return next
+            })
+          }
           onAddNewDetail={handleAddNewDetail}
           setEditingText={setEditingText}
           isCheckInTask={selectedItem.type === 'check-in'}

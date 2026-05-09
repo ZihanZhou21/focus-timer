@@ -3,15 +3,17 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProjectItem } from '@/lib/api'
-import { todayTasksService } from '@/lib/today-api'
 import { taskTypeConfig, DEFAULT_USER_ID } from '@/lib/constants'
 import { formatDuration } from '@/lib/utils'
-import { taskProgressAPI } from '@/lib/task-progress-api'
 import AppNavigation from '@/components/AppNavigation'
 import SimpleTaskModal from '@/components/SimpleTaskModal'
 import ActivityCalendar from '@/components/ActivityCalendar'
 import TaskDetailCard from '@/components/TaskDetailCard'
 import WeekChart from '@/components/WeekChart'
+import {
+  tasksApi,
+  useGetTodayProjectItemsQuery,
+} from '@/lib/services/tasks-api'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/app/store'
 import {
@@ -31,19 +33,20 @@ export default function Home() {
     (state: RootState) => state.tasks
   )
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const {
+    data: todayProjectItems,
+    isError: isTodayTasksError,
+    refetch: refetchTodayTasks,
+  } = useGetTodayProjectItemsQuery(DEFAULT_USER_ID)
 
   // Handle new task addition
   const handleTaskAdded = async () => {
-    try {
-      // Reload today's task data
-      const projectItems = await todayTasksService.getTodaysTasksAsProjectItems(
-        DEFAULT_USER_ID
-      )
-      dispatch(setTimelineItems(projectItems))
-      console.log('Task list updated')
-    } catch (error) {
-      console.error('Failed to refresh tasks:', error)
-    }
+    dispatch(
+      tasksApi.util.invalidateTags([
+        { type: 'TodayTasks', id: DEFAULT_USER_ID },
+      ])
+    )
+    await refetchTodayTasks()
   }
 
   // Handle task updates
@@ -65,6 +68,14 @@ export default function Home() {
       if (response.ok) {
         // After successful API deletion, remove task from local state
         dispatch(deleteTask(taskId))
+        dispatch(
+          tasksApi.util.invalidateTags([
+            { type: 'TodayTasks', id: DEFAULT_USER_ID },
+            { type: 'Task', id: taskId },
+            { type: 'TaskProgress', id: taskId },
+            { type: 'TaskRemaining', id: taskId },
+          ])
+        )
         console.log(`Task ${taskId} successfully deleted`)
       } else {
         console.error('Failed to delete task:', response.status)
@@ -81,37 +92,26 @@ export default function Home() {
     dispatch(setSelectedItem(null))
   }
 
+  useEffect(() => {
+    if (todayProjectItems) {
+      dispatch(setTimelineItems(todayProjectItems))
+    } else if (isTodayTasksError) {
+      dispatch(setTimelineItems([]))
+    }
+  }, [dispatch, isTodayTasksError, todayProjectItems])
+
   // Initialize data
   useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        // Clear expired cache (including cross-day cache)
-        taskProgressAPI.clearExpiredCache()
-
-        // Load today's task data
-        const projectItems =
-          await todayTasksService.getTodaysTasksAsProjectItems(DEFAULT_USER_ID)
-        dispatch(setTimelineItems(projectItems))
-
-        console.log(
-          `Successfully loaded ${projectItems.length} projects:`,
-          projectItems.map((item) => item.title)
-        )
-      } catch (error) {
-        console.error('Failed to initialize app:', error)
-        // Set empty data as fallback
-        dispatch(setTimelineItems([]))
-      } finally {
-        // setIsLoading(false) // This line is removed as per the edit hint
-      }
-    }
-
-    initializeApp()
 
     // 监听每日重置完成事件，重新加载数据
     const handleDailyResetCompleted = () => {
       console.log('检测到每日重置完成，重新加载任务数据')
-      initializeApp()
+      dispatch(
+        tasksApi.util.invalidateTags([
+          { type: 'TodayTasks', id: DEFAULT_USER_ID },
+        ])
+      )
+      void refetchTodayTasks()
     }
 
     window.addEventListener('daily-reset-completed', handleDailyResetCompleted)
@@ -122,7 +122,7 @@ export default function Home() {
         handleDailyResetCompleted
       )
     }
-  }, [dispatch])
+  }, [dispatch, refetchTodayTasks])
 
   return (
     <div className="h-screen bg-slate-900 text-white flex flex-col">

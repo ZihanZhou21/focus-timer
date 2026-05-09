@@ -7,10 +7,17 @@ let client: MongoClient | null = null
 let db: Db | null = null
 let connectionPromise: Promise<Db> | null = null
 
-const MONGODB_URI =
-  process.env.MONGODB_URI ||
-  'mongodb+srv://zihan:<db_password>@focus-timer.qixfanq.mongodb.net/?retryWrites=true&w=majority&appName=focus-timer'
 const DB_NAME = process.env.DB_NAME || 'focus-timer'
+
+function getMongoUri(): string {
+  const uri = process.env.MONGODB_URI
+
+  if (!uri) {
+    throw new Error('MONGODB_URI is required to connect to MongoDB')
+  }
+
+  return uri
+}
 
 export async function connectToDatabase(): Promise<Db> {
   if (db && client) {
@@ -23,7 +30,7 @@ export async function connectToDatabase(): Promise<Db> {
 
   connectionPromise = (async () => {
     console.log('Connecting to MongoDB...')
-    client = new MongoClient(MONGODB_URI, {
+    client = new MongoClient(getMongoUri(), {
       connectTimeoutMS: 3000,
       serverSelectionTimeoutMS: 3000,
       socketTimeoutMS: 5000,
@@ -111,6 +118,24 @@ export async function findTaskById(id: string): Promise<Task | null> {
     console.error(`Failed to find task (${id}):`, error)
     const tasks = await readLocalTasksData()
     return tasks.find((task) => task._id === id) || null
+  }
+}
+
+export async function findTasksByIds(ids: string[]): Promise<Task[]> {
+  const uniqueIds = Array.from(new Set(ids))
+
+  if (uniqueIds.length === 0) {
+    return []
+  }
+
+  try {
+    const collection = await getTasksCollection()
+    return await collection.find({ _id: { $in: uniqueIds } }).toArray()
+  } catch (error) {
+    console.error('Failed to find tasks by ids:', error)
+    const tasks = await readLocalTasksData()
+    const idSet = new Set(uniqueIds)
+    return tasks.filter((task) => idSet.has(task._id))
   }
 }
 

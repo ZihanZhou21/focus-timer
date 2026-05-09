@@ -1,10 +1,7 @@
 'use client'
 
-import { useEffect, useCallback, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { RootState } from '@/app/store'
-import { setWeeklyData, setStatsLoading } from '@/app/slices/statsSlice'
-import { weeklyStatsAPI } from '@/lib/weekly-stats-api'
+import { useEffect, useMemo, useState } from 'react'
+import { useGetWeeklyStatsQuery } from '@/lib/services/stats-api'
 
 type DayData = {
   day: string
@@ -17,7 +14,6 @@ interface WeekChartProps {
   onDataUpdate?: (data: DayData[]) => void
 }
 
-// 计算过去N天的结束日期（从今天往前推N-1天）
 const getPastDaysEndDate = (daysBack: number = 0) => {
   const d = new Date()
   d.setDate(d.getDate() - daysBack)
@@ -29,81 +25,51 @@ export default function WeekChart({
   userId = 'user_001',
   onDataUpdate,
 }: WeekChartProps) {
-  const dispatch = useDispatch()
-  const { weeklyData, isLoading } = useSelector(
-    (state: RootState) => state.stats
-  )
-
-  // 当前显示的7天期间的结束日期（默认为今天）
   const [endDate, setEndDate] = useState<Date>(() => getPastDaysEndDate(0))
   const isCurrentPeriod = endDate.toDateString() === new Date().toDateString()
+  const endDateStr = useMemo(() => endDate.toISOString().split('T')[0], [endDate])
 
-  // 生成过去7天数据
-  const loadWeekData = useCallback(async (): Promise<DayData[]> => {
-    try {
-      const endDateStr = endDate.toISOString().split('T')[0]
-      console.log('Getting stats for 7 days ending:', endDateStr)
+  const {
+    data: weeklyStats,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useGetWeeklyStatsQuery({
+    days: 7,
+    endDate: endDateStr,
+    userId,
+  })
 
-      // 使用weeklyStatsAPI获取7天数据，以endDate为结束日期
-      const weeklyStats = await weeklyStatsAPI.getWeeklyStats(
-        7,
-        endDateStr,
-        userId
-      )
-
-      // 转换为组件需要的数据格式（只统计TODO任务，不包含打卡任务）
-      const data: DayData[] = weeklyStats.dailyStats.map((day) => ({
+  const weeklyData = useMemo<DayData[]>(() => {
+    return (
+      weeklyStats?.dailyStats.map((day) => ({
         day: day.dayLabel,
-        focus: day.todoTime, // 只统计TODO任务执行时间（分钟），不包含打卡任务
-        cycles: day.completedCount, // 完成的任务数量
-      }))
+        focus: day.todoTime,
+        cycles: day.completedCount,
+      })) ?? []
+    )
+  }, [weeklyStats])
 
-      return data
-    } catch (error) {
-      console.error('Failed to load weekly data:', error)
-      return []
-    }
-  }, [userId, endDate])
-
-  // 计算最大专注时间（用于柱状图高度）
   const maxFocus =
     weeklyData.length > 0
       ? Math.max(...weeklyData.map((d) => d.focus), 120)
       : 120
 
-  // 获取格式化的7天数据
-  const getWeekDays = () => {
-    const result = []
+  const weekDays = useMemo(() => {
     const today = new Date().toDateString()
 
-    for (let i = 0; i < weeklyData.length; i++) {
+    return weeklyData.map((data, index) => {
       const dayDate = new Date(endDate)
-      dayDate.setDate(endDate.getDate() - (6 - i))
-      const isToday = dayDate.toDateString() === today
+      dayDate.setDate(endDate.getDate() - (6 - index))
 
-      result.push({
-        day: weeklyData[i].day,
-        isToday,
-        data: weeklyData[i],
-      })
-    }
+      return {
+        day: data.day,
+        isToday: dayDate.toDateString() === today,
+        data,
+      }
+    })
+  }, [endDate, weeklyData])
 
-    return result
-  }
-
-  // 刷新周数据
-  const refreshWeekData = useCallback(async () => {
-    dispatch(setStatsLoading(true))
-    try {
-      const newWeekData = await loadWeekData()
-      dispatch(setWeeklyData(newWeekData))
-      onDataUpdate?.(newWeekData)
-    } catch (error) {
-      console.error('Failed to refresh weekly data:', error)
-    }
-  }, [dispatch, onDataUpdate, loadWeekData])
-
-  // 7天期间导航
   const navigatePeriod = (dir: 'prev' | 'next') => {
     setEndDate((prev) => {
       const d = new Date(prev)
@@ -122,32 +88,29 @@ export default function WeekChart({
     return `${fmt(start)} - ${fmt(endDate)}`
   })()
 
-  // 初始化数据
   useEffect(() => {
-    refreshWeekData()
-  }, [refreshWeekData, endDate])
+    onDataUpdate?.(weeklyData)
+  }, [onDataUpdate, weeklyData])
 
   useEffect(() => {
     const handleStatsUpdated = () => {
-      weeklyStatsAPI.clearAllCache()
-      void refreshWeekData()
+      void refetch()
     }
 
     window.addEventListener('focus-stats-updated', handleStatsUpdated)
-    return () => window.removeEventListener('focus-stats-updated', handleStatsUpdated)
-  }, [refreshWeekData])
+    return () =>
+      window.removeEventListener('focus-stats-updated', handleStatsUpdated)
+  }, [refetch])
 
-  const weekDays = getWeekDays()
+  const showLoading = isLoading && weeklyData.length === 0
 
   return (
     <div className="flex flex-col h-full">
-      {/* 头部，与 ActivityCalendar 对齐 */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 className="text-lg font-light text-slate-200 whitespace-nowrap">
           Past 7 Days
         </h3>
         <div className="flex items-center gap-2">
-          {/* 上一个7天按钮 */}
           <button
             onClick={() => navigatePeriod('prev')}
             className="p-1 rounded hover:bg-slate-800 transition-colors"
@@ -165,11 +128,9 @@ export default function WeekChart({
               />
             </svg>
           </button>
-          {/* 期间范围标签 */}
           <span className="text-sm text-slate-400 min-w-[6rem] text-center whitespace-nowrap">
             {periodLabel}
           </span>
-          {/* 下一个7天按钮 */}
           <button
             onClick={() => navigatePeriod('next')}
             disabled={isCurrentPeriod}
@@ -188,15 +149,14 @@ export default function WeekChart({
               />
             </svg>
           </button>
-          {/* 刷新按钮 */}
           <button
-            onClick={refreshWeekData}
-            disabled={isLoading}
+            onClick={() => refetch()}
+            disabled={isFetching}
             className="p-1 rounded hover:bg-slate-800 transition-colors disabled:opacity-40"
             aria-label="刷新">
             <svg
               className={`w-4 h-4 text-slate-400 ${
-                isLoading ? 'animate-spin' : ''
+                isFetching ? 'animate-spin' : ''
               }`}
               fill="none"
               stroke="currentColor"
@@ -212,9 +172,8 @@ export default function WeekChart({
         </div>
       </div>
 
-      {/* Chart 卡片 */}
       <div className="bg-slate-800 rounded-3xl p-6 flex-1 flex flex-col">
-        {isLoading ? (
+        {showLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-slate-400">Loading...</div>
           </div>
@@ -242,7 +201,8 @@ export default function WeekChart({
                             (item.data.focus / maxFocus) * 100,
                             4
                           )}%`,
-                        }}></div>
+                        }}
+                      />
                     </div>
                     <div className="text-center">
                       <div
