@@ -244,10 +244,22 @@ export function useFocusTimerLogic({
   // 暂停计时器
   const pauseTimerHandler = useCallback(async () => {
     console.log('Pausing timer globally')
+    const pausedTimeRemaining = timerState.expectedEndTime
+      ? Math.max(0, Math.floor((timerState.expectedEndTime - Date.now()) / 1000))
+      : timeRemaining
+
     dispatch(pauseTimer())
-    
-    // 暂停时强制保存当前状态到localStorage
-    saveToStorage(timeRemaining, totalElapsed, totalEstimated, true)
+
+    saveFocusTimerState(storageKey, {
+      timeRemaining: pausedTimeRemaining,
+      totalElapsed,
+      totalEstimated,
+      backendSyncedElapsed: timerState.backendSyncedElapsed,
+      lastSaveTime: Date.now(),
+      wasRunning: false,
+      startTime: null,
+      expectedEndTime: null,
+    })
     
     // 手动暂停时保存会话数据
     const saved = await saveSessionData()
@@ -265,7 +277,16 @@ export function useFocusTimerLogic({
       })
     }
     sessionStartTime.current = null
-  }, [dispatch, timeRemaining, totalElapsed, totalEstimated, saveToStorage, saveSessionData, storageKey])
+  }, [
+    dispatch,
+    timeRemaining,
+    totalElapsed,
+    totalEstimated,
+    timerState.backendSyncedElapsed,
+    timerState.expectedEndTime,
+    saveSessionData,
+    storageKey,
+  ])
 
   // 移除页面可见性监听相关的自动暂停逻辑
   // 计时器现在在 BackgroundManager 中全局运行

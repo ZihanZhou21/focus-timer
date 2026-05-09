@@ -31,6 +31,7 @@ export default function TimerBackgroundManager() {
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const lastSyncRef = useRef<number>(0)
+  const lastPausedSaveRef = useRef<string | null>(null)
   const completingTaskRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -84,6 +85,47 @@ export default function TimerBackgroundManager() {
     timeRemaining,
     timerState.expectedEndTime,
     timerState.startTime,
+    totalElapsed,
+    totalEstimated,
+  ])
+
+  useEffect(() => {
+    if (isRunning || !taskId || timeRemaining <= 0) {
+      if (isRunning) {
+        lastPausedSaveRef.current = null
+      }
+      return
+    }
+
+    const pausedSnapshotId = [
+      taskId,
+      timeRemaining,
+      totalElapsed,
+      totalEstimated,
+      backendSyncedElapsed,
+    ].join(':')
+
+    if (lastPausedSaveRef.current === pausedSnapshotId) {
+      return
+    }
+
+    saveFocusTimerState(getFocusTimerStorageKey(taskId), {
+      timeRemaining,
+      totalElapsed,
+      totalEstimated,
+      backendSyncedElapsed,
+      lastSaveTime: Date.now(),
+      wasRunning: false,
+      startTime: null,
+      expectedEndTime: null,
+    })
+    lastPausedSaveRef.current = pausedSnapshotId
+    lastSyncRef.current = 0
+  }, [
+    backendSyncedElapsed,
+    isRunning,
+    taskId,
+    timeRemaining,
     totalElapsed,
     totalEstimated,
   ])
