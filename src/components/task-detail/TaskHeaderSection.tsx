@@ -91,7 +91,7 @@ export default function TaskHeaderSection({
           <div className="space-y-4">
             {/* 编辑标题 */}
             <div>
-              <label className="block text-slate-400 text-xs mb-2">Task Title</label>
+              <label className="block text-[var(--muted-foreground)] text-xs mb-2">Task Title</label>
               <input
                 type="text"
                 value={editingTaskData.title}
@@ -101,7 +101,7 @@ export default function TaskHeaderSection({
                     title: e.target.value,
                   }))
                 }
-                className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white text-2xl font-bold focus:outline-none focus:border-amber-500"
+                className="w-full bg-[var(--input)] border border-[var(--border)] rounded-lg px-4 py-3 text-[var(--foreground)] text-2xl font-bold focus:outline-none focus:border-[var(--accent)]"
                 placeholder="Enter task title"
               />
             </div>
@@ -109,7 +109,7 @@ export default function TaskHeaderSection({
             {/* 编辑计划时间 */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-400 text-xs mb-2">Planned Time</label>
+                <label className="block text-[var(--muted-foreground)] text-xs mb-2">Planned Time</label>
                 <input
                   type="time"
                   value={editingTaskData.time}
@@ -119,12 +119,12 @@ export default function TaskHeaderSection({
                       time: e.target.value,
                     }))
                   }
-                  className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                  className="w-full bg-[var(--input)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]"
                 />
               </div>
               {!isCheckInTask && (
                 <div>
-                  <label className="block text-slate-400 text-xs mb-2">
+                  <label className="block text-[var(--muted-foreground)] text-xs mb-2">
                     Estimated Duration (minutes)
                   </label>
                   <input
@@ -139,7 +139,7 @@ export default function TaskHeaderSection({
                         durationMinutes: Number(e.target.value),
                       }))
                     }
-                    className="w-full bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-[var(--input)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]"
                   />
                 </div>
               )}
@@ -147,12 +147,12 @@ export default function TaskHeaderSection({
 
             {/* 编辑标签 */}
             <div>
-              <label className="block text-slate-400 text-xs mb-2">Tags</label>
+              <label className="block text-[var(--muted-foreground)] text-xs mb-2">Tags</label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {editingTaskData.tags.map((tag, index) => (
                   <span
                     key={index}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-slate-600/50 rounded-md text-slate-300 text-xs"
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-[var(--surface-muted)] rounded-md text-[var(--muted-foreground)] text-xs"
                   >
                     #{tag}
                     <button
@@ -168,7 +168,7 @@ export default function TaskHeaderSection({
                 <input
                   type="text"
                   placeholder="Add tag"
-                  className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500"
+                  className="flex-1 bg-[var(--input)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--foreground)] text-sm focus:outline-none focus:border-[var(--accent)]"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       const input = e.target as HTMLInputElement
@@ -185,13 +185,13 @@ export default function TaskHeaderSection({
               <button
                 onClick={onSaveTaskEdit}
                 disabled={isUpdating || !editingTaskData.title.trim()}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg text-sm transition-colors"
+                className="px-4 py-2 bg-[var(--accent)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm transition-opacity"
               >
                 {isUpdating ? 'Saving...' : 'Save'}
               </button>
               <button
                 onClick={onCancelTaskEdit}
-                className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm transition-colors"
+                className="px-4 py-2 bg-[var(--surface-muted)] hover:opacity-80 text-[var(--foreground)] rounded-lg text-sm transition-opacity"
               >
                 Cancel
               </button>
@@ -207,7 +207,7 @@ export default function TaskHeaderSection({
                   taskTypeConfig[selectedItem.type ?? 'todo'].color
                 }`}
               ></div>
-              <h1 className="text-white text-3xl font-bold leading-tight">{selectedItem.title}</h1>
+              <h1 className="text-[var(--foreground)] text-3xl font-bold leading-tight">{selectedItem.title}</h1>
               {selectedItem.completed && selectedItem.type !== 'check-in' && (
                 <div className="flex items-center gap-2 ml-3">
                   <span className="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full border border-green-500/30">
@@ -225,7 +225,7 @@ export default function TaskHeaderSection({
               )}
               <button
                 onClick={onStartEditingTask}
-                className="text-slate-400 hover:text-amber-400 transition-colors ml-2"
+                className="text-[var(--muted-foreground)] hover:text-[var(--accent)] transition-colors ml-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -239,17 +239,17 @@ export default function TaskHeaderSection({
             </div>
             {/* 类型和标签在同一行 */}
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="text-slate-400 text-sm">
+              <div className="text-[var(--muted-foreground)] text-sm">
                 {taskTypeConfig[selectedItem.type ?? 'todo'].name}
               </div>
               {selectedItem.tags && selectedItem.tags.length > 0 && (
                 <>
-                  <div className="text-slate-600">|</div>
+                  <div className="text-[var(--border)]">|</div>
                   <div className="flex flex-wrap gap-2">
                     {selectedItem.tags.map((tag: string, index: number) => (
                       <span
                         key={index}
-                        className="px-2 py-1 bg-slate-700/30 rounded-md text-slate-400 text-xs"
+                        className="px-2 py-1 bg-[var(--surface-muted)] rounded-md text-[var(--muted-foreground)] text-xs"
                       >
                         #{tag}
                       </span>

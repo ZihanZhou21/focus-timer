@@ -102,7 +102,8 @@ export default function AppNavigation({ className = '' }: NavigationProps) {
   ]
 
   return (
-    <nav className={`bg-slate-800 rounded-2xl p-1.5 ${className}`}>
+    <nav
+      className={`rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-sm backdrop-blur-xl ${className}`}>
       <div className="flex space-x-2">
         {navItems.map((item) => {
           const isActive = pathname === item.href
@@ -125,8 +126,8 @@ export default function AppNavigation({ className = '' }: NavigationProps) {
                 onClick={item.onClick}
                 className={`relative px-6 py-2.5 rounded-xl transition-colors text-base font-medium ${
                   isActive
-                    ? 'text-white bg-slate-700'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                    ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
+                    : 'text-[var(--muted-foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]'
                 }`}>
                 {item.label}
                 {showRunningIndicator && (
@@ -149,8 +150,8 @@ export default function AppNavigation({ className = '' }: NavigationProps) {
               href={item.href}
               className={`px-6 py-2.5 rounded-xl transition-colors text-base font-medium ${
                 isActive
-                  ? 'text-white bg-slate-700'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                  ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
+                  : 'text-[var(--muted-foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]'
               }`}>
               {item.label}
             </Link>

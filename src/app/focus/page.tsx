@@ -11,6 +11,7 @@ import {
   updateTaskProgress,
 } from '@/app/slices/taskInfoSlice'
 import TimerControlButton from '@/components/focus/TimerControlButton'
+import AppNavigation from '@/components/AppNavigation'
 import { useFocusTimerLogic } from '@/hooks/useFocusTimerLogic'
 import {
   tasksApi,
@@ -64,8 +65,8 @@ function ModernTimer({
   return (
     <div className="w-full max-w-6xl mx-auto flex flex-col h-full">
       <div className="flex flex-col items-center space-y-8 mb-12">
-        <div className="bg-slate-800/80 backdrop-blur-xl text-white p-6 rounded-3xl border border-slate-700/50 shadow-2xl relative">
-          <div className="text-8xl font-light tracking-wider text-center">
+        <div className="relative rounded-[2rem] border border-[var(--border)] bg-[var(--surface-elevated)] p-6 text-[var(--foreground)] shadow-2xl shadow-black/10 backdrop-blur-xl">
+          <div className="text-center text-7xl font-semibold tracking-tight sm:text-8xl">
             {formatTime(timeRemaining)}
           </div>
         </div>
@@ -74,10 +75,10 @@ function ModernTimer({
       <div className="flex flex-col justify-start max-w-3xl mx-auto w-full mb-16">
         <div className="relative">
           <div className="flex justify-between items-center mb-4">
-            <div className="text-xl font-light text-slate-200 tracking-wider">
+            <div className="text-xl font-medium tracking-tight text-[var(--foreground)]">
               Task Progress
             </div>
-            <div className="text-xl font-light text-[#7bbf9a]">
+            <div className="text-xl font-semibold text-emerald-500">
               {Math.round(currentProgress)}%
             </div>
           </div>
@@ -249,45 +250,29 @@ function FocusContent() {
 
   if (shouldShowLoading) {
     return (
-      <div className="h-screen bg-slate-900 text-white flex items-center justify-center">
+      <div className="app-page h-screen flex items-center justify-center">
         <div className="flex flex-col items-center space-y-3">
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <div className="text-slate-400">Loading task info...</div>
+          <div className="text-[var(--muted-foreground)]">Loading task info...</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="h-screen bg-slate-900 text-white flex flex-col overflow-hidden">
+    <div className="app-page h-screen flex flex-col overflow-hidden">
       <header className="flex items-center justify-between px-8 pt-6 flex-shrink-0">
-        <div className="text-xl font-bold text-slate-300">FOCUS</div>
+        <div className="text-xl font-bold tracking-tight text-[var(--foreground)]">FOCUS</div>
 
-        <nav className="bg-slate-800 rounded-2xl p-1.5">
-          <div className="flex space-x-2">
-            <button
-              onClick={() => handleNavigation('/')}
-              className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
-              Dashboard
-            </button>
-            <div className="px-6 py-2.5 rounded-xl text-white bg-slate-700 transition-colors text-base font-medium">
-              Focus
-            </div>
-            <button
-              onClick={() => handleNavigation('/calendar')}
-              className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-base font-medium">
-              History
-            </button>
-          </div>
-        </nav>
+        <AppNavigation />
 
         <div className="flex items-center space-x-4">
           {taskInfo && (
-            <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--foreground)] backdrop-blur-xl">
               <span>{taskInfo.title}</span>
-              <span className="text-slate-400">({taskInfo.duration})</span>
+              <span className="text-[var(--muted-foreground)]">({taskInfo.duration})</span>
               {taskProgress && (
-                <span className="text-blue-400 ml-2">
+                <span className="ml-2 text-[var(--accent)]">
                   {taskProgress.progressPercentage.toFixed(1)}%
                 </span>
               )}
@@ -295,13 +280,13 @@ function FocusContent() {
           )}
 
           {!taskId && (
-            <div className="bg-amber-500/20 text-amber-300 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-600 dark:text-amber-300">
               <span>Practice Mode</span>
               <span className="text-amber-400">(Progress not saved)</span>
             </div>
           )}
 
-          <div className="w-8 h-8 bg-slate-600 rounded-full" />
+          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 via-cyan-400 to-amber-300" />
         </div>
       </header>
 
@@ -322,19 +307,19 @@ function FocusContent() {
                     />
                   </svg>
                 </div>
-                <h1 className="text-4xl font-light text-white mb-4">
+                <h1 className="text-4xl font-light text-[var(--foreground)] mb-4">
                   Task Completed
                 </h1>
-                <p className="text-xl text-slate-400 mb-8">
+                <p className="text-xl text-[var(--muted-foreground)] mb-8">
                   Congratulations! &ldquo;{taskInfo.title}&rdquo; has been
                   completed successfully
                 </p>
-                <div className="bg-slate-800/60 backdrop-blur-xl p-6 rounded-2xl border border-slate-700/50 max-w-md mx-auto">
-                  <div className="text-slate-300 mb-2">Task Details</div>
-                  <div className="text-slate-400 text-sm">
+                <div className="mx-auto max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 backdrop-blur-xl">
+                  <div className="text-[var(--foreground)] mb-2">Task Details</div>
+                  <div className="text-[var(--muted-foreground)] text-sm">
                     Estimated Duration: {taskInfo.duration}
                   </div>
-                  <div className="text-slate-400 text-sm">
+                  <div className="text-[var(--muted-foreground)] text-sm">
                     Status: Completed
                   </div>
                 </div>
@@ -348,7 +333,7 @@ function FocusContent() {
                 </button>
                 <button
                   onClick={() => handleNavigation('/stats')}
-                  className="bg-slate-800/80 backdrop-blur-xl text-white px-8 py-4 rounded-2xl font-medium text-xl hover:bg-slate-700/80 transition-all duration-200 shadow-lg border border-slate-700/50">
+                  className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] px-8 py-4 text-xl font-medium text-[var(--foreground)] shadow-lg backdrop-blur-xl transition-all duration-200 hover:border-[var(--accent)]">
                   View Stats
                 </button>
               </div>
@@ -385,16 +370,16 @@ function FocusContent() {
               <div className="mt-8 pt-8">
                 <div className="flex items-center justify-center space-x-8">
                   <div className="flex items-center space-x-3">
-                    <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700">
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--foreground)]">
                       SPACE
                     </div>
-                    <span className="text-slate-400 text-sm">Start/Pause</span>
+                    <span className="text-[var(--muted-foreground)] text-sm">Start/Pause</span>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <div className="bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700">
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--foreground)]">
                       ESC
                     </div>
-                    <span className="text-slate-400 text-sm">Safe Exit</span>
+                    <span className="text-[var(--muted-foreground)] text-sm">Safe Exit</span>
                   </div>
                 </div>
               </div>
@@ -410,10 +395,10 @@ export default function FocusPage() {
   return (
     <Suspense
       fallback={
-        <div className="h-screen bg-slate-900 text-white flex items-center justify-center">
+        <div className="app-page h-screen flex items-center justify-center">
           <div className="flex flex-col items-center space-y-3">
             <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <div className="text-slate-400">Loading focus environment...</div>
+            <div className="text-[var(--muted-foreground)]">Loading focus environment...</div>
           </div>
         </div>
       }>

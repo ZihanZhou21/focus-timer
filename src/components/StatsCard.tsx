@@ -22,12 +22,12 @@ export default function StatsCard({
 
   return (
     <div
-      className={`bg-slate-800 rounded-3xl p-6 border border-slate-700/50 ${className}`}>
+      className={`rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm backdrop-blur-xl ${className}`}>
       <div className="text-center">
         <div className={`text-3xl font-light mb-2 ${colorClasses[color]}`}>
           {value}
         </div>
-        <div className="text-sm text-slate-400 font-light">{title}</div>
+        <div className="text-sm text-[var(--muted-foreground)] font-light">{title}</div>
       </div>
     </div>
   )

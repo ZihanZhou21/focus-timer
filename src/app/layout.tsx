@@ -65,6 +65,22 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  var theme = localStorage.getItem('focus-timer-theme');
+                  if (theme !== 'light' && theme !== 'dark') {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  }
+                  document.documentElement.classList.toggle('dark', theme === 'dark');
+                  document.documentElement.dataset.theme = theme;
+                } catch (_) {}
+              })();
+            `,
+          }}
+        />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="专注时光" />
@@ -72,7 +88,7 @@ export default function RootLayout({
         <meta name="application-name" content="专注时光" />
       </head>
       <body
-        className="font-sans antialiased bg-slate-50 dark:bg-slate-950 selection:bg-amber-200 dark:selection:bg-amber-800 selection:text-amber-900 dark:selection:text-amber-100">
+        className="bg-[var(--background)] font-sans text-[var(--foreground)] antialiased selection:bg-blue-200 selection:text-blue-950 dark:selection:bg-blue-900 dark:selection:text-blue-100">
         <ClientProvider>{children}</ClientProvider>
       </body>
     </html>

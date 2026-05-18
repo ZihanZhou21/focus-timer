@@ -252,19 +252,19 @@ export default function CalendarPage() {
   )
 
   return (
-    <div className="h-screen bg-slate-900 text-white flex flex-col">
+    <div className="app-page h-screen flex flex-col">
       <header className="flex items-center justify-between px-8 pt-6 flex-shrink-0">
         <div className="flex items-center space-x-4">
-          <div className="text-xl font-bold text-slate-300">Focus Timer</div>
+          <div className="text-xl font-bold text-[var(--foreground)]">Focus Timer</div>
         </div>
 
         <AppNavigation />
 
         <div className="flex items-center space-x-4">
-          <button className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors">
+          <button className="w-8 h-8 bg-[var(--surface-elevated)] border border-[var(--border)] rounded-full flex items-center justify-center hover:border-[var(--accent)] transition-colors">
             <span className="text-lg">+</span>
           </button>
-          <div className="w-8 h-8 bg-slate-600 rounded-full"></div>
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 via-cyan-400 to-amber-300 rounded-full"></div>
         </div>
       </header>
 
@@ -274,9 +274,9 @@ export default function CalendarPage() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => navigatePeriod('prev')}
-                className="p-2 rounded-lg hover:bg-slate-800 transition-colors">
+                className="p-2 rounded-lg hover:bg-[var(--surface-muted)] transition-colors">
                 <svg
-                  className="w-5 h-5 text-slate-400"
+                  className="w-5 h-5 text-[var(--muted-foreground)]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24">
@@ -289,15 +289,15 @@ export default function CalendarPage() {
                 </svg>
               </button>
 
-              <h1 className="text-2xl font-light text-slate-200 min-w-[200px] text-center">
+              <h1 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] min-w-[200px] text-center">
                 {getPeriodTitle()}
               </h1>
 
               <button
                 onClick={() => navigatePeriod('next')}
-                className="p-2 rounded-lg hover:bg-slate-800 transition-colors">
+                className="p-2 rounded-lg hover:bg-[var(--surface-muted)] transition-colors">
                 <svg
-                  className="w-5 h-5 text-slate-400"
+                  className="w-5 h-5 text-[var(--muted-foreground)]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24">
@@ -311,15 +311,15 @@ export default function CalendarPage() {
               </button>
             </div>
 
-            <div className="bg-slate-800 rounded-2xl p-1.5">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-sm backdrop-blur-xl">
               {(['week', 'month', 'year'] as const).map((period) => (
                 <button
                   key={period}
                   onClick={() => setSelectedPeriod(period)}
                   className={`px-6 py-2.5 rounded-xl font-medium text-base transition-all duration-200 ${
                     selectedPeriod === period
-                      ? 'bg-slate-700 text-white'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                      ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
+                      : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-muted)]'
                   }`}>
                   {period === 'week' && 'This Week'}
                   {period === 'month' && 'This Month'}
@@ -334,7 +334,7 @@ export default function CalendarPage() {
               Array.from({ length: 4 }).map((_, index) => (
                 <div
                   key={index}
-                  className="h-28 rounded-3xl bg-slate-800 border border-slate-700/50 animate-pulse"
+                  className="h-28 rounded-3xl bg-[var(--surface-muted)] border border-[var(--border)] animate-pulse"
                 />
               ))
             ) : (
@@ -363,15 +363,15 @@ export default function CalendarPage() {
             )}
           </div>
 
-          <div className="bg-slate-800 rounded-3xl p-8 border border-slate-700/50">
+          <div className="app-surface rounded-3xl border p-8 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-light text-slate-200">Focus Trend</h2>
+              <h2 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">Focus Trend</h2>
               <div className="flex items-center space-x-6">
                 {Object.entries(taskTypeConfig).map(([key, config]) => (
                   <div key={key} className="flex items-center space-x-2">
                     <div
                       className={`w-3 h-3 rounded ${config.lightColor}`}></div>
-                    <span className="text-sm text-slate-400">
+                    <span className="text-sm text-[var(--muted-foreground)]">
                       {config.name}
                     </span>
                   </div>
@@ -423,7 +423,7 @@ export default function CalendarPage() {
                         minWidth: `${minBarWidth}px`,
                         flex: '1',
                       }}>
-                      <div className="mb-2 text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      <div className="mb-2 text-xs text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                         {formatTimeInHours(data.totalFocusTime)}
                       </div>
 
@@ -459,11 +459,11 @@ export default function CalendarPage() {
                             )
                           })
                         ) : (
-                          <div className="w-full h-2 bg-slate-700/50 rounded-md" />
+                          <div className="w-full h-2 bg-[var(--border)] rounded-md" />
                         )}
                       </div>
 
-                      <div className="mt-3 text-xs text-slate-400 text-center whitespace-nowrap">
+                      <div className="mt-3 text-xs text-[var(--muted-foreground)] text-center whitespace-nowrap">
                         {data.day}
                       </div>
                     </div>

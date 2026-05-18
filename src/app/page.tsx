@@ -117,11 +117,23 @@ export default function Home() {
   }, [dispatch, refetchTodayTasks])
 
   return (
-    <div className="min-h-screen lg:h-screen bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.08),transparent_32rem),linear-gradient(135deg,#020617_0%,#0f172a_55%,#111827_100%)] text-white flex flex-col">
+    <div className="app-page min-h-screen lg:h-screen flex flex-col">
       {/* Top navigation bar */}
       <header className="flex flex-wrap items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 pt-4 lg:pt-6 flex-shrink-0">
         <div className="flex items-center space-x-4 min-w-0">
-          <div className="text-xl font-bold text-slate-300">Focus Timer</div>
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center rounded-2xl bg-[var(--foreground)] text-[var(--background)] shadow-sm">
+              <span className="text-sm font-black">F</span>
+            </div>
+            <div>
+              <div className="text-lg font-semibold tracking-tight text-[var(--foreground)]">
+                Focus Timer
+              </div>
+              <div className="text-xs font-medium text-[var(--muted-foreground)]">
+                Today&apos;s focus workspace
+              </div>
+            </div>
+          </div>
         </div>
 
         <AppNavigation className="order-3 w-full overflow-x-auto sm:order-none sm:w-auto" />
@@ -129,16 +141,16 @@ export default function Home() {
         <div className="flex items-center space-x-4">
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="w-9 h-9 bg-slate-800/90 border border-slate-700/70 rounded-full flex items-center justify-center hover:bg-slate-700 transition-colors shadow-lg shadow-slate-950/20"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-sm transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
             aria-label="Create project">
             <span className="text-lg">+</span>
           </button>
-          <div className="w-9 h-9 bg-gradient-to-br from-slate-500 to-slate-700 rounded-full ring-1 ring-white/10"></div>
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 via-cyan-400 to-amber-300 ring-2 ring-white/50 dark:ring-white/10"></div>
         </div>
       </header>
 
       <div className="lg:hidden px-4 sm:px-6 pt-4">
-        <div className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-700/70 bg-slate-950/30 p-1 backdrop-blur-md">
+        <div className="grid grid-cols-3 gap-1 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-sm backdrop-blur-md">
           {[
             { key: 'tasks', label: 'Timeline' },
             { key: 'insights', label: 'Insights' },
@@ -149,8 +161,8 @@ export default function Home() {
               onClick={() => setMobilePanel(item.key as typeof mobilePanel)}
               className={`rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                 mobilePanel === item.key
-                  ? 'bg-slate-700 text-white shadow-sm'
-                  : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-200'
+                  ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
+                  : 'text-[var(--muted-foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]'
               }`}>
               {item.label}
             </button>
@@ -169,23 +181,23 @@ export default function Home() {
         <aside
           className={`${mobilePanel === 'insights' ? 'flex' : 'hidden'} ${
             isInsightsOpen ? 'lg:flex' : 'lg:hidden'
-          } min-h-0 flex-col overflow-visible rounded-[1.35rem] border border-white/[0.07] bg-slate-950/25 p-3 shadow-xl shadow-slate-950/20 backdrop-blur-xl lg:overflow-hidden xl:p-4`}>
+          } app-surface min-h-0 flex-col overflow-visible rounded-[1.35rem] border p-3 backdrop-blur-xl lg:overflow-hidden xl:p-4`}>
             <div className="flex min-h-0 flex-1 flex-col gap-4">
               <div className="hidden items-center justify-between px-1 lg:flex">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_16px_rgba(251,191,36,0.55)]" />
                   <div className="min-w-0">
-                    <div className="text-sm font-medium text-slate-200">
+                    <div className="text-sm font-medium text-[var(--foreground)]">
                       Insights
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-[var(--muted-foreground)]">
                       Focus rhythm
                     </div>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsInsightsOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white/[0.06] hover:text-slate-200"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
                   aria-label="Collapse insights">
                   <svg
                     className="h-4 w-4"
@@ -202,7 +214,7 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="hidden h-px bg-white/[0.06] lg:block" />
+              <div className="hidden h-px bg-[var(--border)] lg:block" />
 
               {/* Week area - using independent WeekChart component */}
               <div className="h-[20rem] shrink-0 rounded-2xl sm:h-[22rem] lg:h-auto lg:min-h-[18rem] lg:flex-1">
@@ -218,26 +230,26 @@ export default function Home() {
 
         {/* Middle panel - Work timeline */}
         <section
-          className={`${mobilePanel === 'tasks' ? 'block' : 'hidden'} lg:block min-h-0 rounded-[2rem] border border-slate-700/60 bg-slate-950/20 p-4 shadow-2xl shadow-slate-950/20 backdrop-blur-md sm:p-5 lg:p-6`}>
+          className={`${mobilePanel === 'tasks' ? 'block' : 'hidden'} app-surface lg:block min-h-0 rounded-[2rem] border p-4 backdrop-blur-md sm:p-5 lg:p-6`}>
           <div className="flex h-full min-h-[calc(100vh-12rem)] flex-col lg:min-h-0">
             <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex min-w-0 items-center gap-3">
-                <h2 className="truncate text-xl font-light text-slate-200">
-                  All Projects
+                <h2 className="truncate text-xl font-semibold tracking-tight text-[var(--foreground)]">
+                  Today
                 </h2>
-                <span className="shrink-0 bg-slate-700/50 text-slate-300 px-2 py-1 rounded-md text-xs font-medium">
+                <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]">
                   {timelineItems.length} projects
                 </span>
               </div>
               <button
                 onClick={() => setMobilePanel('details')}
-                className="lg:hidden rounded-xl border border-slate-700/70 bg-slate-800/70 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700">
+                className="lg:hidden rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-medium text-[var(--foreground)] transition-colors hover:border-[var(--accent)]">
                 Details
               </button>
             </div>
 
             <div className="relative flex-1 min-h-[32rem] lg:min-h-0">
-              <div className="pointer-events-none absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-slate-950/80 to-transparent z-20"></div>
+              <div className="pointer-events-none absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-[var(--surface)] to-transparent z-20"></div>
 
               <div className="h-full overflow-y-auto pr-1">
                 {isLoading ? (
@@ -245,26 +257,26 @@ export default function Home() {
                     {Array.from({ length: 5 }).map((_, index) => (
                       <div
                         key={index}
-                        className="h-24 rounded-3xl bg-slate-800 border border-slate-700/50 animate-pulse"
+                        className="h-24 rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] animate-pulse"
                       />
                     ))}
                   </div>
                 ) : timelineItems.length === 0 ? (
                   // Empty state display
                   <div className="flex flex-col items-center justify-center h-full text-center">
-                    <div className="w-16 h-16 bg-slate-700/50 rounded-full flex items-center justify-center mb-4">
+                    <div className="w-16 h-16 rounded-full bg-[var(--surface-muted)] flex items-center justify-center mb-4">
                       <span className="text-2xl">📝</span>
                     </div>
-                    <h3 className="text-slate-300 text-lg font-medium mb-2">
+                    <h3 className="text-[var(--foreground)] text-lg font-medium mb-2">
                       No Projects
                     </h3>
-                    <p className="text-slate-400 text-sm mb-6 max-w-xs">
+                    <p className="text-[var(--muted-foreground)] text-sm mb-6 max-w-xs">
                       Click the + button in the top right to create your first
                       project
                     </p>
                     <button
                       onClick={() => setIsAddModalOpen(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                      className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:opacity-90">
                       Create Project
                     </button>
                   </div>
@@ -272,7 +284,7 @@ export default function Home() {
                   // Normal task list
                   <div className="relative space-y-5 pt-6 pb-8">
                     <div
-                      className="absolute left-7 top-0 w-0.5 bg-slate-700/80"
+                      className="absolute left-7 top-0 w-0.5 bg-[var(--border)]"
                       style={{ height: 'calc(100% + 400px)' }}></div>
                     {timelineItems.map((item) => (
                       <div key={item.id} className="relative flex items-start group">
@@ -280,8 +292,8 @@ export default function Home() {
                         <div className="w-14 flex flex-col items-center flex-shrink-0 pt-0.5">
                           <div className={`text-xs font-extrabold tracking-wide mb-2 px-2 py-1 rounded-md shadow-md z-20 transition-colors ${
                             item.completed 
-                              ? 'bg-slate-700/70 text-slate-300' 
-                              : 'bg-slate-900 text-white ring-1 ring-slate-600/80 group-hover:bg-slate-700'
+                              ? 'bg-[var(--surface-muted)] text-[var(--muted-foreground)]' 
+                              : 'bg-[var(--foreground)] text-[var(--background)] ring-1 ring-[var(--border)]'
                           }`}>
                             {item.time}
                           </div>
@@ -322,12 +334,12 @@ export default function Home() {
                             }}
                             className={`relative rounded-3xl p-4 transition-all duration-200 cursor-pointer group/card ${
                               item.completed
-                                ? 'bg-slate-700/50 border-slate-600/50 opacity-80'
-                                : 'bg-slate-800/95 border-slate-600 hover:border-slate-500'
+                                ? 'bg-[var(--surface-muted)] border-[var(--border)] opacity-80'
+                                : 'bg-[var(--surface-elevated)] border-[var(--border)] hover:border-[var(--accent)]'
                             } ${
                               selectedItem?.id === item.id
-                                ? 'border border-amber-500 bg-slate-700'
-                                : 'border hover:bg-slate-700'
+                                ? 'border border-[var(--accent)] shadow-lg shadow-blue-500/10'
+                                : 'border hover:bg-[var(--surface-solid)]'
                             }`}>
                             {/* Clickable main area - removed, changed to direct card click */}
 
@@ -367,12 +379,12 @@ export default function Home() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center flex-wrap gap-1">
                                     <h3
-                                      className={`min-w-0 break-words font-medium text-base group-hover:text-white transition-colors ${
+                                      className={`min-w-0 break-words font-medium text-base transition-colors ${
                                         selectedItem?.id === item.id
-                                          ? 'text-amber-200'
+                                          ? 'text-[var(--accent)]'
                                           : item.completed
-                                          ? 'text-slate-400'
-                                          : 'text-slate-200'
+                                          ? 'text-[var(--muted-foreground)]'
+                                          : 'text-[var(--foreground)]'
                                       } ${item.completed ? 'line-through' : ''}`}>
                                       <span
                                         className={`inline-block w-2 h-2 rounded-full mr-2 ${
@@ -380,7 +392,7 @@ export default function Home() {
                                         }`}></span>
                                       {item.title}
                                     </h3>
-                                    <span className="text-slate-400 text-xs font-normal">
+                                    <span className="text-[var(--muted-foreground)] text-xs font-normal">
                                       · {taskTypeConfig[item.type].name}
                                     </span>
                                     {item.completed && (
@@ -403,7 +415,7 @@ export default function Home() {
                                     </button>
                                   )}
                                   {item.durationMinutes > 0 && (
-                                    <span className="text-slate-400 text-xs bg-slate-700/80 backdrop-blur-sm px-2 py-1 rounded-md">
+                                    <span className="text-[var(--muted-foreground)] text-xs bg-[var(--surface-muted)] backdrop-blur-sm px-2 py-1 rounded-md">
                                       {formatDuration(item.durationMinutes)}
                                     </span>
                                   )}
@@ -416,8 +428,8 @@ export default function Home() {
                                     (detail: string, detailIndex: number) => (
                                       <div
                                         key={detailIndex}
-                                        className="text-slate-400 text-sm flex items-start break-words">
-                                        <span className="mt-2 w-1 h-1 bg-slate-600 rounded-full mr-2 flex-shrink-0"></span>
+                                        className="text-[var(--muted-foreground)] text-sm flex items-start break-words">
+                                        <span className="mt-2 w-1 h-1 bg-[var(--muted-foreground)] rounded-full mr-2 flex-shrink-0"></span>
                                         <span className="min-w-0">{detail}</span>
                                       </div>
                                     )
@@ -435,20 +447,20 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="pointer-events-none absolute z-10 bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-slate-950/80 to-transparent"></div>
+              <div className="pointer-events-none absolute z-10 bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[var(--surface)] to-transparent"></div>
             </div>
           </div>
         </section>
 
         {/* Right panel - Project details */}
         <section
-          className={`${mobilePanel === 'details' ? 'flex' : 'hidden'} lg:flex min-h-0 flex-col rounded-[2rem] border border-slate-700/60 bg-slate-950/20 p-4 shadow-2xl shadow-slate-950/20 backdrop-blur-md sm:p-5 lg:p-6`}>
-          <div className="bg-slate-800/90 rounded-3xl p-5 sm:p-6 xl:p-8 flex-1 border border-slate-700/70 flex flex-col overflow-hidden min-h-[calc(100vh-12rem)] lg:min-h-0">
+          className={`${mobilePanel === 'details' ? 'flex' : 'hidden'} app-surface lg:flex min-h-0 flex-col rounded-[2rem] border p-4 backdrop-blur-md sm:p-5 lg:p-6`}>
+          <div className="app-surface-solid rounded-3xl p-5 sm:p-6 xl:p-8 flex-1 border flex flex-col overflow-hidden min-h-[calc(100vh-12rem)] lg:min-h-0">
             <div className="mb-4 flex items-center justify-between lg:hidden">
-              <h2 className="text-lg font-light text-slate-200">Task Details</h2>
+              <h2 className="text-lg font-semibold text-[var(--foreground)]">Task Details</h2>
               <button
                 onClick={() => setMobilePanel('tasks')}
-                className="rounded-xl border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700">
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2 text-xs font-medium text-[var(--foreground)] transition-colors hover:border-[var(--accent)]">
                 Timeline
               </button>
             </div>
@@ -471,7 +483,7 @@ export default function Home() {
       {!isInsightsOpen && (
         <button
           onClick={() => setIsInsightsOpen(true)}
-          className="group fixed left-0 top-36 z-40 hidden h-11 w-10 items-center justify-center rounded-r-xl border border-l-0 border-white/[0.08] bg-slate-950/70 text-slate-500 shadow-lg shadow-slate-950/30 backdrop-blur-xl transition-colors hover:bg-slate-900/90 hover:text-slate-200 lg:flex"
+          className="group fixed left-0 top-36 z-40 hidden h-11 w-10 items-center justify-center rounded-r-xl border border-l-0 border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted-foreground)] shadow-lg backdrop-blur-xl transition-colors hover:text-[var(--foreground)] lg:flex"
           aria-label="Expand insights panel">
           <svg
             className="h-4 w-4"

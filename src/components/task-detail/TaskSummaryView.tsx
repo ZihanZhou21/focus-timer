@@ -41,14 +41,11 @@ export default function TaskSummaryView({
     <div className="flex h-full min-h-0 flex-col">
       {/* 正在进行中的任务展示 (如有) */}
       {activeTask && (
-        <div className="mb-7 h-[250px] flex-shrink-0 p-6 bg-slate-800/80 border border-amber-500/20 rounded-[2rem] shadow-2xl relative overflow-hidden group">
-          {/* 背景装饰 */}
-          <div className="absolute -right-4 -top-4 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-colors"></div>
-          
+        <div className="mb-7 h-[250px] flex-shrink-0 p-6 bg-[var(--surface-muted)] border border-[var(--border)] rounded-[2rem] shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-5 opacity-40 group-hover:opacity-100 transition-opacity">
             <button 
               onClick={() => onSelectItem(activeTask)}
-              className="text-slate-400 hover:text-amber-400 transition-colors"
+              className="text-[var(--muted-foreground)] hover:text-[var(--accent)] transition-colors"
               title="View Details"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,16 +62,16 @@ export default function TaskSummaryView({
                     <div className={`w-1.5 h-1.5 rounded-full ${taskTypeConfig[activeTask.type].color} ${timer.isRunning ? 'animate-pulse' : ''}`}></div>
                     {timer.isRunning && <div className={`w-1.5 h-1.5 rounded-full ${taskTypeConfig[activeTask.type].color} animate-pulse [animation-delay:200ms]`}></div>}
                   </div>
-                  <span className="text-amber-500/80 text-[10px] font-bold tracking-[0.2em] uppercase">
+                  <span className="text-[var(--accent)] text-[10px] font-bold tracking-[0.2em] uppercase">
                     {timer.isRunning ? 'Currently Focusing' : 'Focus Paused'}
                   </span>
                 </div>
-                <h4 className="truncate text-xl font-bold tracking-tight text-white">{activeTask.title}</h4>
+                <h4 className="truncate text-xl font-bold tracking-tight text-[var(--foreground)]">{activeTask.title}</h4>
               </div>
             </div>
 
             <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-1">
-              <div className="max-w-full text-center text-8xl font-mono font-black text-white tabular-nums tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] leading-none">
+              <div className="max-w-full text-center text-8xl font-mono font-black text-[var(--foreground)] tabular-nums tracking-tighter leading-none">
                 {formatTime(timer.timeRemaining)}
               </div>
             </div>
@@ -82,14 +79,14 @@ export default function TaskSummaryView({
             <div className="flex flex-shrink-0 items-end gap-4">
               <div className="min-w-0 flex-1">
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--muted-foreground)]">
                     Progress
                   </span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
+                  <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
                     {Math.floor(timer.totalElapsed / 60)}m / {Math.floor(timer.totalEstimated / 60)}m
                   </span>
                 </div>
-                <div className="w-full bg-slate-700/30 rounded-full h-1.5 overflow-hidden">
+                <div className="w-full bg-[var(--border)] rounded-full h-1.5 overflow-hidden">
                   <div
                     className="bg-amber-500 h-full transition-all duration-1000 ease-linear shadow-[0_0_8px_rgba(245,158,11,0.5)]"
                     style={{ width: `${Math.min((timer.totalElapsed / timer.totalEstimated) * 100, 100)}%` }}
@@ -100,7 +97,7 @@ export default function TaskSummaryView({
               <div className="flex flex-shrink-0 items-center justify-center gap-2">
                 <button
                   onClick={handleReset}
-                  className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-700/60 text-slate-400 hover:text-white hover:bg-slate-700 transition-all border border-white/5 shadow-xl group/btn"
+                  className="w-10 h-10 rounded-full flex items-center justify-center bg-[var(--surface)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all border border-[var(--border)] shadow-lg group/btn"
                   title="Reset Timer"
                 >
                   <svg className="w-5 h-5 group-hover/btn:rotate-[-45deg] transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,11 +139,11 @@ export default function TaskSummaryView({
       {/* 今日统计 */}
       <div className="mb-6 flex flex-shrink-0 items-center justify-between">
         <div className="flex items-center gap-3">
-          <h3 className="text-xl font-light text-slate-200">Today&apos;s Projects</h3>
+          <h3 className="text-xl font-semibold tracking-tight text-[var(--foreground)]">Today&apos;s Projects</h3>
           {onAddTask && (
             <button
               onClick={onAddTask}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700/70 text-slate-200 transition-colors hover:bg-slate-600"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--background)] transition-colors hover:opacity-85"
               aria-label="Create project"
               title="Create project"
             >
@@ -155,11 +152,11 @@ export default function TaskSummaryView({
           )}
         </div>
         <div className="flex items-center space-x-2">
-          <div className="text-2xl font-light text-amber-400">
+          <div className="text-2xl font-semibold text-[var(--accent)]">
             {timelineItems.filter((item) => item.completed).length}
           </div>
-          <div className="text-slate-500">/</div>
-          <div className="text-lg text-slate-400">{timelineItems.length}</div>
+          <div className="text-[var(--muted-foreground)]">/</div>
+          <div className="text-lg text-[var(--muted-foreground)]">{timelineItems.length}</div>
         </div>
       </div>
 
@@ -168,11 +165,11 @@ export default function TaskSummaryView({
           <div className="min-h-0 flex-1 overflow-hidden">
             <div className="relative grid h-full min-h-0 grid-cols-2 gap-4">
               {/* 渐变分隔线 */}
-              <div className="absolute left-1/2 top-0 bottom-0 w-px transform -translate-x-1/2 bg-gradient-to-b from-transparent via-slate-500/60 to-transparent"></div>
+              <div className="absolute left-1/2 top-0 bottom-0 w-px transform -translate-x-1/2 bg-gradient-to-b from-transparent via-[var(--border)] to-transparent"></div>
 
               {/* 已完成项目 */}
               <div className="flex min-h-0 flex-col pr-2">
-                <h4 className="mb-2 flex-shrink-0 text-xs font-medium text-slate-400">Completed</h4>
+                <h4 className="mb-2 flex-shrink-0 text-xs font-medium text-[var(--muted-foreground)]">Completed</h4>
                 <div className="min-h-0 space-y-2 overflow-y-auto pr-1">
                   {timelineItems
                     .filter((item) => item.completed)
@@ -180,7 +177,7 @@ export default function TaskSummaryView({
                     <div
                       key={item.id}
                       onClick={() => onSelectItem(item)}
-                      className="group relative bg-slate-500/30 hover:bg-slate-400/50 rounded-3xl px-4 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm"
+                      className="group relative bg-[var(--surface-muted)] hover:bg-[var(--surface)] rounded-3xl px-4 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-1">
@@ -189,7 +186,7 @@ export default function TaskSummaryView({
                               taskTypeConfig[item.type ?? 'todo'].color
                             }`}
                           ></span>
-                          <h5 className="text-slate-100 text-sm truncate flex-1">{item.title}</h5>
+                          <h5 className="text-[var(--foreground)] text-sm truncate flex-1">{item.title}</h5>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-5 h-5 rounded-full flex items-center justify-center bg-green-500/20 ml-2">
@@ -206,7 +203,7 @@ export default function TaskSummaryView({
                       {/* 进度条预览 */}
                       {item.type !== 'check-in' && (
                         <div className="mt-2">
-                          <div className="w-full bg-slate-600 rounded-full h-1">
+                          <div className="w-full bg-[var(--border)] rounded-full h-1">
                             <div
                               className="bg-green-400 h-1 rounded-full"
                               style={{
@@ -223,7 +220,7 @@ export default function TaskSummaryView({
 
               {/* 未完成项目 */}
               <div className="flex min-h-0 flex-col pl-2">
-                <h4 className="mb-2 flex-shrink-0 text-xs font-medium text-slate-400">Incomplete</h4>
+                <h4 className="mb-2 flex-shrink-0 text-xs font-medium text-[var(--muted-foreground)]">Incomplete</h4>
                 <div className="min-h-0 space-y-2 overflow-y-auto pr-1">
                   {timelineItems
                     .filter((item) => !item.completed)
@@ -231,7 +228,7 @@ export default function TaskSummaryView({
                     <div
                       key={item.id}
                       onClick={() => onSelectItem(item)}
-                      className="group relative bg-slate-600/70 hover:bg-slate-400/50 rounded-3xl px-4 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm"
+                      className="group relative bg-[var(--surface-muted)] hover:bg-[var(--surface)] rounded-3xl px-4 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-1">
@@ -240,7 +237,7 @@ export default function TaskSummaryView({
                               taskTypeConfig[item.type ?? 'todo'].color
                             }`}
                           ></span>
-                          <h5 className="text-slate-200 text-sm truncate flex-1">{item.title}</h5>
+                          <h5 className="text-[var(--foreground)] text-sm truncate flex-1">{item.title}</h5>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 rounded-full border-2 border-amber-400"></div>
@@ -249,7 +246,7 @@ export default function TaskSummaryView({
                       {/* 进度条预览 */}
                       {item.type !== 'check-in' && (
                         <div className="mt-2">
-                          <div className="w-full bg-slate-600 rounded-full h-1">
+                          <div className="w-full bg-[var(--border)] rounded-full h-1">
                             <div
                               className="bg-amber-400 h-1 rounded-full"
                               style={{
@@ -267,8 +264,8 @@ export default function TaskSummaryView({
           </div>
 
           {/* 底部统计 - 置底 */}
-          <div className="mt-6 pt-4 border-t border-slate-700/30 flex-shrink-0">
-            <div className="flex justify-between text-xs text-slate-500">
+          <div className="mt-6 pt-4 border-t border-[var(--border)] flex-shrink-0">
+            <div className="flex justify-between text-xs text-[var(--muted-foreground)]">
               <span>
                 Check-in{' '}
                 {timelineItems.filter((item) => item.type === 'check-in' && item.completed).length}/
@@ -281,7 +278,7 @@ export default function TaskSummaryView({
               </span>
             </div>
             {timelineItems.length > 0 && (
-              <div className="mt-2 w-full bg-slate-700 rounded-full h-1">
+              <div className="mt-2 w-full bg-[var(--border)] rounded-full h-1">
                 <div
                   className="bg-amber-500 h-1 rounded-full transition-all duration-300"
                   style={{
@@ -298,7 +295,7 @@ export default function TaskSummaryView({
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center text-slate-500">
+          <div className="text-center text-[var(--muted-foreground)]">
             <p className="text-lg mb-2">No tasks</p>
             <p className="text-sm">Click on tasks in the timeline to view details</p>
           </div>

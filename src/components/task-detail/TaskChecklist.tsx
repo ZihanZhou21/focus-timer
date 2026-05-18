@@ -37,11 +37,11 @@ export default function TaskChecklist({
     <div className="flex-1 overflow-y-auto">
       <div className="mb-4">
         <div className="flex items-center gap-3">
-          <h4 className="text-slate-400 text-sm font-medium uppercase tracking-wider">
+          <h4 className="text-[var(--muted-foreground)] text-sm font-medium uppercase tracking-wider">
             {isCheckInTask ? 'Check-in List' : 'Task List'}
           </h4>
-          <div className="text-slate-600">|</div>
-          <span className="text-slate-400 text-sm">{time}</span>
+          <div className="text-[var(--border)]">|</div>
+          <span className="text-[var(--muted-foreground)] text-sm">{time}</span>
         </div>
       </div>
 
@@ -50,7 +50,7 @@ export default function TaskChecklist({
           details.map((detail: string, index: number) => (
             <div
               key={index}
-              className="flex items-center justify-between py-3 border-b border-slate-700/30 last:border-b-0 group"
+              className="flex items-center justify-between py-3 border-b border-[var(--border)] last:border-b-0 group"
             >
               {editingDetail === index ? (
                 <div className="flex-1 flex items-center gap-2">
@@ -62,7 +62,7 @@ export default function TaskChecklist({
                       if (e.key === 'Enter') onSaveEdit()
                       if (e.key === 'Escape') onCancelEdit()
                     }}
-                    className="flex-1 bg-slate-700/50 border border-slate-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:border-slate-500"
+                    className="flex-1 bg-[var(--input)] border border-[var(--border)] rounded-md px-3 py-2 text-[var(--foreground)] text-sm focus:outline-none focus:border-[var(--accent)]"
                     autoFocus
                   />
                   <button
@@ -79,7 +79,7 @@ export default function TaskChecklist({
                   </button>
                   <button
                     onClick={onCancelEdit}
-                    className="w-8 h-8 flex items-center justify-center rounded-md bg-slate-600/20 hover:bg-slate-600/30 text-slate-400 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--surface-muted)] hover:opacity-80 text-[var(--muted-foreground)] transition-opacity"
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path
@@ -93,11 +93,11 @@ export default function TaskChecklist({
               ) : (
                 <>
                   <div className="flex items-center gap-2 group/text">
-                    <p className="text-white font-medium">{detail}</p>
+                    <p className="text-[var(--foreground)] font-medium">{detail}</p>
                     <div className="flex items-center gap-1 opacity-0 group-hover/text:opacity-100 transition-opacity">
                       <button
                         onClick={() => onStartEditing(index, detail)}
-                        className="w-6 h-6 flex items-center justify-center rounded bg-slate-600/20 hover:bg-slate-600/30 text-slate-400 hover:text-slate-300 transition-colors"
+                        className="w-6 h-6 flex items-center justify-center rounded bg-[var(--surface-muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
                       >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
@@ -126,7 +126,7 @@ export default function TaskChecklist({
                     onClick={() => onToggleDetail(index)}
                     className={`w-5 h-5 rounded-full  transition-colors cursor-pointer flex items-center justify-center ${
                       completedDetails.has(index)
-                        ? 'border-green-400/40 bg-green-400/20 text-white'
+                        ? 'border-green-400/40 bg-green-400/20 text-[var(--foreground)]'
                         : ' border-2 border-amber-400/80 hover:border-amber-300'
                     }`}
                   >
@@ -150,7 +150,7 @@ export default function TaskChecklist({
       <div className="mt-4">
         <button
           onClick={onAddNewDetail}
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-600/20 hover:bg-slate-600/30 text-slate-400 hover:text-slate-300 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path

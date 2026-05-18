@@ -195,16 +195,16 @@ export default function SimpleTaskModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-medium text-slate-200 mb-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+      <div className="app-surface-solid w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[1.75rem] border p-6 shadow-2xl">
+        <h2 className="text-xl font-semibold text-[var(--foreground)] mb-6">
           Create New Task
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 任务类型选择 */}
           <div>
-            <label className="block text-sm text-slate-400 mb-3">
+            <label className="block text-sm text-[var(--muted-foreground)] mb-3">
               Task Type
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -215,8 +215,8 @@ export default function SimpleTaskModal({
                   onClick={() => setTaskType(type.value as 'todo' | 'check-in')}
                   className={`p-3 rounded-lg border transition-colors ${
                     taskType === type.value
-                      ? 'border-amber-500 bg-amber-500/10 text-amber-400'
-                      : 'border-slate-600 bg-slate-700 text-slate-300 hover:border-slate-500'
+                      ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                      : 'border-[var(--border)] bg-[var(--surface-muted)] text-[var(--foreground)] hover:border-[var(--accent)]'
                   }`}>
                   <span className="text-lg mr-2">{type.icon}</span>
                   {type.label}
@@ -227,14 +227,14 @@ export default function SimpleTaskModal({
 
           {/* 任务标题 */}
           <div>
-            <label className="block text-sm text-slate-400 mb-2">
+            <label className="block text-sm text-[var(--muted-foreground)] mb-2">
               Task Title
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:border-[var(--accent)] focus:outline-none"
               placeholder={
                 taskType === 'todo'
                   ? 'Enter todo item...'
@@ -246,7 +246,7 @@ export default function SimpleTaskModal({
 
           {/* 任务内容 */}
           <div>
-            <label className="block text-sm text-slate-400 mb-2">
+            <label className="block text-sm text-[var(--muted-foreground)] mb-2">
               {taskType === 'todo' ? 'Task Details' : 'Check-in Content'}
             </label>
             <div className="space-y-2">
@@ -256,7 +256,7 @@ export default function SimpleTaskModal({
                     type="text"
                     value={item}
                     onChange={(e) => updateContentItem(index, e.target.value)}
-                    className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none"
+                    className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:border-[var(--accent)] focus:outline-none"
                     placeholder={`${taskType === 'todo' ? 'Step' : 'Content'} ${
                       index + 1
                     }`}
@@ -265,7 +265,7 @@ export default function SimpleTaskModal({
                     <button
                       type="button"
                       onClick={() => removeContentItem(index)}
-                      className="px-3 py-2 text-slate-400 hover:text-red-400 transition-colors">
+                      className="px-3 py-2 text-[var(--muted-foreground)] hover:text-red-500 transition-colors">
                       ×
                     </button>
                   )}
@@ -274,7 +274,7 @@ export default function SimpleTaskModal({
               <button
                 type="button"
                 onClick={addContentItem}
-                className="text-sm text-amber-400 hover:text-amber-300 transition-colors">
+                className="text-sm text-[var(--accent)] hover:opacity-80 transition-opacity">
                 + Add {taskType === 'todo' ? 'Step' : 'Content'}
               </button>
             </div>
@@ -283,20 +283,20 @@ export default function SimpleTaskModal({
           <div className="grid grid-cols-2 gap-4">
             {/* 计划时间 */}
             <div>
-              <label className="block text-sm text-slate-400 mb-2">
+              <label className="block text-sm text-[var(--muted-foreground)] mb-2">
                 Planned Time
               </label>
               <input
                 type="time"
                 value={plannedTime}
                 onChange={(e) => setPlannedTime(e.target.value)}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
               />
             </div>
 
             {/* 优先级 */}
             <div>
-              <label className="block text-sm text-slate-400 mb-2">
+              <label className="block text-sm text-[var(--muted-foreground)] mb-2">
                 Priority
               </label>
               <select
@@ -304,7 +304,7 @@ export default function SimpleTaskModal({
                 onChange={(e) =>
                   setPriority(e.target.value as 'low' | 'medium' | 'high')
                 }
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none">
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none">
                 {PRIORITIES.map((p) => (
                   <option key={p.value} value={p.value}>
                     {p.label} Priority
@@ -318,7 +318,7 @@ export default function SimpleTaskModal({
           {taskType === 'todo' && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-2">
+                <label className="block text-sm text-[var(--muted-foreground)] mb-2">
                   Estimated Duration (minutes)
                 </label>
                 <input
@@ -328,18 +328,18 @@ export default function SimpleTaskModal({
                   min="1"
                   max="480"
                   step="1"
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-2">
+                <label className="block text-sm text-[var(--muted-foreground)] mb-2">
                   Due Date
                 </label>
                 <input
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
                 />
               </div>
             </div>
@@ -348,7 +348,7 @@ export default function SimpleTaskModal({
           {/* Check-in特有字段 */}
           {taskType === 'check-in' && (
             <div>
-              <label className="block text-sm text-slate-400 mb-2">
+              <label className="block text-sm text-[var(--muted-foreground)] mb-2">
                 Recurrence Settings
               </label>
               <div className="space-y-3">
@@ -359,12 +359,12 @@ export default function SimpleTaskModal({
                     onChange={(e) => setIsRecurring(e.target.checked)}
                     className="mr-2 rounded"
                   />
-                  <span className="text-slate-300">Daily Repeat</span>
+                  <span className="text-[var(--foreground)]">Daily Repeat</span>
                 </label>
 
                 {!isRecurring && (
                   <div>
-                    <div className="text-xs text-slate-500 mb-2">
+                    <div className="text-xs text-[var(--muted-foreground)] mb-2">
                       Select repeat days:
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -375,8 +375,8 @@ export default function SimpleTaskModal({
                           onClick={() => toggleRecurringDay(day.value)}
                           className={`px-3 py-1 text-xs rounded-full transition-colors ${
                             recurringDays.includes(day.value)
-                              ? 'bg-amber-500 text-white'
-                              : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                              ? 'bg-[var(--accent)] text-white'
+                              : 'bg-[var(--surface-muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                           }`}>
                           {day.label}
                         </button>
@@ -390,7 +390,7 @@ export default function SimpleTaskModal({
 
           {/* 标签 */}
           <div>
-            <label className="block text-sm text-slate-400 mb-2">Tags</label>
+            <label className="block text-sm text-[var(--muted-foreground)] mb-2">Tags</label>
             <div className="space-y-3">
               <div className="flex flex-wrap gap-2">
                 {COMMON_TAGS.map((tag) => (
@@ -400,8 +400,8 @@ export default function SimpleTaskModal({
                     onClick={() => toggleTag(tag)}
                     className={`px-3 py-1 text-xs rounded-full transition-colors ${
                       tags.includes(tag)
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                        ? 'bg-[var(--accent)] text-white'
+                        : 'bg-[var(--surface-muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                     }`}>
                     {tag}
                   </button>
@@ -416,13 +416,13 @@ export default function SimpleTaskModal({
                   onKeyPress={(e) =>
                     e.key === 'Enter' && (e.preventDefault(), addCustomTag())
                   }
-                  className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-1 text-sm text-white placeholder-slate-400 focus:border-amber-500 focus:outline-none"
+                  className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-1 text-sm text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:border-[var(--accent)] focus:outline-none"
                   placeholder="Custom tag..."
                 />
                 <button
                   type="button"
                   onClick={addCustomTag}
-                  className="px-3 py-1 text-sm bg-slate-600 text-slate-300 rounded-lg hover:bg-slate-500 transition-colors">
+                  className="px-3 py-1 text-sm bg-[var(--surface-muted)] text-[var(--foreground)] rounded-lg hover:opacity-80 transition-opacity">
                   Add
                 </button>
               </div>
@@ -433,13 +433,13 @@ export default function SimpleTaskModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors"
+              className="flex-1 px-4 py-2 bg-[var(--surface-muted)] text-[var(--foreground)] rounded-xl hover:opacity-80 transition-opacity"
               disabled={isSubmitting}>
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-[var(--accent)] text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
               disabled={isSubmitting || !title.trim()}>
               {isSubmitting
                 ? 'Creating...'
