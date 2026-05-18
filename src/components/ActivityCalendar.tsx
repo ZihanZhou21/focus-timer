@@ -215,10 +215,10 @@ export default function ActivityCalendar({
   )
 
   const calendarGrid = (
-    <div className="bg-slate-800 rounded-3xl p-3">
+    <div className="bg-slate-800/90 rounded-3xl border border-slate-700/50 p-3 sm:p-4">
       <div className="grid grid-cols-7 gap-1 mb-1">
         {WEEK_DAYS.map((day, index) => (
-          <div key={index} className="text-center text-md text-slate-500 py-1">
+          <div key={index} className="text-center text-sm text-slate-500 py-1">
             {day}
           </div>
         ))}
@@ -228,7 +228,7 @@ export default function ActivityCalendar({
         {calendarData.map((day, index) => (
           <div
             key={`${day.fullDate}-${index}`}
-            className={`aspect-square rounded-full text-xs flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 ${
+            className={`aspect-square rounded-full text-[11px] sm:text-xs flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 ${
               day.isToday ? 'ring-1 ring-amber-400' : ''
             } ${
               day.isCurrentMonth
