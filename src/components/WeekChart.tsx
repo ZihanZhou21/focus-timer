@@ -107,16 +107,16 @@ export default function WeekChart({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h3 className="text-lg font-light text-slate-200 whitespace-nowrap">
+        <h3 className="text-lg font-medium text-[var(--foreground)] whitespace-nowrap">
           Past 7 Days
         </h3>
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigatePeriod('prev')}
-            className="p-1 rounded hover:bg-slate-800 transition-colors"
+            className="p-1 rounded hover:bg-[var(--surface-muted)] transition-colors"
             aria-label="前7天">
             <svg
-              className="w-4 h-4 text-slate-400"
+              className="w-4 h-4 text-[var(--muted-foreground)]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24">
@@ -128,16 +128,16 @@ export default function WeekChart({
               />
             </svg>
           </button>
-          <span className="text-sm text-slate-400 min-w-[6rem] text-center whitespace-nowrap">
+          <span className="text-sm text-[var(--muted-foreground)] min-w-[6rem] text-center whitespace-nowrap">
             {periodLabel}
           </span>
           <button
             onClick={() => navigatePeriod('next')}
             disabled={isCurrentPeriod}
-            className="p-1 rounded hover:bg-slate-800 transition-colors disabled:opacity-40"
+            className="p-1 rounded hover:bg-[var(--surface-muted)] transition-colors disabled:opacity-40"
             aria-label="后7天">
             <svg
-              className="w-4 h-4 text-slate-400"
+              className="w-4 h-4 text-[var(--muted-foreground)]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24">
@@ -152,10 +152,10 @@ export default function WeekChart({
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="p-1 rounded hover:bg-slate-800 transition-colors disabled:opacity-40"
+            className="p-1 rounded hover:bg-[var(--surface-muted)] transition-colors disabled:opacity-40"
             aria-label="刷新">
             <svg
-              className={`w-4 h-4 text-slate-400 ${
+              className={`w-4 h-4 text-[var(--muted-foreground)] ${
                 isFetching ? 'animate-spin' : ''
               }`}
               fill="none"
@@ -172,10 +172,10 @@ export default function WeekChart({
         </div>
       </div>
 
-      <div className="bg-slate-800/90 rounded-3xl p-4 sm:p-5 xl:p-6 flex-1 min-h-0 flex flex-col border border-slate-700/50">
+      <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 sm:p-5 xl:p-6">
         {showLoading ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-slate-400">Loading...</div>
+            <div className="text-[var(--muted-foreground)]">Loading...</div>
           </div>
         ) : (
           <div className="flex-1 min-h-0 flex flex-col">
@@ -189,12 +189,12 @@ export default function WeekChart({
                   <div
                     key={index}
                     className="flex flex-col items-center h-full min-w-0">
-                    <div className="relative w-full flex-1 bg-slate-700/80 rounded-lg overflow-hidden mb-2">
+                    <div className="relative mb-2 w-full flex-1 overflow-hidden rounded-lg bg-[var(--surface-elevated)] ring-1 ring-[var(--border)]">
                       <div
                         className={`absolute bottom-0 left-0 right-0 transition-all duration-300 ${
                           item.isToday
                             ? 'bg-gradient-to-t from-amber-500 to-amber-400'
-                            : 'bg-gradient-to-t from-slate-500 to-slate-400'
+                            : 'bg-gradient-to-t from-blue-400/70 to-cyan-300/70'
                         }`}
                         style={{
                           height: `${Math.max(
@@ -207,11 +207,11 @@ export default function WeekChart({
                     <div className="text-center">
                       <div
                         className={`text-xs font-medium ${
-                          item.isToday ? 'text-amber-400' : 'text-slate-400'
+                          item.isToday ? 'text-amber-500' : 'text-[var(--muted-foreground)]'
                         }`}>
                         {item.day}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-[var(--muted-foreground)]">
                         {item.data.focus}min
                       </div>
                     </div>

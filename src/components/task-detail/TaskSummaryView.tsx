@@ -143,7 +143,7 @@ export default function TaskSummaryView({
           {onAddTask && (
             <button
               onClick={onAddTask}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--background)] transition-colors hover:opacity-85"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-sm transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
               aria-label="Create project"
               title="Create project"
             >
@@ -163,7 +163,7 @@ export default function TaskSummaryView({
       {timelineItems.length > 0 ? (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 overflow-hidden">
-            <div className="relative grid h-full min-h-0 grid-cols-2 gap-4">
+            <div className="relative grid h-full min-h-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4">
               {/* 渐变分隔线 */}
               <div className="absolute left-1/2 top-0 bottom-0 w-px transform -translate-x-1/2 bg-gradient-to-b from-transparent via-[var(--border)] to-transparent"></div>
 
@@ -177,19 +177,21 @@ export default function TaskSummaryView({
                     <div
                       key={item.id}
                       onClick={() => onSelectItem(item)}
-                      className="group relative bg-[var(--surface-muted)] hover:bg-[var(--surface)] rounded-3xl px-4 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm"
+                      className="group relative min-w-0 cursor-pointer rounded-3xl bg-[var(--surface-muted)] px-4 py-4 shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-[var(--surface)] hover:shadow-md"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 flex-1">
+                      <div className="flex min-w-0 items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
+                            className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
                               taskTypeConfig[item.type ?? 'todo'].color
                             }`}
                           ></span>
-                          <h5 className="text-[var(--foreground)] text-sm truncate flex-1">{item.title}</h5>
+                          <h5 className="min-w-0 flex-1 truncate text-sm text-[var(--foreground)]">
+                            {item.title}
+                          </h5>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center bg-green-500/20 ml-2">
+                        <div className="flex flex-shrink-0 items-center gap-2">
+                          <div className="ml-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-green-500/20">
                             <svg className="w-3 h-3 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                               <path
                                 fillRule="evenodd"
@@ -228,19 +230,21 @@ export default function TaskSummaryView({
                     <div
                       key={item.id}
                       onClick={() => onSelectItem(item)}
-                      className="group relative bg-[var(--surface-muted)] hover:bg-[var(--surface)] rounded-3xl px-4 py-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm"
+                      className="group relative min-w-0 cursor-pointer rounded-3xl bg-[var(--surface-muted)] px-4 py-4 shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-[var(--surface)] hover:shadow-md"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 flex-1">
+                      <div className="flex min-w-0 items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
+                            className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
                               taskTypeConfig[item.type ?? 'todo'].color
                             }`}
                           ></span>
-                          <h5 className="text-[var(--foreground)] text-sm truncate flex-1">{item.title}</h5>
+                          <h5 className="min-w-0 flex-1 truncate text-sm text-[var(--foreground)]">
+                            {item.title}
+                          </h5>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full border-2 border-amber-400"></div>
+                        <div className="flex flex-shrink-0 items-center gap-2">
+                          <div className="h-4 w-4 flex-shrink-0 rounded-full border-2 border-amber-400"></div>
                         </div>
                       </div>
                       {/* 进度条预览 */}

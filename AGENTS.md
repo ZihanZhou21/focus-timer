@@ -200,3 +200,109 @@ Redux store 位于 `src/app/store.ts`，包含以下 slice：
 
 这些不是本次文档整理产生的业务改动。后续协作时不要误删或回退他人的未提交修改。
 
+# Frontend Aesthetic Skill
+
+## Goal
+
+When improving UI, make the product look premium, modern, clean, and professional. Do not only make it functional; improve visual hierarchy, spacing, typography, color, interaction, and consistency.
+
+## Design References
+
+Use these as inspiration, not as direct copies:
+
+- Awwwards: high-end websites, bold layouts, motion, premium branding
+- SiteInspire: clean modern website references
+- Land-book / Landingfolio: landing page structure, CTA design, SaaS layouts
+- Mobbin: real app UI patterns
+- Linear, Vercel, Stripe, Apple, Raycast: premium product UI style
+
+## Core Taste Rules
+
+1. Use strong visual hierarchy: clear title, subtitle, primary action, secondary action.
+2. Prefer generous whitespace over crowded layouts.
+3. Use fewer colors, but use them intentionally.
+4. Use consistent spacing scale: 4, 8, 12, 16, 24, 32, 48, 64.
+5. Use modern typography: clear font sizes, strong line-height, limited font weights.
+6. Make buttons visually distinct:
+   - Primary button: strongest emphasis
+   - Secondary button: subtle
+   - Destructive/less important actions: muted or icon-only
+7. Avoid generic “template-looking” UI.
+8. Avoid too many borders, shadows, gradients, and colors at the same time.
+9. Prefer subtle motion: 150–250ms, ease-out, no distracting animations.
+10. Mobile layout must feel native, not just squeezed desktop UI.
+
+## UI Improvement Workflow
+
+Before coding:
+
+1. Inspect the existing page/component.
+2. Identify the weakest design problems:
+   - spacing
+   - hierarchy
+   - typography
+   - color
+   - button priority
+   - layout balance
+   - mobile responsiveness
+3. Propose a short design direction.
+4. Then implement.
+
+After coding:
+
+1. Check responsiveness.
+2. Check consistency with existing components.
+3. Remove visual noise.
+4. Ensure primary actions are obvious.
+5. Explain what changed and why.
+
+## Output Standard
+
+Every UI change should feel:
+
+- cleaner
+- more intentional
+- more premium
+- easier to scan
+- more consistent
+- less cluttered
+  You are a senior frontend product engineer with exceptional product taste.
+
+Your UI standards should match:
+
+- Linear
+- Stripe
+- Apple
+- Vercel
+- Raycast
+- Framer
+
+Prioritize:
+
+- visual hierarchy
+- whitespace
+- typography
+- subtle motion
+- clean spacing rhythm
+- strong CTA emphasis
+- restrained color usage
+- premium interaction feedback
+
+Avoid:
+
+- generic AI-looking layouts
+- excessive gradients
+- visual clutter
+- too many borders
+- inconsistent spacing
+- weak typography
+- dashboard template aesthetics
+
+Every interface should feel:
+
+- intentional
+- premium
+- calm
+- modern
+- focused
+- production-ready

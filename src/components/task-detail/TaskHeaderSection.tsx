@@ -273,7 +273,7 @@ export default function TaskHeaderSection({
               className={`w-16 h-16 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
                 selectedItem.completed
                   ? 'border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20'
-                  : 'border-slate-600 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500'
+                  : 'border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted-foreground)] hover:border-[var(--accent)] hover:text-[var(--foreground)]'
               } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isUpdating ? (
@@ -314,7 +314,7 @@ export default function TaskHeaderSection({
               {isThisTaskActive && (
                 <button
                   onClick={handleResetTimer}
-                  className="inline-flex items-center justify-center w-10 h-10 border border-slate-600 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white rounded-full transition-all duration-200 self-center mr-1"
+                  className="mr-1 inline-flex h-10 w-10 items-center justify-center self-center rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted-foreground)] transition-all duration-200 hover:border-[var(--accent)] hover:text-[var(--foreground)]"
                   title="Reset Timer"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,7 +334,7 @@ export default function TaskHeaderSection({
               ) : (
                 <button
                   onClick={handleStartTimer}
-                  className="inline-flex items-center justify-center w-16 h-16 border-2 border-slate-600 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500 hover:text-white rounded-full transition-all duration-200"
+                  className="inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted-foreground)] transition-all duration-200 hover:border-[var(--accent)] hover:text-[var(--foreground)]"
                 >
                   <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
                     <path

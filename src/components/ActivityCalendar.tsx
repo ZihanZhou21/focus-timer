@@ -51,10 +51,12 @@ const formatTimeInHours = (minutes: number): string => {
 }
 
 const getIntensityColor = (focusTime: number): string => {
-  if (focusTime === 0) return 'bg-slate-700/50'
-  if (focusTime <= 30) return 'bg-amber-900/70'
-  if (focusTime <= 60) return 'bg-amber-800/80'
-  if (focusTime <= 120) return 'bg-amber-600/90'
+  if (focusTime === 0) {
+    return 'bg-[var(--surface-elevated)]'
+  }
+  if (focusTime <= 30) return 'bg-amber-100 dark:bg-amber-900/70'
+  if (focusTime <= 60) return 'bg-amber-200 dark:bg-amber-800/80'
+  if (focusTime <= 120) return 'bg-amber-300 dark:bg-amber-600/90'
   return 'bg-amber-400'
 }
 
@@ -155,15 +157,15 @@ export default function ActivityCalendar({
 
   const header = (
     <div className="flex items-center justify-between mb-4">
-      <h3 className="text-lg font-light text-slate-200">Activity</h3>
+      <h3 className="text-lg font-medium text-[var(--foreground)]">Activity</h3>
       <div className="flex items-center space-x-2">
         <button
           onClick={() => navigateMonth('prev')}
-          className="p-1 rounded hover:bg-slate-800 transition-colors"
+          className="p-1 rounded hover:bg-[var(--surface-muted)] transition-colors"
           disabled={isFetching}
           aria-label="Previous month">
           <svg
-            className="w-4 h-4 text-slate-400"
+            className="w-4 h-4 text-[var(--muted-foreground)]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24">
@@ -175,16 +177,16 @@ export default function ActivityCalendar({
             />
           </svg>
         </button>
-        <span className="text-sm text-slate-400 min-w-[4rem] text-center">
+        <span className="text-sm text-[var(--muted-foreground)] min-w-[4rem] text-center">
           {MONTHS[currentDate.getMonth()]}
         </span>
         <button
           onClick={() => navigateMonth('next')}
-          className="p-1 rounded hover:bg-slate-800 transition-colors"
+          className="p-1 rounded hover:bg-[var(--surface-muted)] transition-colors"
           disabled={isFetching}
           aria-label="Next month">
           <svg
-            className="w-4 h-4 text-slate-400"
+            className="w-4 h-4 text-[var(--muted-foreground)]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24">
@@ -201,13 +203,13 @@ export default function ActivityCalendar({
   )
 
   const legend = (
-    <div className="flex items-center justify-between mt-3 text-xs text-slate-500">
+    <div className="flex items-center justify-between mt-3 text-xs text-[var(--muted-foreground)]">
       <span>Less</span>
       <div className="flex space-x-1">
-        <div className="w-2 h-2 rounded-sm bg-slate-700/50" />
-        <div className="w-2 h-2 rounded-sm bg-amber-900/70" />
-        <div className="w-2 h-2 rounded-sm bg-amber-800/80" />
-        <div className="w-2 h-2 rounded-sm bg-amber-600/90" />
+        <div className="w-2 h-2 rounded-sm bg-[var(--surface-elevated)] ring-1 ring-[var(--border)]" />
+        <div className="w-2 h-2 rounded-sm bg-amber-100 dark:bg-amber-900/70" />
+        <div className="w-2 h-2 rounded-sm bg-amber-200 dark:bg-amber-800/80" />
+        <div className="w-2 h-2 rounded-sm bg-amber-300 dark:bg-amber-600/90" />
         <div className="w-2 h-2 rounded-sm bg-amber-400" />
       </div>
       <span>More</span>
@@ -215,10 +217,10 @@ export default function ActivityCalendar({
   )
 
   const calendarGrid = (
-    <div className="bg-slate-800/90 rounded-3xl border border-slate-700/50 p-3 sm:p-4">
+    <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-3 sm:p-4">
       <div className="grid grid-cols-7 gap-1 mb-1">
         {WEEK_DAYS.map((day, index) => (
-          <div key={index} className="text-center text-sm text-slate-500 py-1">
+          <div key={index} className="text-center text-sm text-[var(--muted-foreground)] py-1">
             {day}
           </div>
         ))}
@@ -229,11 +231,11 @@ export default function ActivityCalendar({
           <div
             key={`${day.fullDate}-${index}`}
             className={`aspect-square rounded-full text-[11px] sm:text-xs flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 ${
-              day.isToday ? 'ring-1 ring-amber-400' : ''
+                day.isToday ? 'ring-1 ring-amber-400' : ''
             } ${
               day.isCurrentMonth
                 ? getIntensityColor(day.focusTime)
-                : 'bg-slate-700/30'
+                : 'bg-[var(--surface)]'
             }`}
             title={
               day.isCurrentMonth && day.hasRecord
@@ -246,7 +248,11 @@ export default function ActivityCalendar({
             }>
             <span
               className={`${
-                day.isCurrentMonth ? 'text-white' : 'text-slate-500'
+                day.isCurrentMonth
+                  ? day.focusTime > 0
+                    ? 'text-amber-950 dark:text-white'
+                    : 'text-[var(--foreground)]'
+                  : 'text-[var(--muted-foreground)]'
               }`}>
               {day.date}
             </span>
@@ -262,8 +268,8 @@ export default function ActivityCalendar({
     return (
       <div className={`flex flex-col ${className}`}>
         {header}
-        <div className="bg-slate-800 rounded-3xl p-6 flex items-center justify-center">
-          <div className="text-slate-400 text-sm">Loading...</div>
+        <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-6 flex items-center justify-center">
+          <div className="text-[var(--muted-foreground)] text-sm">Loading...</div>
         </div>
       </div>
     )

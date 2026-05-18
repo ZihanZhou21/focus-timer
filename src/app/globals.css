@@ -6,21 +6,21 @@
   color-scheme: light;
   --background: #f6f3ee;
   --foreground: #171717;
-  --surface: rgba(255, 255, 255, 0.72);
+  --surface: rgba(255, 255, 255, 0.74);
   --surface-solid: #ffffff;
-  --surface-muted: rgba(244, 240, 232, 0.82);
-  --surface-elevated: rgba(255, 255, 255, 0.88);
+  --surface-muted: rgba(248, 250, 252, 0.82);
+  --surface-elevated: rgba(255, 255, 255, 0.9);
   --accent: #2563eb;
   --accent-soft: rgba(37, 99, 235, 0.12);
   --accent-2: #f59e0b;
   --accent-foreground: #ffffff;
-  --muted: #ebe5dc;
+  --muted: #edf2f7;
   --muted-foreground: #6b7280;
   --border: rgba(23, 23, 23, 0.1);
   --input: rgba(255, 255, 255, 0.86);
   --ring: #2563eb;
   --shadow: rgba(24, 24, 27, 0.1);
-  --panel-shadow: 0 24px 80px rgba(31, 41, 55, 0.12);
+  --panel-shadow: 0 24px 80px rgba(31, 41, 55, 0.1);
   --page-gradient:
     radial-gradient(circle at 12% 8%, rgba(37, 99, 235, 0.12), transparent 28rem),
     radial-gradient(circle at 84% 14%, rgba(245, 158, 11, 0.13), transparent 24rem),

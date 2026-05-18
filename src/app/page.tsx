@@ -290,19 +290,22 @@ export default function Home() {
                       <div key={item.id} className="relative flex items-start group">
                         {/* Left side: Time and Icon vertical stack */}
                         <div className="w-14 flex flex-col items-center flex-shrink-0 pt-0.5">
-                          <div className={`text-xs font-extrabold tracking-wide mb-2 px-2 py-1 rounded-md shadow-md z-20 transition-colors ${
+                          <div className={`z-20 mb-2 rounded-md px-2 py-1 text-xs font-extrabold tracking-wide shadow-sm ring-1 ring-[var(--border)] transition-colors ${
                             item.completed 
                               ? 'bg-[var(--surface-muted)] text-[var(--muted-foreground)]' 
-                              : 'bg-[var(--foreground)] text-[var(--background)] ring-1 ring-[var(--border)]'
+                              : 'bg-[var(--surface-elevated)] text-[var(--foreground)]'
                           }`}>
                             {item.time}
                           </div>
                           <div
-                            className={`w-10 h-10 rounded-full ${
-                              taskTypeConfig[item.type].color
-                            } flex items-center justify-center text-white relative z-10 shadow-lg ${
+                            className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-sm ${
                               item.completed ? 'opacity-75' : ''
                             }`}>
+                            <span
+                              className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-[var(--surface)] ${
+                                taskTypeConfig[item.type].color
+                              }`}
+                            />
                             <span className="text-base">{item.icon}</span>
                             {item.completed && (
                               <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
