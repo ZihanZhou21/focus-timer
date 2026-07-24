@@ -12,21 +12,29 @@ const TimerControlButtonComponent = ({
   onToggle,
 }: TimerControlButtonProps) => (
   <button
+    type="button"
     onClick={onToggle}
-    className={`w-20 h-20 rounded-full transition-all duration-300 flex items-center justify-center text-3xl font-medium shadow-2xl relative overflow-hidden group ${
+    aria-label={isRunning ? 'Pause focus timer' : 'Start focus timer'}
+    aria-pressed={isRunning}
+    className={`group relative grid h-16 w-16 place-items-center overflow-hidden rounded-full border transition duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 ${
       isRunning
-        ? 'bg-gradient-to-br from-slate-700 to-slate-800 text-white border-2 border-slate-600 hover:from-slate-600 hover:to-slate-700'
-        : 'bg-gradient-to-br from-blue-500 to-blue-600 text-white border-2 border-blue-400 hover:from-blue-400 hover:to-blue-500 shadow-blue-500/25'
+        ? 'border-[var(--foreground)] bg-[var(--foreground)] text-[var(--focus-session-bg)] shadow-[0_10px_28px_rgba(15,23,42,0.16)] hover:opacity-90'
+        : 'border-blue-500/20 bg-[var(--accent)] text-white shadow-[0_12px_30px_rgba(37,99,235,0.24)] hover:bg-blue-600'
     }`}>
-    <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-    <span className="relative z-10">
+    <span className="absolute inset-0 rounded-full bg-white/10 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+    <span className="relative z-10 grid place-items-center" aria-hidden="true">
       {isRunning ? (
-        <div className="flex items-center justify-center">
-          <div className="w-2 h-6 bg-current rounded-sm"></div>
-          <div className="w-2 h-6 bg-current rounded-sm ml-1"></div>
-        </div>
+        <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+          <rect x="6.5" y="5" width="4" height="14" rx="1.5" />
+          <rect x="13.5" y="5" width="4" height="14" rx="1.5" />
+        </svg>
       ) : (
-        '▶'
+        <svg
+          className="ml-0.5 h-6 w-6"
+          fill="currentColor"
+          viewBox="0 0 24 24">
+          <path d="M8.25 5.6a1.25 1.25 0 0 1 1.9-1.06l9.1 6.4a1.3 1.3 0 0 1 0 2.12l-9.1 6.4a1.25 1.25 0 0 1-1.9-1.06V5.6Z" />
+        </svg>
       )}
     </span>
   </button>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '@/app/store'
 import { completeTimer } from '@/app/slices/timerSlice'
@@ -53,7 +53,6 @@ export default function TaskDetailCard({
 
   const timer = useSelector((state: RootState) => state.timer)
   const dispatch = useDispatch()
-  const cardRef = useRef<HTMLDivElement>(null)
   const [updateTaskMutation] = useUpdateTaskMutation()
 
   const todoTaskIds = useMemo(
@@ -71,24 +70,6 @@ export default function TaskDetailCard({
   const { data: batchTaskInfo } = useGetBatchTaskInfoQuery(todoTaskIds, {
     skip: todoTaskIds.length === 0,
   })
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        selectedItem &&
-        cardRef.current &&
-        !cardRef.current.contains(event.target as Node) &&
-        onClose
-      ) {
-        onClose()
-      }
-    }
-
-    if (selectedItem) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [selectedItem, onClose])
 
   const getBatchItem = (taskId: string) => batchTaskInfo?.success[taskId]
 
@@ -140,20 +121,6 @@ export default function TaskDetailCard({
       return Math.floor(batchItem.progress.totalExecutedTime / 60)
     }
     return 0
-  }
-
-  const getRemainingTime = (task: ProjectItem): number => {
-    if (task.type === 'check-in') return 0
-
-    if (task.id === timer.taskId) {
-      return Math.floor(timer.timeRemaining / 60)
-    }
-
-    return (
-      getBatchItem(task.id)?.remaining?.remainingMinutes ||
-      task.durationMinutes ||
-      25
-    )
   }
 
   const handleSaveEdit = async () => {
@@ -255,7 +222,7 @@ export default function TaskDetailCard({
 
   if (selectedItem) {
     return (
-      <div ref={cardRef} className="flex flex-col h-full">
+      <div className="flex h-full flex-col">
         <TaskHeaderSection
           selectedItem={selectedItem}
           isEditingTask={isEditingTask}
@@ -285,14 +252,12 @@ export default function TaskDetailCard({
             }
           }}
           onHandleCheckInToggle={handleCheckInToggle}
-          getRemainingTime={getRemainingTime}
-          getExecutedTime={getExecutedTime}
+          onRequestDelete={() => setShowDeleteConfirm(true)}
         />
 
         <TaskProgressTracker
           durationMinutes={selectedItem.durationMinutes}
           executedMinutes={getExecutedTime(selectedItem)}
-          remainingMinutes={getRemainingTime(selectedItem)}
           progress={calculateProgress(selectedItem)}
           isCheckInTask={selectedItem.type === 'check-in'}
           taskId={selectedItem.id}
@@ -355,7 +320,6 @@ export default function TaskDetailCard({
     <TaskSummaryView
       timelineItems={timelineItems}
       onSelectItem={onSelectItem}
-      calculateProgress={calculateProgress}
       onAddTask={onAddTask}
     />
   )

@@ -1,8 +1,6 @@
 'use client'
 
-import { useDispatch, useSelector } from 'react-redux'
-import { RootState } from '@/app/store'
-import { startTimer, pauseTimer, initializeTimer, resetTimer } from '@/app/slices/timerSlice'
+import type { Dispatch, SetStateAction } from 'react'
 import { taskTypeConfig } from '@/lib/constants'
 import { ProjectItem } from '@/lib/api'
 
@@ -16,20 +14,21 @@ interface TaskHeaderSectionProps {
     tags: string[]
     durationMinutes: number
   }
-  setEditingTaskData: React.Dispatch<React.SetStateAction<{
-    title: string
-    time: string
-    tags: string[]
-    durationMinutes: number
-  }>>
+  setEditingTaskData: Dispatch<
+    SetStateAction<{
+      title: string
+      time: string
+      tags: string[]
+      durationMinutes: number
+    }>
+  >
   onStartEditingTask: () => void
   onSaveTaskEdit: () => void
   onCancelTaskEdit: () => void
   onRemoveTag: (index: number) => void
   onAddTag: (tag: string) => void
   onHandleCheckInToggle: (task: ProjectItem) => void
-  getRemainingTime: (task: ProjectItem) => number
-  getExecutedTime: (task: ProjectItem) => number
+  onRequestDelete: () => void
 }
 
 export default function TaskHeaderSection({
@@ -44,310 +43,237 @@ export default function TaskHeaderSection({
   onRemoveTag,
   onAddTag,
   onHandleCheckInToggle,
-  getRemainingTime,
-  getExecutedTime,
+  onRequestDelete,
 }: TaskHeaderSectionProps) {
   const isCheckInTask = selectedItem.type === 'check-in'
-  const dispatch = useDispatch()
-  const timer = useSelector((state: RootState) => state.timer)
-  
-  const isThisTaskActive = timer.taskId === selectedItem.id
+  const typeName = taskTypeConfig[selectedItem.type ?? 'todo'].name
 
-  const handleStartTimer = () => {
-    // 如果该任务不是当前计时任务，则初始化
-    if (!isThisTaskActive) {
-      const remaining = getRemainingTime(selectedItem)
-      const executed = getExecutedTime(selectedItem)
-      
-      dispatch(initializeTimer({
-        timeRemaining: remaining * 60,
-        totalElapsed: executed * 60,
-        totalEstimated: (remaining + executed) * 60,
-        taskId: selectedItem.id,
-        taskTitle: selectedItem.title,
-        initialTime: selectedItem.durationMinutes || 25,
-        originalRemaining: remaining,
-        originalElapsed: executed
-      }))
-    }
-    dispatch(startTimer())
-  }
+  if (isEditingTask) {
+    return (
+      <div className="mb-5 space-y-4 border-b border-[var(--border)] pb-5">
+        <div>
+          <label className="mb-2 block text-xs font-medium text-[var(--muted-foreground)]">
+            Task title
+          </label>
+          <input
+            type="text"
+            value={editingTaskData.title}
+            onChange={(event) =>
+              setEditingTaskData((previous) => ({
+                ...previous,
+                title: event.target.value,
+              }))
+            }
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2.5 text-lg font-semibold text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
+            placeholder="Enter task title"
+          />
+        </div>
 
-  const handlePauseTimer = () => {
-    dispatch(pauseTimer())
-  }
-
-  const handleResetTimer = () => {
-    if (window.confirm('Are you sure you want to reset the timer for this task?')) {
-      dispatch(resetTimer())
-    }
-  }
-
-  return (
-    <div className="flex items-center justify-between mb-6">
-      <div className="flex-1">
-        {isEditingTask ? (
-          // 编辑模式
-          <div className="space-y-4">
-            {/* 编辑标题 */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-2 block text-xs font-medium text-[var(--muted-foreground)]">
+              Planned time
+            </label>
+            <input
+              type="time"
+              value={editingTaskData.time}
+              onChange={(event) =>
+                setEditingTaskData((previous) => ({
+                  ...previous,
+                  time: event.target.value,
+                }))
+              }
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2.5 text-sm text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
+            />
+          </div>
+          {!isCheckInTask && (
             <div>
-              <label className="block text-[var(--muted-foreground)] text-xs mb-2">Task Title</label>
+              <label className="mb-2 block text-xs font-medium text-[var(--muted-foreground)]">
+                Minutes
+              </label>
               <input
-                type="text"
-                value={editingTaskData.title}
-                onChange={(e) =>
-                  setEditingTaskData((prev) => ({
-                    ...prev,
-                    title: e.target.value,
+                type="number"
+                min="1"
+                max="480"
+                step="1"
+                value={editingTaskData.durationMinutes}
+                onChange={(event) =>
+                  setEditingTaskData((previous) => ({
+                    ...previous,
+                    durationMinutes: Number(event.target.value),
                   }))
                 }
-                className="w-full bg-[var(--input)] border border-[var(--border)] rounded-lg px-4 py-3 text-[var(--foreground)] text-2xl font-bold focus:outline-none focus:border-[var(--accent)]"
-                placeholder="Enter task title"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2.5 text-sm text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
               />
-            </div>
-
-            {/* 编辑计划时间 */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[var(--muted-foreground)] text-xs mb-2">Planned Time</label>
-                <input
-                  type="time"
-                  value={editingTaskData.time}
-                  onChange={(e) =>
-                    setEditingTaskData((prev) => ({
-                      ...prev,
-                      time: e.target.value,
-                    }))
-                  }
-                  className="w-full bg-[var(--input)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]"
-                />
-              </div>
-              {!isCheckInTask && (
-                <div>
-                  <label className="block text-[var(--muted-foreground)] text-xs mb-2">
-                    Estimated Duration (minutes)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="480"
-                    step="1"
-                    value={editingTaskData.durationMinutes}
-                    onChange={(e) =>
-                      setEditingTaskData((prev) => ({
-                        ...prev,
-                        durationMinutes: Number(e.target.value),
-                      }))
-                    }
-                    className="w-full bg-[var(--input)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* 编辑标签 */}
-            <div>
-              <label className="block text-[var(--muted-foreground)] text-xs mb-2">Tags</label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {editingTaskData.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-[var(--surface-muted)] rounded-md text-[var(--muted-foreground)] text-xs"
-                  >
-                    #{tag}
-                    <button
-                      onClick={() => onRemoveTag(index)}
-                      className="text-red-400 hover:text-red-300 ml-1"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Add tag"
-                  className="flex-1 bg-[var(--input)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--foreground)] text-sm focus:outline-none focus:border-[var(--accent)]"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const input = e.target as HTMLInputElement
-                      onAddTag(input.value.trim())
-                      input.value = ''
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* 编辑操作按钮 */}
-            <div className="flex gap-2">
-              <button
-                onClick={onSaveTaskEdit}
-                disabled={isUpdating || !editingTaskData.title.trim()}
-                className="px-4 py-2 bg-[var(--accent)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm transition-opacity"
-              >
-                {isUpdating ? 'Saving...' : 'Save'}
-              </button>
-              <button
-                onClick={onCancelTaskEdit}
-                className="px-4 py-2 bg-[var(--surface-muted)] hover:opacity-80 text-[var(--foreground)] rounded-lg text-sm transition-opacity"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          // 显示模式
-          <div>
-            {/* 任务类型标识和标题 */}
-            <div className="flex items-center gap-3 mb-1">
-              <div
-                className={`w-2 h-2 rounded-full ${
-                  taskTypeConfig[selectedItem.type ?? 'todo'].color
-                }`}
-              ></div>
-              <h1 className="text-[var(--foreground)] text-3xl font-bold leading-tight">{selectedItem.title}</h1>
-              {selectedItem.completed && selectedItem.type !== 'check-in' && (
-                <div className="flex items-center gap-2 ml-3">
-                  <span className="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full border border-green-500/30">
-                    Completed {selectedItem.repetitionsToday && selectedItem.repetitionsToday > 1 ? `x${selectedItem.repetitionsToday}` : ''}
-                  </span>
-                  <button
-                    onClick={() => {
-                      window.location.href = `/focus?id=${selectedItem.id}&repeat=true`;
-                    }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded-full transition-colors shadow-lg"
-                  >
-                    Repeat Task
-                  </button>
-                </div>
-              )}
-              <button
-                onClick={onStartEditingTask}
-                className="text-[var(--muted-foreground)] hover:text-[var(--accent)] transition-colors ml-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-              </button>
-            </div>
-            {/* 类型和标签在同一行 */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="text-[var(--muted-foreground)] text-sm">
-                {taskTypeConfig[selectedItem.type ?? 'todo'].name}
-              </div>
-              {selectedItem.tags && selectedItem.tags.length > 0 && (
-                <>
-                  <div className="text-[var(--border)]">|</div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedItem.tags.map((tag: string, index: number) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-[var(--surface-muted)] rounded-md text-[var(--muted-foreground)] text-xs"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 操作按钮组 */}
-      {!isEditingTask && (
-        <div className="flex items-center gap-3">
-          {/* 主要操作按钮 */}
-          {isCheckInTask ? (
-            <button
-              onClick={() => onHandleCheckInToggle(selectedItem)}
-              disabled={isUpdating}
-              className={`w-16 h-16 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
-                selectedItem.completed
-                  ? 'border-green-500/50 bg-green-500/10 text-green-400 hover:bg-green-500/20'
-                  : 'border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted-foreground)] hover:border-[var(--accent)] hover:text-[var(--foreground)]'
-              } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isUpdating ? (
-                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-              ) : selectedItem.completed ? (
-                <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              ) : (
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              )}
-            </button>
-          ) : selectedItem.completed || selectedItem.status === 'completed' ? (
-            // 任务已完成，显示完成状态
-            <div className="inline-flex items-center justify-center w-16 h-16 border-2 border-green-500/50 bg-green-500/10 text-green-400 rounded-full">
-              <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-          ) : (
-            // 任务未完成，显示开始/暂停按钮
-            <div className="flex gap-2">
-              {isThisTaskActive && (
-                <button
-                  onClick={handleResetTimer}
-                  className="mr-1 inline-flex h-10 w-10 items-center justify-center self-center rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted-foreground)] transition-all duration-200 hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-                  title="Reset Timer"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-              )}
-              {isThisTaskActive && timer.isRunning ? (
-                <button
-                  onClick={handlePauseTimer}
-                  className="inline-flex items-center justify-center w-16 h-16 border-2 border-amber-500 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-full transition-all duration-200"
-                >
-                  <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                  </svg>
-                </button>
-              ) : (
-                <button
-                  onClick={handleStartTimer}
-                  className="inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted-foreground)] transition-all duration-200 hover:border-[var(--accent)] hover:text-[var(--foreground)]"
-                >
-                  <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-              )}
             </div>
           )}
         </div>
+
+        <div>
+          <label className="mb-2 block text-xs font-medium text-[var(--muted-foreground)]">
+            Tags
+          </label>
+          {editingTaskData.tags.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {editingTaskData.tags.map((tag, index) => (
+                <span
+                  key={`${tag}-${index}`}
+                  className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-xs text-[var(--muted-foreground)]">
+                  #{tag}
+                  <button
+                    type="button"
+                    onClick={() => onRemoveTag(index)}
+                    className="grid h-5 w-5 place-items-center rounded text-[var(--muted-foreground)] hover:text-red-500"
+                    aria-label={`Remove ${tag} tag`}>
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <input
+            type="text"
+            placeholder="Type a tag and press Enter"
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2.5 text-sm text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return
+              event.preventDefault()
+              const input = event.currentTarget
+              onAddTag(input.value.trim())
+              input.value = ''
+            }}
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onSaveTaskEdit}
+            disabled={isUpdating || !editingTaskData.title.trim()}
+            className="h-10 rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold text-[var(--accent-foreground)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50">
+            {isUpdating ? 'Saving…' : 'Save changes'}
+          </button>
+          <button
+            type="button"
+            onClick={onCancelTaskEdit}
+            className="h-10 rounded-xl border border-[var(--border)] px-4 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]">
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mb-5 border-b border-[var(--border)] pb-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[var(--muted-foreground)]">
+            <span>{typeName}</span>
+            {selectedItem.completed && (
+              <span className="rounded-lg bg-emerald-500/10 px-2 py-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                Completed
+                {selectedItem.repetitionsToday && selectedItem.repetitionsToday > 1
+                  ? ` ×${selectedItem.repetitionsToday}`
+                  : ''}
+              </span>
+            )}
+          </div>
+          <h3 className="mt-2 break-words text-xl font-semibold leading-tight tracking-[-0.02em] text-[var(--foreground)] sm:text-2xl">
+            {selectedItem.title}
+          </h3>
+          {selectedItem.tags && selectedItem.tags.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {selectedItem.tags.map((tag, index) => (
+                <span
+                  key={`${tag}-${index}`}
+                  className="rounded-lg bg-[var(--surface-muted)] px-2 py-1 text-xs text-[var(--muted-foreground)]">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1">
+          {isCheckInTask && (
+            <button
+              type="button"
+              onClick={() => onHandleCheckInToggle(selectedItem)}
+              disabled={isUpdating}
+              className={`grid h-9 w-9 place-items-center rounded-xl border transition ${
+                selectedItem.completed
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-emerald-500 hover:text-emerald-600'
+              } disabled:opacity-50`}
+              aria-label={
+                selectedItem.completed ? 'Mark check-in incomplete' : 'Complete check-in'
+              }>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true">
+                <path
+                  d="m6 12 4 4 8-8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.8"
+                />
+              </svg>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onStartEditingTask}
+            className="grid h-9 w-9 place-items-center rounded-xl text-[var(--muted-foreground)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+            aria-label="Edit task">
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true">
+              <path
+                d="M13.5 6.5 17.5 10.5M5 19l1-4 9.8-9.8a1.4 1.4 0 0 1 2 0l1 1a1.4 1.4 0 0 1 0 2L9 18l-4 1Z"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.8"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={onRequestDelete}
+            className="grid h-9 w-9 place-items-center rounded-xl text-[var(--muted-foreground)] transition hover:bg-red-500/10 hover:text-red-500"
+            aria-label="Delete task">
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true">
+              <path
+                d="M5 7h14M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.8"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {selectedItem.completed && selectedItem.type !== 'check-in' && (
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = `/focus?id=${selectedItem.id}&repeat=true`
+          }}
+          className="mt-4 h-9 rounded-xl border border-[var(--border)] px-3 text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
+          Repeat task
+        </button>
       )}
     </div>
   )

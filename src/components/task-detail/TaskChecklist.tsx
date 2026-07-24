@@ -1,7 +1,5 @@
 'use client'
 
-import React from 'react'
-
 interface TaskChecklistProps {
   details: string[] | undefined
   editingDetail: number | null
@@ -33,134 +31,187 @@ export default function TaskChecklist({
   isCheckInTask,
   time,
 }: TaskChecklistProps) {
+  const itemCount = details?.length ?? 0
+
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mb-4">
-        <div className="flex items-center gap-3">
-          <h4 className="text-[var(--muted-foreground)] text-sm font-medium uppercase tracking-wider">
-            {isCheckInTask ? 'Check-in List' : 'Task List'}
+    <div className="min-h-0 flex-1">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold text-[var(--foreground)]">
+            {isCheckInTask ? 'Check-in notes' : 'Checklist'}
           </h4>
-          <div className="text-[var(--border)]">|</div>
-          <span className="text-[var(--muted-foreground)] text-sm">{time}</span>
+          <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+            {itemCount} {itemCount === 1 ? 'item' : 'items'}
+            {time ? ` · ${time}` : ''}
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={onAddNewDetail}
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
+          <svg
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true">
+            <path
+              d="M12 5v14M5 12h14"
+              strokeLinecap="round"
+              strokeWidth="1.8"
+            />
+          </svg>
+          Add item
+        </button>
       </div>
 
-      <div className="space-y-3">
-        {details &&
-          details.map((detail: string, index: number) => (
-            <div
-              key={index}
-              className="flex items-center justify-between py-3 border-b border-[var(--border)] last:border-b-0 group"
-            >
-              {editingDetail === index ? (
-                <div className="flex-1 flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={editingText}
-                    onChange={(e) => setEditingText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') onSaveEdit()
-                      if (e.key === 'Escape') onCancelEdit()
-                    }}
-                    className="flex-1 bg-[var(--input)] border border-[var(--border)] rounded-md px-3 py-2 text-[var(--foreground)] text-sm focus:outline-none focus:border-[var(--accent)]"
-                    autoFocus
-                  />
-                  <button
-                    onClick={onSaveEdit}
-                    className="w-8 h-8 flex items-center justify-center rounded-md bg-green-600/20 hover:bg-green-600/30 text-green-400 transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={onCancelEdit}
-                    className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--surface-muted)] hover:opacity-80 text-[var(--muted-foreground)] transition-opacity"
-                  >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2 group/text">
-                    <p className="text-[var(--foreground)] font-medium">{detail}</p>
-                    <div className="flex items-center gap-1 opacity-0 group-hover/text:opacity-100 transition-opacity">
+      {itemCount === 0 ? (
+        <div className="mt-5 rounded-xl border border-dashed border-[var(--border)] px-4 py-5 text-sm leading-6 text-[var(--muted-foreground)]">
+          Add a short next step so the task is easier to begin.
+        </div>
+      ) : (
+        <div className="mt-4 divide-y divide-[var(--border)]">
+          {details?.map((detail, index) => {
+            const isComplete = completedDetails.has(index)
+            const isEditing = editingDetail === index
+
+            return (
+              <div
+                key={`${detail}-${index}`}
+                className="group flex items-start gap-3 py-3.5">
+                <button
+                  type="button"
+                  onClick={() => onToggleDetail(index)}
+                  aria-label={isComplete ? 'Mark item incomplete' : 'Complete item'}
+                  aria-pressed={isComplete}
+                  className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border transition ${
+                    isComplete
+                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      : 'border-slate-300 bg-[var(--surface-solid)] text-transparent hover:border-[var(--accent)] dark:border-slate-600'
+                  }`}>
+                  <svg
+                    className="h-3 w-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 12 12"
+                    aria-hidden="true">
+                    <path
+                      d="m2.5 6 2.2 2.2L9.5 3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.8"
+                    />
+                  </svg>
+                </button>
+
+                {isEditing ? (
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <input
+                      type="text"
+                      value={editingText}
+                      onChange={(event) => setEditingText(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') onSaveEdit()
+                        if (event.key === 'Escape') onCancelEdit()
+                      }}
+                      className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--accent)] focus:outline-none"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={onSaveEdit}
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                      aria-label="Save checklist item">
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true">
+                        <path
+                          d="m6 12 4 4 8-8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.8"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onCancelEdit}
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                      aria-label="Cancel editing checklist item">
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true">
+                        <path
+                          d="m7 7 10 10M17 7 7 17"
+                          strokeLinecap="round"
+                          strokeWidth="1.8"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                    <p
+                      className={`min-w-0 text-sm leading-6 ${
+                        isComplete
+                          ? 'text-[var(--muted-foreground)] line-through'
+                          : 'text-[var(--foreground)]'
+                      }`}>
+                      {detail}
+                    </p>
+                    <div className="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
                       <button
+                        type="button"
                         onClick={() => onStartEditing(index, detail)}
-                        className="w-6 h-6 flex items-center justify-center rounded bg-[var(--surface-muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        className="grid h-8 w-8 place-items-center rounded-lg text-[var(--muted-foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                        aria-label="Edit checklist item">
+                        <svg
+                          className="h-3.5 w-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true">
                           <path
+                            d="M13.5 6.5 17.5 10.5M5 19l1-4 9.8-9.8a1.4 1.4 0 0 1 2 0l1 1a1.4 1.4 0 0 1 0 2L9 18l-4 1Z"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            strokeWidth="1.8"
                           />
                         </svg>
                       </button>
                       <button
+                        type="button"
                         onClick={() => onDeleteDetail(index)}
-                        className="w-6 h-6 flex items-center justify-center rounded bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 transition-colors"
-                      >
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        className="grid h-8 w-8 place-items-center rounded-lg text-[var(--muted-foreground)] hover:bg-red-500/10 hover:text-red-500"
+                        aria-label="Delete checklist item">
+                        <svg
+                          className="h-3.5 w-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true">
                           <path
-                            fillRule="evenodd"
-                            d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9zM4 5a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V5zM8 11a1 1 0 012 0v.01a1 1 0 01-2 0V11zm2-4a1 1 0 00-2 0v2a1 1 0 002 0V7z"
-                            clipRule="evenodd"
+                            d="M6 7h12m-9 0V4h6v3m-7 0 .8 13h6.4L16 7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.8"
                           />
                         </svg>
                       </button>
                     </div>
                   </div>
-                  <div
-                    onClick={() => onToggleDetail(index)}
-                    className={`w-5 h-5 rounded-full  transition-colors cursor-pointer flex items-center justify-center ${
-                      completedDetails.has(index)
-                        ? 'border-green-400/40 bg-green-400/20 text-[var(--foreground)]'
-                        : ' border-2 border-amber-400/80 hover:border-amber-300'
-                    }`}
-                  >
-                    {completedDetails.has(index) && (
-                      <svg className="w-3 h-3 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
-      </div>
-
-      {/* 添加新清单项按钮 */}
-      <div className="mt-4">
-        <button
-          onClick={onAddNewDetail}
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--surface-muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-        >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
-      </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

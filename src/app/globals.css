@@ -68,6 +68,83 @@ body {
   color: var(--foreground);
 }
 
+.focus-session {
+  --focus-session-bg: #f6f9ff;
+  --focus-track: rgba(100, 116, 139, 0.17);
+  background:
+    radial-gradient(circle at 50% 34%, #ffffff 0%, #f7f9ff 38%, transparent 68%),
+    linear-gradient(180deg, #f8faff 0%, #edf3ff 100%);
+}
+
+.dark .focus-session {
+  --focus-session-bg: #090d16;
+  --focus-track: rgba(148, 163, 184, 0.2);
+  background:
+    radial-gradient(circle at 50% 34%, #141c2c 0%, #0d1422 42%, transparent 72%),
+    linear-gradient(180deg, #0b111d 0%, #070b12 100%);
+}
+
+.focus-dashboard {
+  --surface: #ffffff;
+  --surface-solid: #ffffff;
+  --surface-muted: #f3f6fa;
+  --surface-elevated: #ffffff;
+  --border: rgba(15, 23, 42, 0.1);
+  --input: #ffffff;
+  --panel-shadow: none;
+  --dashboard-cta-top: #364256;
+  --dashboard-cta-bottom: #273244;
+  --dashboard-cta-hover-top: #303c4f;
+  --dashboard-cta-hover-bottom: #202b3b;
+  --dashboard-cta-foreground: #f8fafc;
+  --dashboard-cta-border: rgba(15, 23, 42, 0.22);
+  --dashboard-cta-highlight: rgba(255, 255, 255, 0.16);
+  --dashboard-cta-shadow: rgba(15, 23, 42, 0.16);
+  background: #f4f7fb;
+}
+
+.dark .focus-dashboard {
+  --surface: #111827;
+  --surface-solid: #111827;
+  --surface-muted: #182235;
+  --surface-elevated: #152033;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: #111827;
+  --dashboard-cta-top: #f4f6f9;
+  --dashboard-cta-bottom: #dfe5ec;
+  --dashboard-cta-hover-top: #ffffff;
+  --dashboard-cta-hover-bottom: #e8edf3;
+  --dashboard-cta-foreground: #172033;
+  --dashboard-cta-border: rgba(255, 255, 255, 0.2);
+  --dashboard-cta-highlight: rgba(255, 255, 255, 0.86);
+  --dashboard-cta-shadow: rgba(0, 0, 0, 0.3);
+  background: #0b111c;
+}
+
+.dashboard-primary-cta {
+  color: var(--dashboard-cta-foreground);
+  background: linear-gradient(
+    180deg,
+    var(--dashboard-cta-top) 0%,
+    var(--dashboard-cta-bottom) 100%
+  );
+  border-color: var(--dashboard-cta-border);
+  box-shadow:
+    inset 0 1px 0 var(--dashboard-cta-highlight),
+    0 8px 20px var(--dashboard-cta-shadow);
+}
+
+.dashboard-primary-cta:hover {
+  background: linear-gradient(
+    180deg,
+    var(--dashboard-cta-hover-top) 0%,
+    var(--dashboard-cta-hover-bottom) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 var(--dashboard-cta-highlight),
+    0 10px 24px var(--dashboard-cta-shadow);
+}
+
 .app-surface {
   background: var(--surface);
   border-color: var(--border);

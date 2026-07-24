@@ -17,6 +17,7 @@ interface DayRecord {
 interface ActivityCalendarProps {
   className?: string
   onDataUpdate?: (hasData: boolean) => void
+  compact?: boolean
 }
 
 const MONTHS = [
@@ -80,6 +81,7 @@ const getCalendarRange = (year: number, month: number) => {
 export default function ActivityCalendar({
   className = '',
   onDataUpdate,
+  compact = false,
 }: ActivityCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const year = currentDate.getFullYear()
@@ -137,6 +139,11 @@ export default function ActivityCalendar({
     onDataUpdate?.(calendarData.some((day) => day.hasRecord))
   }, [calendarData, onDataUpdate])
 
+  const recordedDays = calendarData.filter((day) => day.hasRecord).length
+  const monthFocus = calendarData
+    .filter((day) => day.isCurrentMonth)
+    .reduce((total, day) => total + day.focusTime, 0)
+
   useEffect(() => {
     const handleStatsUpdated = () => {
       void refetch()
@@ -156,8 +163,13 @@ export default function ActivityCalendar({
   }, [])
 
   const header = (
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="text-lg font-medium text-[var(--foreground)]">Activity</h3>
+    <div className={`flex items-center justify-between ${compact ? 'mb-3' : 'mb-4'}`}>
+      <h3
+        className={`font-medium text-[var(--foreground)] ${
+          compact ? 'text-sm' : 'text-lg'
+        }`}>
+        Activity
+      </h3>
       <div className="flex items-center space-x-2">
         <button
           onClick={() => navigateMonth('prev')}
@@ -217,20 +229,52 @@ export default function ActivityCalendar({
   )
 
   const calendarGrid = (
-    <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-3 sm:p-4">
-      <div className="grid grid-cols-7 gap-1 mb-1">
+    <div
+      className={`border border-[var(--border)] bg-[var(--surface-solid)] ${
+        compact ? 'rounded-xl p-2.5' : 'rounded-2xl p-3 sm:p-4'
+      }`}>
+      {recordedDays === 0 ? (
+        <div className="mb-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-3">
+          <p className="text-sm font-semibold text-[var(--foreground)]">
+            No activity yet
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">
+            Calendar intensity appears after at least one completed focus session.
+          </p>
+        </div>
+      ) : (
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <div className="rounded-lg bg-[var(--surface-muted)] px-3 py-2">
+            <div className="text-[11px] text-[var(--muted-foreground)]">Active days</div>
+            <div className="text-sm font-semibold text-[var(--foreground)]">{recordedDays}</div>
+          </div>
+          <div className="rounded-lg bg-[var(--surface-muted)] px-3 py-2">
+            <div className="text-[11px] text-[var(--muted-foreground)]">Focus</div>
+            <div className="text-sm font-semibold text-[var(--foreground)]">
+              {formatTimeInHours(monthFocus)}
+            </div>
+          </div>
+        </div>
+      )}
+      <div className={`mb-1 grid grid-cols-7 ${compact ? 'gap-0.5' : 'gap-1'}`}>
         {WEEK_DAYS.map((day, index) => (
-          <div key={index} className="text-center text-sm text-[var(--muted-foreground)] py-1">
+          <div
+            key={index}
+            className={`py-1 text-center text-[var(--muted-foreground)] ${
+              compact ? 'text-[10px]' : 'text-sm'
+            }`}>
             {day}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className={`grid grid-cols-7 ${compact ? 'gap-0.5' : 'gap-1'}`}>
         {calendarData.map((day, index) => (
           <div
             key={`${day.fullDate}-${index}`}
-            className={`aspect-square rounded-full text-[11px] sm:text-xs flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 ${
+            className={`flex aspect-square cursor-pointer items-center justify-center rounded-md transition-all duration-200 hover:scale-105 ${
+              compact ? 'text-[10px]' : 'text-[11px] sm:text-xs'
+            } ${
                 day.isToday ? 'ring-1 ring-amber-400' : ''
             } ${
               day.isCurrentMonth
@@ -260,7 +304,7 @@ export default function ActivityCalendar({
         ))}
       </div>
 
-      {legend}
+      {!compact && legend}
     </div>
   )
 
@@ -268,7 +312,7 @@ export default function ActivityCalendar({
     return (
       <div className={`flex flex-col ${className}`}>
         {header}
-        <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-6 flex items-center justify-center">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-6 flex items-center justify-center">
           <div className="text-[var(--muted-foreground)] text-sm">Loading...</div>
         </div>
       </div>

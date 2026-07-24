@@ -43,6 +43,8 @@ const getCurrentTime = () => {
   ).padStart(2, '0')}`
 }
 
+const hasDirtyText = (value: string) => /�|Ã|Â|å|æ|ç|ð/i.test(value)
+
 export default function SimpleTaskModal({
   isOpen,
   onClose,
@@ -61,6 +63,16 @@ export default function SimpleTaskModal({
   const [recurringDays, setRecurringDays] = useState<number[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [createTask] = useCreateTaskMutation()
+  const normalizedTitle = title.trim()
+  const titleError =
+    normalizedTitle.length === 0
+      ? 'Task title is required.'
+      : normalizedTitle.length > 80
+      ? 'Keep the title under 80 characters.'
+      : hasDirtyText(normalizedTitle)
+      ? 'This title looks corrupted. Rename it before saving.'
+      : ''
+  const canSubmit = !isSubmitting && !titleError
 
   const weekDays = [
     { value: 1, label: 'Mon' },
@@ -129,15 +141,15 @@ export default function SimpleTaskModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim()) return
+    if (!canSubmit) return
 
     setIsSubmitting(true)
     try {
       const baseTask = {
         userId: 'user_001',
         type: taskType,
-        title: title.trim(),
-        content: content.filter((item) => item.trim()),
+        title: normalizedTitle,
+        content: content.map((item) => item.trim()).filter(Boolean),
         status: 'pending' as const,
         priority,
         tags,
@@ -196,10 +208,15 @@ export default function SimpleTaskModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
-      <div className="app-surface-solid w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[1.75rem] border p-6 shadow-2xl">
-        <h2 className="text-xl font-semibold text-[var(--foreground)] mb-6">
-          Create New Task
-        </h2>
+      <div className="app-surface-solid w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border p-6 shadow-2xl">
+        <div className="mb-6">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+            New Task
+          </div>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--foreground)]">
+            Add work to today
+          </h2>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 任务类型选择 */}
@@ -230,19 +247,28 @@ export default function SimpleTaskModal({
             <label className="block text-sm text-[var(--muted-foreground)] mb-2">
               Task Title
             </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-2 text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:border-[var(--accent)] focus:outline-none"
-              placeholder={
-                taskType === 'todo'
-                  ? 'Enter todo item...'
-                  : 'Enter habit name...'
-              }
-              required
-            />
-          </div>
+	            <input
+	              type="text"
+	              value={title}
+	              onChange={(e) => setTitle(e.target.value)}
+	              className={`w-full rounded-xl border bg-[var(--input)] px-3 py-2 text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none ${
+	                titleError && title.length > 0
+	                  ? 'border-red-500/60 focus:border-red-500'
+	                  : 'border-[var(--border)] focus:border-[var(--accent)]'
+	              }`}
+	              placeholder={
+	                taskType === 'todo'
+	                  ? 'Enter todo item...'
+	                  : 'Enter habit name...'
+	              }
+	              required
+	            />
+	            {titleError && title.length > 0 && (
+	              <p className="mt-2 text-xs font-medium text-red-500">
+	                {titleError}
+	              </p>
+	            )}
+	          </div>
 
           {/* 任务内容 */}
           <div>
@@ -413,9 +439,9 @@ export default function SimpleTaskModal({
                   type="text"
                   value={customTag}
                   onChange={(e) => setCustomTag(e.target.value)}
-                  onKeyPress={(e) =>
-                    e.key === 'Enter' && (e.preventDefault(), addCustomTag())
-                  }
+	                  onKeyDown={(e) =>
+	                    e.key === 'Enter' && (e.preventDefault(), addCustomTag())
+	                  }
                   className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--input)] px-3 py-1 text-sm text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:border-[var(--accent)] focus:outline-none"
                   placeholder="Custom tag..."
                 />
@@ -437,10 +463,10 @@ export default function SimpleTaskModal({
               disabled={isSubmitting}>
               Cancel
             </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-[var(--accent)] text-white rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
-              disabled={isSubmitting || !title.trim()}>
+	            <button
+	              type="submit"
+	              className="flex-1 rounded-xl bg-[var(--accent)] px-4 py-2 font-semibold text-[var(--accent-foreground)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+	              disabled={!canSubmit}>
               {isSubmitting
                 ? 'Creating...'
                 : `Create ${taskType === 'todo' ? 'Task' : 'Habit'}`}

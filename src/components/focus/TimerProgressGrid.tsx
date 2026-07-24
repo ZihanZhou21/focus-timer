@@ -4,41 +4,51 @@ import React from 'react'
 
 interface TimerProgressGridProps {
   progress: number
+  elapsedLabel: string
+  remainingLabel: string
 }
 
-const TOTAL_BLOCKS = 20
-const BLOCK_SPAN = 5
+const TimerProgressGridComponent = ({
+  progress,
+  elapsedLabel,
+  remainingLabel,
+}: TimerProgressGridProps) => {
+  const safeProgress = Math.min(Math.max(progress, 0), 100)
+  const roundedProgress = Math.round(safeProgress)
 
-const TimerProgressGridComponent = ({ progress }: TimerProgressGridProps) => {
   return (
-    <div className="relative bg-slate-800/60 backdrop-blur-xl p-3 rounded-xl shadow-2xl border border-slate-700/50">
-      <div className="relative h-8 bg-gray-800 flex gap-1">
-        {Array.from({ length: TOTAL_BLOCKS }, (_, index) => {
-          const blockStart = index * BLOCK_SPAN
-          const blockEnd = (index + 1) * BLOCK_SPAN
+    <div
+      className="w-full"
+      role="progressbar"
+      aria-label="Focus session progress"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={roundedProgress}>
+      <div className="mb-3 flex items-center justify-between gap-4 text-xs font-medium tracking-[-0.01em] text-[var(--muted-foreground)] sm:text-sm">
+        <span className="tabular-nums">{elapsedLabel} elapsed</span>
+        <span className="tabular-nums">{remainingLabel} remaining</span>
+      </div>
 
-          let blockFillPercentage = 0
-          if (progress > blockEnd) {
-            blockFillPercentage = 100
-          } else if (progress > blockStart) {
-            blockFillPercentage =
-              ((progress - blockStart) / BLOCK_SPAN) * 100
-          }
+      <div className="relative h-1 rounded-full bg-[var(--focus-track)]">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-[var(--accent)] transition-[width] duration-500 ease-out"
+          style={{ width: `${safeProgress}%` }}
+        />
+        <span
+          className="absolute top-1/2 h-3 w-3 rounded-full border-[3px] border-[var(--focus-session-bg)] bg-[var(--accent)] shadow-[0_2px_8px_rgba(37,99,235,0.28)] transition-[left] duration-500 ease-out"
+          style={{
+            left: `${safeProgress}%`,
+            transform:
+              safeProgress === 0
+                ? 'translateY(-50%)'
+                : 'translate(-50%, -50%)',
+          }}
+          aria-hidden="true"
+        />
+      </div>
 
-          return (
-            <div
-              key={index}
-              className="relative flex-1 bg-gray-700 border border-gray-600"
-              style={{ minHeight: '32px' }}>
-              <div
-                className="bg-[#6faf90] shadow-[0_0_10px_rgba(111,175,144,0.28)] transition-all duration-200 ease-out"
-                style={{
-                  width: `${blockFillPercentage}%`,
-                  height: '100%',
-                }}></div>
-            </div>
-          )
-        })}
+      <div className="mt-3 text-sm font-semibold tabular-nums text-[var(--accent)]">
+        {roundedProgress}%
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 
 type Theme = 'light' | 'dark'
 
@@ -23,6 +24,7 @@ function applyTheme(theme: Theme) {
 }
 
 export default function ThemeToggle() {
+  const pathname = usePathname()
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
   const [mounted, setMounted] = useState(false)
 
@@ -32,6 +34,8 @@ export default function ThemeToggle() {
   }, [])
 
   const isDark = theme === 'dark'
+  const isDashboard = pathname === '/'
+  const isFocus = pathname === '/focus'
 
   return (
     <button
@@ -43,7 +47,13 @@ export default function ThemeToggle() {
         applyTheme(nextTheme)
         setTheme(nextTheme)
       }}
-      className="fixed bottom-4 right-4 z-50 grid h-11 w-11 place-items-center rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-lg shadow-black/10 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+      className={`fixed right-4 z-50 grid h-11 w-11 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface-solid)] text-[var(--foreground)] shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] ${
+        isDashboard
+          ? 'top-2.5 sm:top-3.5'
+          : isFocus
+          ? 'top-3.5 sm:right-6 sm:top-4'
+          : 'bottom-4'
+      }`}
       suppressHydrationWarning>
       {mounted && isDark ? (
         <svg

@@ -7,9 +7,65 @@ import { RootState } from '@/app/store'
 
 interface NavigationProps {
   className?: string
+  variant?: 'default' | 'dashboard' | 'focus'
 }
 
-export default function AppNavigation({ className = '' }: NavigationProps) {
+function NavigationIcon({ name }: { name: 'dashboard' | 'focus' | 'history' }) {
+  if (name === 'dashboard') {
+    return (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden="true">
+        <path
+          d="M4 10.5 12 4l8 6.5V20H4v-9.5Z"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+        <path d="M9.5 20v-5h5v5" strokeWidth="1.8" />
+      </svg>
+    )
+  }
+
+  if (name === 'focus') {
+    return (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        aria-hidden="true">
+        <circle cx="12" cy="12" r="8.5" strokeWidth="1.8" />
+        <circle cx="12" cy="12" r="3.5" strokeWidth="1.8" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" strokeWidth="1.8" />
+      <path
+        d="M12 7.5V12l3 2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  )
+}
+
+export default function AppNavigation({
+  className = '',
+  variant = 'default',
+}: NavigationProps) {
   const pathname = usePathname()
   const router = useRouter()
   const timerState = useSelector((state: RootState) => state.timer)
@@ -100,11 +156,50 @@ export default function AppNavigation({ className = '' }: NavigationProps) {
     { href: '/focus', label: 'Focus', key: 'focus', onClick: handleFocusClick },
     { href: '/calendar', label: 'History', key: 'history' },
   ]
+  const isDashboardVariant = variant === 'dashboard'
+  const isFocusVariant = variant === 'focus'
+
+  const getItemClassName = (isActive: boolean) => {
+    if (isFocusVariant) {
+      return `relative flex min-h-11 items-center justify-center px-3 text-sm font-medium transition-colors after:absolute after:inset-x-2 after:-bottom-0.5 after:h-0.5 after:rounded-full after:transition-opacity sm:px-4 sm:text-[15px] ${
+        isActive
+          ? 'text-[var(--accent)] after:bg-[var(--accent)] after:opacity-100'
+          : 'text-[var(--muted-foreground)] after:opacity-0 hover:text-[var(--foreground)]'
+      }`
+    }
+
+    if (!isDashboardVariant) {
+      return `rounded-xl px-6 py-2.5 text-base font-medium transition-colors ${
+        isActive
+          ? 'bg-[var(--accent-soft)] text-[var(--accent)] ring-1 ring-[var(--border)]'
+          : 'text-[var(--muted-foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]'
+      }`
+    }
+
+    return `relative flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl border-b-2 px-3 py-2 text-xs font-medium transition-colors lg:min-h-0 lg:flex-row lg:rounded-none lg:px-1 lg:py-[1.35rem] lg:text-sm ${
+      isActive
+        ? 'border-transparent bg-[var(--accent-soft)] text-[var(--accent)] lg:border-[var(--accent)] lg:bg-transparent'
+        : 'border-transparent text-[var(--muted-foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] lg:hover:bg-transparent'
+    }`
+  }
 
   return (
     <nav
-      className={`rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-sm backdrop-blur-xl ${className}`}>
-      <div className="flex space-x-2">
+      className={`${
+        isDashboardVariant
+          ? 'fixed bottom-4 left-4 right-4 z-40 rounded-2xl border border-[var(--border)] bg-[var(--surface-solid)] p-1.5 shadow-[0_12px_36px_rgba(15,23,42,0.12)] lg:static lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none'
+          : isFocusVariant
+          ? 'w-full sm:w-auto'
+          : 'rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-sm backdrop-blur-xl'
+      } ${className}`}>
+      <div
+        className={
+          isDashboardVariant
+            ? 'grid grid-cols-3 gap-1 lg:flex lg:items-center lg:gap-8'
+            : isFocusVariant
+            ? 'grid grid-cols-3 sm:flex sm:items-center sm:gap-5'
+            : 'flex space-x-2'
+        }>
         {navItems.map((item) => {
           const isActive = pathname === item.href
 
@@ -124,18 +219,19 @@ export default function AppNavigation({ className = '' }: NavigationProps) {
               <button
                 key={item.key}
                 onClick={item.onClick}
-                className={`relative px-6 py-2.5 rounded-xl transition-colors text-base font-medium ${
-                  isActive
-                    ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
-                    : 'text-[var(--muted-foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]'
-                }`}>
+                className={getItemClassName(isActive)}>
+                {isDashboardVariant && (
+                  <span className="lg:hidden">
+                    <NavigationIcon name="focus" />
+                  </span>
+                )}
                 {item.label}
-                {showRunningIndicator && (
+                {showRunningIndicator && !isFocusVariant && (
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse">
                     <div className="absolute inset-0 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
                   </div>
                 )}
-                {showPausedIndicator && (
+                {showPausedIndicator && !isFocusVariant && (
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full">
                     <div className="absolute inset-0.5 w-2 h-2 bg-yellow-600 rounded-full"></div>
                   </div>
@@ -148,11 +244,14 @@ export default function AppNavigation({ className = '' }: NavigationProps) {
             <Link
               key={item.key}
               href={item.href}
-              className={`px-6 py-2.5 rounded-xl transition-colors text-base font-medium ${
-                isActive
-                  ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
-                  : 'text-[var(--muted-foreground)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]'
-              }`}>
+              className={getItemClassName(isActive)}>
+              {isDashboardVariant && (
+                <span className="lg:hidden">
+                  <NavigationIcon
+                    name={item.key === 'history' ? 'history' : 'dashboard'}
+                  />
+                </span>
+              )}
               {item.label}
             </Link>
           )
